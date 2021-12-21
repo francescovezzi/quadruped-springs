@@ -201,8 +201,6 @@ if __name__ == "__main__":
   kpCartesian = np.diag([2500]*3)
   kdCartesian = np.diag([40]*3)
 
-  q_0 = np.zeros(12)
-
   for j in range(TEST_STEPS):
     # initialize torque array to send to motors
     action = np.zeros(12) 

@@ -153,10 +153,21 @@ class QuadrupedGymEnv(gym.Env):
                                          -self._robot_config.VELOCITY_LIMITS,
                                          np.array([-1.0]*4))) -  OBSERVATION_EPS)
     elif self._observation_space_mode == "LR_COURSE_OBS":
-      # [TODO] Set observation upper and lower ranges. What are reasonable limits? 
-      # Note 50 is arbitrary below, you may have more or less
-      observation_high = (np.zeros(50) + OBSERVATION_EPS)
-      observation_low = (np.zeros(50) -  OBSERVATION_EPS)
+      q_high = self._robot_config.UPPER_ANGLE_JOINT
+      q_low = self._robot_config.LOWER_ANGLE_JOINT
+      dq_high = self._robot_config.VELOCITY_LIMITS
+      dq_low = -self._robot_config.VELOCITY_LIMITS
+      vel_high = np.array([20.0]*3)
+      vel_low = np.array([-20.0]*3)
+      ori_high = np.array([1.0]*4)
+      ori_low = np.array([-1.0]*4)
+      foot_pos_high = np.array([0.1, 0.05, 0.1])
+      foot_pos_low = -foot_pos_high
+      foot_vel_high = np.array([10.0]*12)
+      foot_vel_low = np.array([-10.0]*12)
+      
+      observation_high = (np.concatenate((q_high, dq_high, vel_high, ori_high, foot_pos_high, foot_pos_high, foot_pos_high, foot_pos_high, foot_vel_high)) +  OBSERVATION_EPS)
+      observation_low = (np.concatenate((q_low, dq_low, vel_low, ori_low, foot_pos_low, foot_pos_low, foot_pos_low, foot_pos_low, foot_vel_low)) -  OBSERVATION_EPS)
     else:
       raise ValueError("observation space not defined or not intended")
 
@@ -180,9 +191,18 @@ class QuadrupedGymEnv(gym.Env):
                                           self.robot.GetMotorVelocities(),
                                           self.robot.GetBaseOrientation() ))
     elif self._observation_space_mode == "LR_COURSE_OBS":
-      # [TODO] Get observation from robot. What are reasonable measurements we could get on hardware?
-      # 50 is arbitrary
-      self._observation = np.zeros(50)
+      q = self.robot.GetMotorAngles()
+      dq = self.robot.GetMotorVelocities()
+      vel = self.robot.GetBaseLinearVelocity()
+      ori = self.robot.GetBaseOrientation()
+      foot_pos = np.zeros(12)
+      foot_vel = np.zeros(12)
+      for i in range(4):
+        dq_i = dq[3*i:3*(i+1)]
+        J, xyz = self.robot.ComputeJacobianAndPosition(i)
+        foot_pos[3*i:3*(i+1)] = xyz
+        foot_vel[3*i:3*(i+1)] = J @ dq_i
+      self._observation = np.concatenate((q, dq, vel, ori, foot_pos, foot_vel))
 
     else:
       raise ValueError("observation space not defined or not intended")
@@ -286,25 +306,20 @@ class QuadrupedGymEnv(gym.Env):
     kpCartesian = self._robot_config.kpCartesian
     kdCartesian = self._robot_config.kdCartesian
     # get current motor velocities
-    qd = self.robot.GetMotorVelocities()
+    dq = self.robot.GetMotorVelocities()
 
     action = np.zeros(12)
     for i in range(4):
-      # get Jacobian and foot position in leg frame for leg i (see ComputeJacobianAndPosition() in quadruped.py)
-      # [TODO]
-      # desired foot position i (from RL above)
-      Pd = np.zeros(3) # [TODO]
-      # desired foot velocity i
-      vd = np.zeros(3) 
-      # foot velocity in leg frame i (Equation 2)
-      # [TODO]
-      # calculate torques with Cartesian PD (Equation 5) [Make sure you are using matrix multiplications]
-      tau = np.zeros(3) # [TODO]
-
-      action[3*i:3*i+3] = tau
-
+      # Get current Jacobian and foot position in leg frame (see ComputeJacobianAndPosition() in quadruped.py)
+      J, xyz = self.robot.ComputeJacobianAndPosition(i)
+      # Get current foot velocity in leg frame (Equation 2)
+      dxyz = J @ dq[3*i:3*(i+1)]
+      
+      F_foot = - kpCartesian @ (xyz - des_foot_pos[3*i:3*(i+1)]) - kdCartesian @ dxyz
+      # Calculate torque contribution from Cartesian PD (Equation 5) [Make sure you are using matrix multiplications]
+      tau = J.T @ F_foot
+      action[3*i:3*(i+1)] = tau
     return action
-
 
   def step(self, action):
     """ Step forward the simulation, given the action. """
