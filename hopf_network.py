@@ -26,9 +26,9 @@ class HopfNetwork():
   (Front Right, Front Left, Rear Right, Rear Left)
   """
   def __init__(self,
-                mu=1**2,                # converge to sqrt(mu)
-                omega_swing=5.0*np.pi,  # 1*2*np.pi,  # MUST EDIT
-                omega_stance=2.*np.pi, # 1*2*np.pi, # MUST EDIT
+                mu=2, #1**2,                # converge to sqrt(mu)
+                omega_swing=8.0*np.pi,  # 1*2*np.pi,  # MUST EDIT
+                omega_stance=2.0*np.pi, # 1*2*np.pi, # MUST EDIT
                 gait="TROT",            # change depending on desired gait
                 coupling_strength=1,    # coefficient to multiply coupling matrix
                 couple=True,            # should couple
@@ -173,7 +173,7 @@ if __name__ == "__main__":
   sideSign = np.array([-1, 1, -1, 1]) # get correct hip sign (body right is negative)
 
   env = QuadrupedGymEnv(render=True,              # visualize
-                      on_rack=True,              # useful for debugging! 
+                      on_rack=False,              # useful for debugging! 
                       isRLGymInterface=False,     # not using RL
                       time_step=TIME_STEP,
                       action_repeat=1,
@@ -183,7 +183,7 @@ if __name__ == "__main__":
                       )
 
   # initialize Hopf Network, supply gait
-  cpg = HopfNetwork(gait='PACE', time_step=TIME_STEP)
+  cpg = HopfNetwork(gait='TROT', time_step=TIME_STEP)
 
   T = 10
   TEST_STEPS = int(T / (TIME_STEP))
