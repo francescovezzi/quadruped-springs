@@ -36,6 +36,7 @@ env_config['record_video'] = False
 env_config['add_noise'] = False 
 env_config['motor_control_mode'] = "CARTESIAN_PD"
 env_config['observation_space_mode'] = "LR_COURSE_OBS"
+env_config['test_env'] = True
 
 # get latest model and normalization stats, and plot 
 stats_path = os.path.join(log_dir, "vec_normalize.pkl")

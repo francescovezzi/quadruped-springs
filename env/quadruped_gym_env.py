@@ -115,7 +115,7 @@ class QuadrupedGymEnv(gym.Env):
     self._using_test_env = test_env
     if test_env:
       self._add_noise = True
-      self._observation_noise_stdev = 0.01 #
+      self._observation_noise_stdev = 0.01 # TODO: check if increasing makes sense
     else:
       self._observation_noise_stdev = 0.0
 
@@ -257,7 +257,9 @@ class QuadrupedGymEnv(gym.Env):
 
   def _reward_lr_course(self):
     """ Implement your reward function here. How will you improve upon the above? """
-    # [TODO] add your reward function. 
+    # [TODO] add your reward function.
+    # 1) Predefined velocity: exp(- (v - v_des).T @ (v - v_des))
+    # 2) energy efficiency: using CoT. CoT_t = tau @ dq * dt / (m g v). P = sum(tau @ dq * dt). r = exp(- CoT_t)
     return 0
 
   def _reward(self):
@@ -318,7 +320,7 @@ class QuadrupedGymEnv(gym.Env):
       F_foot = - kpCartesian @ (xyz - des_foot_pos[3*i:3*(i+1)]) - kdCartesian @ dxyz
       # Calculate torque contribution from Cartesian PD (Equation 5) [Make sure you are using matrix multiplications]
       tau = J.T @ F_foot
-      action[3*i:3*(i+1)] = tau
+      action[3*i:3*(i+1)] = tau # TODO: add white noise
     return action
 
   def step(self, action):
