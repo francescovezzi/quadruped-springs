@@ -117,7 +117,7 @@ class QuadrupedGymEnv(gym.Env):
       self._add_noise = True
       self._observation_noise_stdev = 0.01 # TODO: check if increasing makes sense
     else:
-      self._observation_noise_stdev = 0.0
+      self._observation_noise_stdev = 0.01
 
     # other bookkeeping 
     self._num_bullet_solver_iterations = int(300 / action_repeat) 
@@ -157,17 +157,21 @@ class QuadrupedGymEnv(gym.Env):
       q_low = self._robot_config.LOWER_ANGLE_JOINT
       dq_high = self._robot_config.VELOCITY_LIMITS
       dq_low = -self._robot_config.VELOCITY_LIMITS
-      vel_high = np.array([20.0]*3)
-      vel_low = np.array([-20.0]*3)
-      ori_high = np.array([1.0]*4)
-      ori_low = np.array([-1.0]*4)
+      vel_high = np.array([MAX_FWD_VELOCITY]*3)
+      vel_low = np.array([-MAX_FWD_VELOCITY]*3)
+      rpy_high = np.array([np.pi]*3)
+      rpy_low = np.array([-np.pi]*3)
+      drpy_high = np.array([5.0]*3)
+      drpy_low = np.array([-5.0]*3)
       foot_pos_high = np.array([0.1, 0.05, 0.1])
       foot_pos_low = -foot_pos_high
       foot_vel_high = np.array([10.0]*12)
       foot_vel_low = np.array([-10.0]*12)
+      contact_high = np.array([1.0]*4)
+      contact_low = np.array([0.0]*4)
       
-      observation_high = (np.concatenate((q_high, dq_high, vel_high, ori_high, foot_pos_high, foot_pos_high, foot_pos_high, foot_pos_high, foot_vel_high)) +  OBSERVATION_EPS)
-      observation_low = (np.concatenate((q_low, dq_low, vel_low, ori_low, foot_pos_low, foot_pos_low, foot_pos_low, foot_pos_low, foot_vel_low)) -  OBSERVATION_EPS)
+      observation_high = (np.concatenate((vel_high, vel_high[:2], rpy_high, drpy_high, foot_pos_high, foot_pos_high, foot_pos_high, foot_pos_high, foot_vel_high, contact_high)) +  OBSERVATION_EPS)
+      observation_low = (np.concatenate((vel_low, vel_low[:2], rpy_low, drpy_low, foot_pos_low, foot_pos_low, foot_pos_low, foot_pos_low, foot_vel_low, contact_low)) -  OBSERVATION_EPS)
     else:
       raise ValueError("observation space not defined or not intended")
 
@@ -191,10 +195,11 @@ class QuadrupedGymEnv(gym.Env):
                                           self.robot.GetMotorVelocities(),
                                           self.robot.GetBaseOrientation() ))
     elif self._observation_space_mode == "LR_COURSE_OBS":
-      q = self.robot.GetMotorAngles()
+      #q = self.robot.GetMotorAngles()
       dq = self.robot.GetMotorVelocities()
       vel = self.robot.GetBaseLinearVelocity()
-      ori = self.robot.GetBaseOrientation()
+      rpy = self.robot.GetBaseOrientationRollPitchYaw()
+      drpy = self.robot.GetTrueBaseRollPitchYawRate()
       foot_pos = np.zeros(12)
       foot_vel = np.zeros(12)
       for i in range(4):
@@ -202,7 +207,10 @@ class QuadrupedGymEnv(gym.Env):
         J, xyz = self.robot.ComputeJacobianAndPosition(i)
         foot_pos[3*i:3*(i+1)] = xyz
         foot_vel[3*i:3*(i+1)] = J @ dq_i
-      self._observation = np.concatenate((q, dq, vel, ori, foot_pos, foot_vel))
+      
+      numValidContacts, numInvalidContacts, feetNormalForces, feetInContactBool = self.robot.GetContactInfo()
+        
+      self._observation = np.concatenate((vel, self._v_des, rpy, drpy, foot_pos, foot_vel, feetInContactBool))
 
     else:
       raise ValueError("observation space not defined or not intended")
@@ -257,10 +265,19 @@ class QuadrupedGymEnv(gym.Env):
 
   def _reward_lr_course(self):
     """ Implement your reward function here. How will you improve upon the above? """
-    # [TODO] add your reward function.
-    # 1) Predefined velocity: exp(- (v - v_des).T @ (v - v_des))
-    # 2) energy efficiency: using CoT. CoT_t = tau @ dq * dt / (m g v). P = sum(tau @ dq * dt). r = exp(- CoT_t)
-    return 0
+    v_x = max(min(self.robot.GetBaseLinearVelocity()[0], MAX_FWD_VELOCITY), -MAX_FWD_VELOCITY)
+    v_y = max(min(self.robot.GetBaseLinearVelocity()[1], MAX_FWD_VELOCITY), -MAX_FWD_VELOCITY)
+    v = np.array([v_x, v_y])
+    
+    e = self._v_des - v
+    
+    dq = np.array(self.robot.GetMotorVelocities())
+    tau = np.array(self.robot.GetMotorTorques())
+    P = dq.dot(tau)
+    CoT = P / (5. * 10. * np.linalg.norm(v))
+
+    r = np.exp(- 10.0 * e.dot(e) - 0.01 * CoT**2)
+    return r
 
   def _reward(self):
     """ Get reward depending on task"""
@@ -300,7 +317,7 @@ class QuadrupedGymEnv(gym.Env):
     u = np.clip(actions,-1,1)
     # scale to corresponding desired foot positions (i.e. ranges in x,y,z we allow the agent to choose foot positions)
     # [TODO: edit (do you think these should these be increased? How limiting is this?)]
-    scale_array = np.array([0.1, 0.05, 0.08]*4)
+    scale_array = np.array([0.2, 0.08, 0.15]*4) # [0.1, 0.05, 0.08]*4)
     # add to nominal foot position in leg frame (what are the final ranges?)
     des_foot_pos = self._robot_config.NOMINAL_FOOT_POS_LEG_FRAME + scale_array*u
 
@@ -358,6 +375,7 @@ class QuadrupedGymEnv(gym.Env):
   ######################################################################################
   def reset(self):
     """ Set up simulation environment. """
+    self._v_des = np.array([1.0, 0.0]) # (np.random.uniform(), 2.*np.random.uniform()-1.)
     mu_min = 0.5
     if self._hard_reset:
       # set up pybullet simulation

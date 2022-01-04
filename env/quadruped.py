@@ -81,7 +81,13 @@ class Quadruped(object):
       return self._robot_config.INIT_POSITION
 
   def _GetDefaultInitOrientation(self):
-    return self._robot_config.INIT_ORIENTATION
+    z = 0.2 * (np.random.uniform() - 0.5)
+    if np.random.uniform() < 0.5:
+      w = - np.sqrt(1 - z**2)
+    else:
+      w = np.sqrt(1 - z**2)
+    return (0, 0, z, w)
+    #return self._robot_config.INIT_ORIENTATION
 
   def GetBasePosition(self):
     """Get the position of the quadruped's base.
