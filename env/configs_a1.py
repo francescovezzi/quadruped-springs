@@ -52,10 +52,10 @@ HIP_LINK_LENGTH = 0.0838
 THIGH_LINK_LENGTH = 0.2
 CALF_LINK_LENGTH = 0.2
 
-NOMINAL_FOOT_POS_LEG_FRAME = np.array([ 0, -HIP_LINK_LENGTH, -0.25,
-                                        0,  HIP_LINK_LENGTH, -0.25,
-                                        0, -HIP_LINK_LENGTH, -0.25,
-                                        0,  HIP_LINK_LENGTH, -0.25])
+NOMINAL_FOOT_POS_LEG_FRAME = np.array([ 0, -HIP_LINK_LENGTH, -0.3,
+                                        0,  HIP_LINK_LENGTH, -0.3,
+                                        0, -HIP_LINK_LENGTH, -0.3,
+                                        0,  HIP_LINK_LENGTH, -0.3])
 
 ##################################################################################
 # Actuation limits/gains, position, and velocity limits

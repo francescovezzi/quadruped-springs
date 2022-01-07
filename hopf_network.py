@@ -26,9 +26,9 @@ class HopfNetwork():
   (Front Right, Front Left, Rear Right, Rear Left)
   """
   def __init__(self,
-                mu=2, #1**2,                # converge to sqrt(mu)
-                omega_swing=8.0*np.pi,  # 1*2*np.pi,  # MUST EDIT
-                omega_stance=2.0*np.pi, # 1*2*np.pi, # MUST EDIT
+                mu=2, #1**2,            # converge to sqrt(mu)
+                omega_swing=1*2*np.pi,  # MUST EDIT
+                omega_stance=1*2*np.pi, # MUST EDIT
                 gait="TROT",            # change depending on desired gait
                 coupling_strength=1,    # coefficient to multiply coupling matrix
                 couple=True,            # should couple
@@ -61,7 +61,9 @@ class HopfNetwork():
     self._ground_penetration = ground_penetration
     self._robot_height = robot_height 
     self._des_step_len = des_step_len
-
+    
+    self.X_list = []
+    self.dX_list = []
 
   def _set_gait(self,gait):
     """ For coupling oscillators in phase space. 
@@ -162,7 +164,9 @@ class HopfNetwork():
     self.X += self._dt * X_dot
     # mod phase variables to keep between 0 and 2pi
     self.X[1,:] = self.X[1,:] % (2*np.pi)
-
+    
+    self.X_list.append(self.X.copy())
+    self.dX_list.append(X_dot)
 
 
 if __name__ == "__main__":
@@ -179,19 +183,49 @@ if __name__ == "__main__":
                       action_repeat=1,
                       motor_control_mode="TORQUE",
                       add_noise=False,    # start in ideal conditions
-                      # record_video=True
+                      record_video=False
                       )
 
   # initialize Hopf Network, supply gait
-  cpg = HopfNetwork(gait='TROT', time_step=TIME_STEP)
+  # TROT
+  omega_swing = 16.0*np.pi
+  omega_stance = 4.0*np.pi
+  # WALK
+  #omega_swing = 24.0*np.pi
+  #omega_stance = 25.0*np.pi
+  # PACE
+  #omega_swing = 20.0*np.pi
+  #omega_stance = 20.0*np.pi
+  # BOUND
+  #omega_swing = 10.0*np.pi
+  #omega_stance = 40.0*np.pi
+  
+  d_swing = np.pi / omega_swing
+  print('Swing duration: ', d_swing)
+  d_stance = np.pi / omega_stance
+  print('Stance duration: ', d_stance)
+  d_stride = d_swing + d_stance
+  print('Stride duration: ', d_stride)
+  duty_factor = d_stance / d_stride
+  print('Duty Factor: ', duty_factor)
+  
+  cpg = HopfNetwork(gait='TROT', omega_swing=omega_swing, omega_stance=omega_stance, time_step=TIME_STEP)
 
-  T = 10
+  T = 1.0
   TEST_STEPS = int(T / (TIME_STEP))
   t = np.arange(TEST_STEPS)*TIME_STEP
 
   # initialize data structures to save CPG and robot states
   xs_list = np.zeros((TEST_STEPS, 4))
   zs_list = np.zeros((TEST_STEPS, 4))
+  x_list = np.zeros((TEST_STEPS, 4))
+  z_list = np.zeros((TEST_STEPS, 4))
+  
+  q_list = np.zeros((TEST_STEPS, 3))
+  qd_list = np.zeros((TEST_STEPS, 3))
+  
+  v_list = np.zeros(TEST_STEPS)
+  P_list = np.zeros(TEST_STEPS)
 
   ############## Sample Gains
   # joint PD gains
@@ -210,6 +244,12 @@ if __name__ == "__main__":
     q = env.robot.GetMotorAngles()
     dq = env.robot.GetMotorVelocities()
     
+    v = np.array(env.robot.GetBaseLinearVelocity())[:2]
+    v_list[j] = np.linalg.norm(v)
+    
+    tau_ = env.robot.GetMotorTorques()
+    P_list[j] = np.dot(dq, tau_)
+    
     # loop through desired foot positions and calculate torques
     for i in range(4):
       q_i = q[3*i:3*(i+1)]
@@ -221,12 +261,18 @@ if __name__ == "__main__":
       # call inverse kinematics to get corresponding joint angles (see ComputeInverseKinematics() in quadruped.py)
       leg_q = env.robot.ComputeInverseKinematics(i, xyz_d)
       # Add joint PD contribution to tau for leg i (Equation 4)
-      tau += - kp * (q_i - leg_q) - kd * dq_i 
+      tau += - kp * (q_i - leg_q) - kd * dq_i
+      
+      if i == 0:
+        q_list[j] = q_i
+        qd_list[j] = leg_q
 
       # add Cartesian PD contribution
       if ADD_CARTESIAN_PD:
         # Get current Jacobian and foot position in leg frame (see ComputeJacobianAndPosition() in quadruped.py)
         J, xyz = env.robot.ComputeJacobianAndPosition(i)
+        x_list[j,i] = xyz[0]
+        z_list[j,i] = xyz[2]
         # Get current foot velocity in leg frame (Equation 2)
         dxyz = J @ dq_i
         F_foot = - kpCartesian @ (xyz - xyz_d) - kdCartesian @ dxyz
@@ -245,19 +291,95 @@ if __name__ == "__main__":
   ##################################################### 
   # PLOTS
   #####################################################
-  fig = plt.figure(1)
-  for i in range(4):
-    plt.plot(t, xs_list[:,i], label='x_'+str(i))
-  plt.legend()
-  plt.show()
+  fig = plt.figure(1, figsize=(16, 6), dpi=200, facecolor='w', edgecolor='k')
+  k = 1000
+  plt.plot(t[:k], x_list[:k,0], 'b', label=r'$x$')
+  plt.plot(t[:k], xs_list[:k,0], 'b--', label=r'$x_{des}$')
+  plt.plot(t[:k], z_list[:k,0], 'r', label=r'$z$')
+  plt.plot(t[:k], zs_list[:k,0], 'r--', label=r'$z_{des}$')
+  plt.legend(loc='right')
+  plt.xlabel(r'$t$')
+
+  fig = plt.figure(2, figsize=(16, 6), dpi=200, facecolor='w', edgecolor='k')
+  k = 1000
+  plt.plot(t[:k], q_list[:k,0], 'b', label=r'$q_0$')
+  plt.plot(t[:k], qd_list[:k,0], 'b--', label=r'$q_{0,des}$')
+  plt.plot(t[:k], q_list[:k,1], 'r', label=r'$q_1$')
+  plt.plot(t[:k], qd_list[:k,1], 'r--', label=r'$q_{1,des}$')
+  plt.plot(t[:k], q_list[:k,2], 'g', label=r'$q_2$')
+  plt.plot(t[:k], qd_list[:k,2], 'g--', label=r'$q_{2,des}$')
+  plt.legend(loc='right')
+  plt.xlabel(r'$t$')
   
-  fig = plt.figure(2)
-  for i in range(4):
-    plt.plot(t, zs_list[:,i], label='x_'+str(i))
-  plt.legend()
-  plt.show()
+  plt.figure(3)
+  v_list_ = np.zeros_like(v_list)
+  v_list_[0] = v_list[0]
+  for i in range(len(v_list)-1):
+    v_list_[i+1] = 0.999 * v_list_[i] + 0.001 * v_list[i+1]
+  plt.plot(t, v_list_)
+  
+  plt.figure(4)
+  P_list_ = np.zeros_like(P_list)
+  P_list_[0] = P_list[0]
+  for i in range(len(P_list)-1):
+    P_list_[i+1] = 0.999 * P_list_[i] + 0.001 * P_list[i+1]
+  #plt.plot(t, P_list)
+  plt.plot(t, P_list_)
+  
+  #fig = plt.figure(1)
+  #for i in range(4):
+  #  plt.plot(t, xs_list[:,i], label='x_'+str(i))
+  #plt.legend()
+  #plt.show()
+  
+  #fig = plt.figure(2)
+  #for i in range(4):
+  #  plt.plot(t, zs_list[:,i], label='x_'+str(i))
+  #plt.legend()
+  #plt.show()
+  
+  
+  # CPG States
+  #foot_names = []
+  #foot_names.append('FR')
+  #foot_names.append('FL')
+  #foot_names.append('RR')
+  #foot_names.append('RL')
+  
+  #r_list = np.zeros((len(cpg.X_list), 4))
+  #theta_list = np.zeros_like((r_list))
+  #dr_list = np.zeros_like((r_list))
+  #dtheta_list = np.zeros_like((r_list))
+  #for i in range(len(cpg.X_list)):
+  #  r_list[i] = cpg.X_list[i][0,:]
+  #  theta_list[i] = cpg.X_list[i][1,:]
+  #  dr_list[i] = cpg.dX_list[i][0,:]
+  #  dtheta_list[i] = cpg.dX_list[i][1,:]
+    
+  #fig = plt.figure(3, figsize=(16, 6), dpi=200, facecolor='w', edgecolor='k')
+  #k = 1000
+  #for i in range(4):
+  #  plt.subplot(411+i)
+  #  plt.plot(t[:k], r_list[:k,i] / np.max(r_list[:k,i]), label=r'$r$')
+  #  plt.plot(t[:k], theta_list[:k,i] / np.max(theta_list[:k,i]), label=r'$\theta$')
+  #  plt.plot(t[:k], dr_list[:k,i] / np.max(dr_list[:k,i]), label=r'$\dot{r}$')
+  #  plt.plot(t[:k], dtheta_list[:k,i] / np.max(dtheta_list[:k,i]), label=r'$\dot{\theta}$')
+  #  if i == 0:
+  #    plt.legend(loc='upper right', fontsize=10)
+  #  if i != 3:
+  #    plt.xticks([])
+  #  else:
+  #    plt.xlabel(r'$t$')
+  #  plt.yticks([0,1])
+  #  plt.ylabel(foot_names[i])
+  
+  #plt.tight_layout()
+  #plt.show()
+  
   # example
   # fig = plt.figure()
   # plt.plot(t,joint_pos[1,:], label='FR thigh')
   # plt.legend()
   # plt.show()
+  
+  plt.show()

@@ -86,8 +86,8 @@ class Quadruped(object):
       w = - np.sqrt(1 - z**2)
     else:
       w = np.sqrt(1 - z**2)
-    return (0, 0, z, w)
-    #return self._robot_config.INIT_ORIENTATION
+    #return (0, 0, z, w)
+    return self._robot_config.INIT_ORIENTATION
 
   def GetBasePosition(self):
     """Get the position of the quadruped's base.

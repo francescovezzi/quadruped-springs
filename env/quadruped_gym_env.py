@@ -66,8 +66,8 @@ class QuadrupedGymEnv(gym.Env):
       isRLGymInterface=True,
       time_step=0.001,
       action_repeat=10,  
-      distance_weight=2,
-      energy_weight=0.008,
+      distance_weight=1e3,
+      energy_weight=1e-4, # 0.008,
       motor_control_mode="PD",
       task_env="FWD_LOCOMOTION",
       observation_space_mode="DEFAULT",
@@ -123,7 +123,7 @@ class QuadrupedGymEnv(gym.Env):
     self._num_bullet_solver_iterations = int(300 / action_repeat) 
     self._env_step_counter = 0
     self._sim_step_counter = 0
-    self._last_base_position = [0, 0, 0]
+    self._last_base_position = np.array([0, 0, 0])
     self._last_frame_time = 0.0 # for rendering 
     self._MAX_EP_LEN = EPISODE_LENGTH # max sim time in seconds, arbitrary
     self._action_bound = 1.0
@@ -260,23 +260,39 @@ class QuadrupedGymEnv(gym.Env):
       # calculate what max distance can be over last time interval based on max allowed fwd velocity
       max_dist = MAX_FWD_VELOCITY * (self._time_step * self._action_repeat)
       forward_reward = min( forward_reward, max_dist)
-
-    return self._distance_weight * forward_reward
-
-  def _reward_lr_course(self):
-    """ Implement your reward function here. How will you improve upon the above? """
+      
     v_x = max(min(self.robot.GetBaseLinearVelocity()[0], MAX_FWD_VELOCITY), -MAX_FWD_VELOCITY)
     v_y = max(min(self.robot.GetBaseLinearVelocity()[1], MAX_FWD_VELOCITY), -MAX_FWD_VELOCITY)
     v = np.array([v_x, v_y])
-    
+
+    return 1e-2 * np.linalg.norm(v)
+
+  def _reward_lr_course(self):
+    """ Implement your reward function here. How will you improve upon the above? """
+    current_base_position = np.array(self.robot.GetBasePosition())
+    v_ = (current_base_position[:2] - self._last_base_position[:2]) / (self._time_step * self._action_repeat)
+    self._last_base_position = current_base_position
+    # clip reward to MAX_FWD_VELOCITY (avoid exploiting simulator dynamics)
+    if MAX_FWD_VELOCITY < np.inf:
+      v_x = max(min(v_[0], MAX_FWD_VELOCITY), -MAX_FWD_VELOCITY)
+      v_y = max(min(v_[1], MAX_FWD_VELOCITY), -MAX_FWD_VELOCITY)
+      v = np.array([v_x, v_y])
+  
     e = self._v_des - v
     
-    dq = np.array(self.robot.GetMotorVelocities())
-    tau = np.array(self.robot.GetMotorTorques())
-    P = dq.dot(tau)
-    CoT = P / (5. * 10. * np.linalg.norm(v))
-
-    r = np.exp(- 10.0 * e.dot(e) - 0.01 * CoT**2)
+    v_norm = max(np.linalg.norm(v), 0.001) # prevent CoT explosion for very small movements
+    P = 0.
+    for i in range(len(self._dt_motor_torques)):
+      P += np.array(self._dt_motor_torques[i]).dot(np.array(self._dt_motor_velocities[i]))
+    P = P / len(self._dt_motor_torques)
+    CoT = P / (5. * 10. * v_norm)
+    
+    ddq = (np.array(self._dt_motor_velocities[-1]) - np.array(self._dt_motor_velocities[0])) / (self._time_step * self._action_repeat)
+    
+    rpy = self.robot.GetBaseOrientationRollPitchYaw()
+    
+    r = 0.1 * v_norm - 0.0001 * abs(CoT) + 0.1 * np.exp(- 1.0 * ddq.dot(ddq)) - 0.05 * abs(rpy[2]) + np.exp(- 10.0 * e.dot(e))
+    
     return r
 
   def _reward(self):
@@ -314,10 +330,11 @@ class QuadrupedGymEnv(gym.Env):
     Edit ranges, limits etc., but make sure to use Cartesian PD to compute the torques. 
     """
     # clip RL actions to be between -1 and 1 (standard RL technique)
+    #print(actions)
     u = np.clip(actions,-1,1)
     # scale to corresponding desired foot positions (i.e. ranges in x,y,z we allow the agent to choose foot positions)
     # [TODO: edit (do you think these should these be increased? How limiting is this?)]
-    scale_array = np.array([0.2, 0.08, 0.15]*4) # [0.1, 0.05, 0.08]*4)
+    scale_array = np.array([0.2, 0.05, 0.15]*4) # [0.1, 0.05, 0.08]*4)
     # add to nominal foot position in leg frame (what are the final ranges?)
     des_foot_pos = self._robot_config.NOMINAL_FOOT_POS_LEG_FRAME + scale_array*u
 
@@ -375,7 +392,7 @@ class QuadrupedGymEnv(gym.Env):
   ######################################################################################
   def reset(self):
     """ Set up simulation environment. """
-    self._v_des = np.array([1.0, 0.0]) # (np.random.uniform(), 2.*np.random.uniform()-1.)
+    self._v_des = np.array([2.0, 0.0]) # (np.random.uniform(), 2.*np.random.uniform()-1.)
     mu_min = 0.5
     if self._hard_reset:
       # set up pybullet simulation
@@ -403,8 +420,9 @@ class QuadrupedGymEnv(gym.Env):
           print('ground friction coefficient is', ground_mu_k)
 
       if self._using_test_env:
-        self.add_random_boxes()
-        self._add_base_mass_offset()
+        pass
+        #self.add_random_boxes()
+        #self._add_base_mass_offset()
     else:
       self.robot.Reset(reload_urdf=False)
 
