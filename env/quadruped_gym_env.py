@@ -675,7 +675,7 @@ class QuadrupedGymEnv(gym.Env):
 
 def test_env():
   env = QuadrupedGymEnv(render=True, 
-                        on_rack=True,
+                        on_rack=False,
                         motor_control_mode='PD',
                         action_repeat=100,
                         )
@@ -687,11 +687,13 @@ def test_env():
   print('act len', action_dim)
   action = action_low.copy()
   while True:
-    action = 2*np.random.rand(action_dim)-1
+    pass
+    # action = 2*np.random.rand(action_dim)-1  # actions [-1, 1]
+    # action = np.zeros(action_dim)
     obs, reward, done, info = env.step(action)
 
 
 if __name__ == "__main__":
   # test out some functionalities
   test_env()
-  sys.exit()
+  os.sys.exit()

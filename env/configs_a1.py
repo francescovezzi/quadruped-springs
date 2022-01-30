@@ -26,9 +26,9 @@ _, INIT_ORIENTATION_INV = pyb.invertTransform(
         position=[0, 0, 0], orientation=INIT_ORIENTATION)
 
 # default angles (for init)
-DEFAULT_HIP_ANGLE = 0
-DEFAULT_THIGH_ANGLE = np.pi/4 
-DEFAULT_CALF_ANGLE = -np.pi/2 
+DEFAULT_HIP_ANGLE = 0  # anca
+DEFAULT_THIGH_ANGLE = np.pi/4  # coscia
+DEFAULT_CALF_ANGLE = -np.pi/2  # ginocchio
 INIT_JOINT_ANGLES = np.array([  DEFAULT_HIP_ANGLE, 
                                 DEFAULT_THIGH_ANGLE, 
                                 DEFAULT_CALF_ANGLE] * NUM_LEGS)

@@ -571,7 +571,7 @@ class Quadruped(object):
     self._original_foot_inertia_urdf = tuple(self._foot_inertia_urdf)
     self._original_total_inertia_urdf = tuple(self._total_inertia_urdf)
 
-    #print('total mass', sum(self._total_mass_urdf))
+    # print('total mass', sum(self._total_mass_urdf))
 
   def _BuildJointNameToIdDict(self):
     """_BuildJointNameToIdDict """
