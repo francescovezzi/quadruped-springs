@@ -4,6 +4,7 @@ import collections
 import numpy as np
 
 NUM_MOTORS = 12
+NUM_LEGS = 4
 
 CONTROL_MODES = [ "TORQUE","PD" ]
 
@@ -26,6 +27,9 @@ class QuadrupedMotorModel(object):
                kd=1,
                torque_limits=None,
                motor_control_mode="PD"):
+    self._kpSprings = np.array([15,4,2]*NUM_LEGS)    # Spring stiffness
+    self._kdSprings = np.array([0.4,0.4,0.3]*NUM_LEGS)    # Spring friction
+    self._restSprings = np.array([0,np.pi/4,-np.pi/2]*NUM_LEGS)  # Spring rest angles
     self._kp = kp
     self._kd = kd
     self._torque_limits = torque_limits
@@ -96,3 +100,13 @@ class QuadrupedMotorModel(object):
                               self._torque_limits)
 
     return motor_torques, motor_torques
+
+  def compute_spring_torques(self,
+                             motor_angles,
+                             motor_velocities):
+    k = self._kpSprings
+    b = self._kdSprings
+    rest_angles = self._restSprings
+    spring_torques = -k * (motor_angles - rest_angles) - b * motor_velocities
+    
+    return spring_torques

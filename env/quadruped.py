@@ -39,8 +39,9 @@ class Quadruped(object):
     self._urdf_root = self._robot_config.URDF_ROOT # urdf_root
     self._self_collision_enabled = self_collision_enabled
     self._motor_direction = self._robot_config.JOINT_DIRECTIONS
-    self._observed_motor_torques = np.zeros(self.num_motors)
-    self._applied_motor_torques = np.zeros(self.num_motors)
+    self._observed_motor_torque = np.zeros(self.num_motors)
+    self._applied_motor_torque = np.zeros(self.num_motors)
+    self._spring_torque = np.zeros(self.num_motors)
     self._accurate_motor_model_enabled = accurate_motor_model_enabled
 
     # motor control mode for accurate motor model, should only be torque or position at this low level
@@ -287,17 +288,36 @@ class Quadruped(object):
           motor_commands, q, qdot)
       self._observed_motor_torques = observed_torque
 
+      self._spring_torque = self._motor_model.compute_spring_torques(q, qdot)
+
       # Transform into the motor space when applying the torque.
       self._applied_motor_torque = np.multiply(actual_torque, self._motor_direction)
 
-      for motor_id, motor_torque, motor_enabled in zip(self._motor_id_list,
-                                                       self._applied_motor_torque,
-                                                       self._motor_enabled_list):
+      for motor_id, motor_torque, motor_enabled, spring_torque in zip(self._motor_id_list,
+                                                      self._applied_motor_torque,
+                                                       self._motor_enabled_list,
+                                                       self._spring_torque):
         if motor_enabled:
           self._SetMotorTorqueById(motor_id, motor_torque)
         else:
           self._SetMotorTorqueById(motor_id, 0)
-      return self._applied_motor_torque
+          
+        self._SetMotorTorqueById(motor_id, spring_torque)
+
+  def ApplySpringAction(self):
+    """Apply the toque produced by the springs to the motors of the quadruped.
+
+    """
+    if self._accurate_motor_model_enabled:
+      q = self.GetMotorAngles()
+      qdot = self.GetMotorVelocities()
+
+      self._spring_torque = self._motor_model.compute_spring_torques(q, qdot)
+
+      for motor_id, spring_torque in zip(self._motor_id_list,
+                                          self._spring_torque):
+          
+        self._SetMotorTorqueById(motor_id, spring_torque)
 
 
   ######################################################################################
@@ -592,7 +612,6 @@ class Quadruped(object):
       joint_info = self._pybullet_client.getJointInfo(self.quadruped, i)
       self._pybullet_client.changeDynamics(
           joint_info[0], -1, linearDamping=0, angularDamping=0)
-      print(joint_info[0])
 
   def _SetLateralFriction(self,lateral_friction=1.0):
     """ Lateral friction to be set for every link. 

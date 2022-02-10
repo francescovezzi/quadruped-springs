@@ -22,42 +22,40 @@ import matplotlib.pyplot as plt
 
 _pybullet_client = bc.BulletClient(connection_mode=pybullet.GUI)
 _pybullet_client.setAdditionalSearchPath(pybullet_data.getDataPath()) #optionally
-_pybullet_client.setGravity(0,0,0)
+_pybullet_client.setGravity(0,0,-9.81)
 plane = _pybullet_client.loadURDF("plane.urdf")
 robot = quadruped.Quadruped(pybullet_client=_pybullet_client,
                             robot_config=robot_config,
                             accurate_motor_model_enabled=True,
-                            on_rack=True)
+                            on_rack=False)
 num_motors = robot_config.NUM_MOTORS
 
-print(robot._motor_id_list)
-
 time_sleep = 1./2400.
-timesteps = 2000
+timesteps = 20000
 time_sequence = [time_sleep * i for i in range(timesteps)]
 fr_leg_history = np.zeros((3,timesteps))
 fr_leg_history_tau = np.zeros((3,timesteps))
+fr_leg_history_tau_spring = np.zeros((3,timesteps))
 desired_motor_angles = np.full(12, 0)
 
 for i in range (timesteps):
-    desired_motor_angles = [0,np.pi/4, -np.pi/2]*4
+    desired_motor_angles = [0,0,0]*4
     
-    # fr_leg_tau = robot.ApplyAction(desired_motor_angles)[0:3]
-    for num, mot_id in enumerate(robot._motor_id_list):
-        robot._SetDesiredMotorAngleById(mot_id, 0)
-
-    robot._SetDesiredMotorAngleByName('FR_calf_joint', -1)
+    # robot.ApplyAction(desired_motor_angles)
+    robot.ApplySpringAction()
 
     fr_leg_angles = robot.GetMotorAngles()[0:3]
-    fr_leg_tau = robot.GetMotorTorques()[0:3]
+    fr_leg_tau = robot._applied_motor_torque[0:3]
+    fr_leg_tau_spring = robot._spring_torque[0:3]
+    
     fr_leg_history[:,i] = fr_leg_angles
     fr_leg_history_tau[:,i] = fr_leg_tau
-
-    
-    p.stepSimulation()
+    fr_leg_history_tau_spring[:,i] = fr_leg_tau_spring
+        
+    _pybullet_client.stepSimulation()
     time.sleep(time_sleep)
 
-p.disconnect()
+_pybullet_client.disconnect()
 
 
 ##########################
@@ -73,4 +71,10 @@ fig_fr_tau, ax_fr_tau = plt.subplots()
 ax_fr_tau.plot(time_sequence, np.transpose(fr_leg_history_tau))
 ax_fr_tau.set_title('FR_LEG_TAU(t)')
 ax_fr_tau.legend(('hip', 'thigh', 'calf'))
+plt.show()
+
+fig_fr_tau_spring, ax_fr_tau_spring = plt.subplots()
+ax_fr_tau_spring.plot(time_sequence, np.transpose(fr_leg_history_tau_spring))
+ax_fr_tau_spring.set_title('FR_LEG_TAU_SPRING(t)')
+ax_fr_tau_spring.legend(('hip', 'thigh', 'calf'))
 plt.show()
