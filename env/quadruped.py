@@ -297,6 +297,7 @@ class Quadruped(object):
           self._SetMotorTorqueById(motor_id, motor_torque)
         else:
           self._SetMotorTorqueById(motor_id, 0)
+      return self._applied_motor_torque
 
 
   ######################################################################################
@@ -591,6 +592,7 @@ class Quadruped(object):
       joint_info = self._pybullet_client.getJointInfo(self.quadruped, i)
       self._pybullet_client.changeDynamics(
           joint_info[0], -1, linearDamping=0, angularDamping=0)
+      print(joint_info[0])
 
   def _SetLateralFriction(self,lateral_friction=1.0):
     """ Lateral friction to be set for every link. 
