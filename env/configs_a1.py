@@ -120,3 +120,12 @@ _HIP_NAME_PATTERN = re.compile(r"\w+_hip_j\w+")
 _THIGH_NAME_PATTERN = re.compile(r"\w+_thigh_j\w+")
 _CALF_NAME_PATTERN = re.compile(r"\w+_calf_j\w+")
 _FOOT_NAME_PATTERN = re.compile(r"\w+_foot_\w+")
+
+############################################
+# Spring level joint Variables 
+############################################
+K_HIP = 15
+K_THIGH = 8
+K_CALF = 5
+SPRINGS_STIFFNESS = [K_HIP, K_CALF, K_THIGH]
+SPRINGS_REST_ANGLE = INIT_MOTOR_ANGLES

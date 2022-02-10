@@ -27,9 +27,9 @@ class QuadrupedMotorModel(object):
                kd=1,
                torque_limits=None,
                motor_control_mode="PD"):
-    self._kpSprings = np.array([15,4,2]*NUM_LEGS)    # Spring stiffness
+    self._kpSprings = np.array([0,0,0]*NUM_LEGS)    # Spring stiffness
     self._kdSprings = np.array([0.4,0.4,0.3]*NUM_LEGS)    # Spring friction
-    self._restSprings = np.array([0,np.pi/4,-np.pi/2]*NUM_LEGS)  # Spring rest angles
+    self._restSprings = np.array([0,0,0]*NUM_LEGS)  # Spring rest angles
     self._kp = kp
     self._kd = kd
     self._torque_limits = torque_limits
@@ -110,3 +110,15 @@ class QuadrupedMotorModel(object):
     spring_torques = -k * (motor_angles - rest_angles) - b * motor_velocities
     
     return spring_torques
+
+  def getSpringStiffness(self):
+    return self._kpSprings
+
+  def getSpringRestAngles(self):
+    return self._restSprings
+
+  def _setSpringStiffness(self, k_springs):
+    self._kpSprings = np.array(k_springs*NUM_LEGS)
+
+  def _setSpringRestAngle(self, rest_springs):
+    self._restSprings = np.array(rest_springs*NUM_LEGS)
