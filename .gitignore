@@ -3,4 +3,5 @@
 __pycache__/
 logs/
 quad_env/
-env/coding_test.py/
+/env/coding_test.py
+FALLEN_TEST/

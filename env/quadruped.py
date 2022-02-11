@@ -72,8 +72,9 @@ class Quadruped(object):
   ######################################################################################
   # Robot states and observation related
   ######################################################################################
-  def getHeight(self, h):
-    return self._h
+  def getHeight(self):
+    pos = self.GetBasePosition()
+    return pos[-1]
   
   def _GetDefaultInitPosition(self):
     """Get the default initial position of the quadruped's base, to reset simulation
@@ -295,7 +296,10 @@ class Quadruped(object):
           motor_commands, q, qdot)
       self._observed_motor_torques = observed_torque
 
-      self._spring_torque = self._motor_model.compute_spring_torques(q, qdot)
+      if enable_springs:
+        self._spring_torque = self._motor_model.compute_spring_torques(q, qdot)
+      else:
+        self._spring_torque = np.full(self._robot_config.NUM_MOTORS, 0)
 
       # Transform into the motor space when applying the torque.
       self._applied_motor_torque = np.multiply(actual_torque, self._motor_direction)
