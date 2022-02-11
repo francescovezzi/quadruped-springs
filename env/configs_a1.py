@@ -30,10 +30,6 @@ DEFAULT_HIP_ANGLE = 0  # anca
 DEFAULT_THIGH_ANGLE = np.pi/4  # coscia
 DEFAULT_CALF_ANGLE = -np.pi/2  # ginocchio
 
-DEFAULT_HIP_ANGLE = 0  # anca
-DEFAULT_THIGH_ANGLE = 0 # coscia
-DEFAULT_CALF_ANGLE = 0  # ginocchio
-
 INIT_JOINT_ANGLES = np.array([  DEFAULT_HIP_ANGLE, 
                                 DEFAULT_THIGH_ANGLE, 
                                 DEFAULT_CALF_ANGLE] * NUM_LEGS)
@@ -128,4 +124,6 @@ K_HIP = 15
 K_THIGH = 8
 K_CALF = 5
 SPRINGS_STIFFNESS = [K_HIP, K_CALF, K_THIGH]
-SPRINGS_REST_ANGLE = INIT_MOTOR_ANGLES
+SPRINGS_REST_ANGLE = [  DEFAULT_HIP_ANGLE, 
+                        DEFAULT_THIGH_ANGLE, 
+                        DEFAULT_CALF_ANGLE]

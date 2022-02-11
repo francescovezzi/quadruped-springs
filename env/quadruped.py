@@ -281,7 +281,7 @@ class Quadruped(object):
   def _SetDesiredMotorAngleByName(self, motor_name, desired_angle):
     self._SetDesiredMotorAngleById(self._joint_name_to_id[motor_name], desired_angle)
 
-  def ApplyAction(self, motor_commands):
+  def ApplyAction(self, motor_commands, enable_springs=False):
     """Apply the desired motor torques to the motors of the quadruped.
 
     Args:
@@ -308,8 +308,9 @@ class Quadruped(object):
           self._SetMotorTorqueById(motor_id, motor_torque)
         else:
           self._SetMotorTorqueById(motor_id, 0)
-          
-        self._SetMotorTorqueById(motor_id, spring_torque)
+
+        if enable_springs:
+          self._SetMotorTorqueById(motor_id, spring_torque)
 
   def ApplySpringAction(self):
     """Apply the toque produced by the springs to the motors of the quadruped.
