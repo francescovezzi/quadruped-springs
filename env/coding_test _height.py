@@ -17,6 +17,10 @@ random.seed(10)
 import quadruped
 import configs_a1 as robot_config
 import matplotlib.pyplot as plt
+import PIL
+import imageio
+
+# print(pybullet.isNumpyEnabled())
 
 #################################
 # create folder for fallen test
@@ -27,6 +31,13 @@ path = os.path.abspath(os.path.join(currentdir,
                                     directory))
 if not os.path.exists(path):
     os.makedirs(path)
+
+##################################
+# Image parameters
+##################################
+img_width = 333
+img_height = 480
+img_renderer = pybullet.ER_TINY_RENDERER
 
 ####################################
 # Some auxiliary method
@@ -157,6 +168,7 @@ history_angles = np.zeros((robot_config.NUM_MOTORS,timesteps))
 history_tau = np.zeros((robot_config.NUM_MOTORS,timesteps))
 history_tau_spring = np.zeros((robot_config.NUM_MOTORS,timesteps))
 history_h = np.zeros(shape=(timesteps,))
+img_buffer = np.zeros(shape=(img_height, img_width, 4, timesteps))
 
 ###############################
 # Define parameters for test
@@ -167,7 +179,7 @@ list_rest_angles = [ [0, np.pi/4, -0.71], [0, np.pi/4, -1.05],
                     [0, np.pi/4, -1], [0, np.pi/4, -0.7], [0, np.pi/4, -np.pi/2]]
 # _beta = [0, 0, 0, 0]
 # _height = [0, 0, 0, 0]
-idx_sim = 5
+idx_sim = 2
 
 ###################################
 # Initialize simulation
@@ -186,65 +198,74 @@ h_min = 0.18
 success = True
 h_max = 0
 
-for h in h_test:
-    # Initialize height
-    restart_simulation(_pybullet_client, robot=robot, height=h)
-    motor._setSpringStiffness(list_stiffness[idx_sim])
-    motor._setSpringRestAngle(list_rest_angles[idx_sim])
-    constraint_z_axis(_pybullet_client, robot)
+# for h in h_test:
+#     # Initialize height
+#     restart_simulation(_pybullet_client, robot=robot, height=h)
+#     motor._setSpringStiffness(list_stiffness[idx_sim])
+#     motor._setSpringRestAngle(list_rest_angles[idx_sim])
+#     constraint_z_axis(_pybullet_client, robot)
 
-    if success:
-        for i in range (timesteps):
-            robot.ApplySpringAction()
-            # robot.ApplyAction(default_config, enable_springs=True)
+#     if success:
+#         for i in range (timesteps):
+#             robot.ApplySpringAction()
+#             # robot.ApplyAction(default_config, enable_springs=True)
 
-            # Log values
-            angles = robot.GetMotorAngles()
-            taus = robot._applied_motor_torque
-            taus_springs = robot._spring_torque
-            height = robot.getHeight()
+#             # Log values
+#             angles = robot.GetMotorAngles()
+#             taus = robot._applied_motor_torque
+#             taus_springs = robot._spring_torque
+#             height = robot.getHeight()
 
-            if height <= h_min:
-                success = False
+#             if height <= h_min:
+#                 success = False
             
-            # history_angles[:,i] = angles
-            # history_tau[:,i] = taus
-            # history_tau_spring[:,i] = taus_springs
-            # history_h[i] = height
+#             # history_angles[:,i] = angles
+#             # history_tau[:,i] = taus
+#             # history_tau_spring[:,i] = taus_springs
+#             # history_h[i] = height
 
-            # simulate    
-            _pybullet_client.stepSimulation()
-            time.sleep(time_sleep)
-        if success:
-            h_max = h
+#             # simulate    
+#             _pybullet_client.stepSimulation()
+#             time.sleep(time_sleep)
+#         if success:
+#             h_max = h
 
-restart_simulation(_pybullet_client, robot=robot, height=h_max)
-motor._setSpringStiffness(list_stiffness[idx_sim])
-motor._setSpringRestAngle(list_rest_angles[idx_sim])
-constraint_z_axis(_pybullet_client, robot)
+# restart_simulation(_pybullet_client, robot=robot, height=h_max)
+# motor._setSpringStiffness(list_stiffness[idx_sim])
+# motor._setSpringRestAngle(list_rest_angles[idx_sim])
+# constraint_z_axis(_pybullet_client, robot)
 
-for i in range (timesteps):
-    robot.ApplySpringAction()
-    # robot.ApplyAction(default_config, enable_springs=True)
+# for i in range (timesteps):
+#     robot.ApplySpringAction()
+#     # robot.ApplyAction(default_config, enable_springs=True)
 
-    # Log values
-    angles = robot.GetMotorAngles()
-    taus = robot._applied_motor_torque
-    taus_springs = robot._spring_torque
-    height = robot.getHeight()
+#     # Log values
+#     angles = robot.GetMotorAngles()
+#     taus = robot._applied_motor_torque
+#     taus_springs = robot._spring_torque
+#     height = robot.getHeight()
     
-    history_angles[:,i] = angles
-    history_tau[:,i] = taus
-    history_tau_spring[:,i] = taus_springs
-    history_h[i] = height
+#     history_angles[:,i] = angles
+#     history_tau[:,i] = taus
+#     history_tau_spring[:,i] = taus_springs
+#     history_h[i] = height
 
-    # simulate    
-    _pybullet_client.stepSimulation()
-    time.sleep(time_sleep)
+#     # if i % 800 == 0:
+#     #     # Store image
+#     #     img=_pybullet_client.getCameraImage(width=img_width,
+#     #                                         height=img_height,
+#     #                                         renderer=img_renderer)[2]
+#     #     # im = PIL.Image.fromarray(img, mode="RGBA")
+#     #     img_buffer[:,:,:,i] = img
+#     #     print('okay')
 
+#     # simulate    
+#     _pybullet_client.stepSimulation()
+#     time.sleep(time_sleep)
         
 _pybullet_client.disconnect()
 
+print('sim ended')
 
 ##########################
 # Plot Stuff #
@@ -277,5 +298,37 @@ with open(path_txt, "w") as file:
     file.write(f'K_springs = {nicePrint(list_stiffness[idx_sim])}\n')
     file.write(f'theta_rest_springs = {nicePrint(list_rest_angles[idx_sim])}\n')
     file.write(f'initial_height = {h_max:.3g}\n')
+
+###########################
+# create video
+# ###########################
+# Store data
+# directory = 'TEMPORARY_IMAGES'
+# path_img = os.path.abspath(os.path.join(currentdir,
+#                                     os.pardir,
+#                                     directory))
+# if not os.path.exists(path_img):
+#     os.makedirs(path_img)
+# for i, array in enumerate(img_buffer):
+#     im = PIL.Image.fromarray(array, mode='RGBA')
+#     im.save(os.path.abspath(os.path.join(path_img, f"frame_{i}.png")))
+
+import cv2
+
+print('video making')
+path_video = os.path.abspath(os.path.join(path_fig, 'video.avi'))
+
+out = cv2.VideoWriter(path_video,
+                      cv2.VideoWriter_fourcc(*'DIVX'),
+                      240,
+                      (img_width,img_height))
+for i in range(np.shape(img_buffer)[-1]):
+    array = np.copy(img_buffer[:,:,:,i])
+    pil_image = (PIL.Image.fromarray(array, mode='RGBA')).convert('RGB')
+    open_cv_image = cv2.cvtColor(np.array(pil_image), cv2.COLOR_RGB2BGR)
+    out.write(open_cv_image)
+out.release()
+
+
 
 print('done')

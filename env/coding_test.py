@@ -118,8 +118,9 @@ def change_trunk_mass(_pybullet_client, robot, beta=0):
         beta (int, optional): parameter to change mass value. Defaults to 0.
     """
     trunkId = robot._chassis_link_ids[0]
-    old_mass = _pybullet_client.getDynamicsInfo(robot.quadruped,
-                                                trunkId)[0]
+    # old_mass = _pybullet_client.getDynamicsInfo(robot.quadruped,
+    #                                             trunkId)[0]
+    old_mass = 12.4
     new_mass = old_mass * (1 + beta)
     _pybullet_client.changeDynamics(robot.quadruped,
                                     trunkId,
@@ -139,7 +140,7 @@ def constraint_z_axis(_pybullet_client, robot):
 #######################################
 # simulation
 #######################################
-_pybullet_client = bc.BulletClient(connection_mode=pybullet.GUI)
+_pybullet_client = bc.BulletClient(connection_mode=pybullet.DIRECT)
 robot = quadruped.Quadruped(pybullet_client=_pybullet_client,
                             robot_config=robot_config,
                             accurate_motor_model_enabled=True,
@@ -167,7 +168,7 @@ list_rest_angles = [ [0, np.pi/4, -0.71], [0, np.pi/4, -0.71],
                     [0, np.pi/4, -1.05], [0, np.pi/4, -1.05]]
 _beta = [0, 0.5, 0, 0.5]
 _height = [0, 0, 0, 0]
-idx_sim = 4
+idx_sim = 2
 
 ###################################
 # Initialize simulation
