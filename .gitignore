@@ -3,5 +3,6 @@
 __pycache__/
 logs/
 quad_env/
-/env/coding_test.py
+coding_test.py/
 FALLEN_TEST/
+MASS_TEST/

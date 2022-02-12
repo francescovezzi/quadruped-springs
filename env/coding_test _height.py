@@ -21,7 +21,7 @@ import matplotlib.pyplot as plt
 #################################
 # create folder for fallen test
 #################################
-directory = 'MASS_TEST'
+directory = 'FALLEN_TEST'
 path = os.path.abspath(os.path.join(currentdir,
                                     os.pardir,
                                     directory))
@@ -139,7 +139,7 @@ def constraint_z_axis(_pybullet_client, robot):
 #######################################
 # simulation
 #######################################
-_pybullet_client = bc.BulletClient(connection_mode=pybullet.GUI)
+_pybullet_client = bc.BulletClient(connection_mode=pybullet.DIRECT)
 robot = quadruped.Quadruped(pybullet_client=_pybullet_client,
                             robot_config=robot_config,
                             accurate_motor_model_enabled=True,
@@ -161,27 +161,69 @@ history_h = np.zeros(shape=(timesteps,))
 ###############################
 # Define parameters for test
 ###############################
-list_stiffness = [ [15, 8.61, 5], [15, 8.61, 5],
-                  [15, 8.61, 8.34], [15, 8.61, 8.34]]
-list_rest_angles = [ [0, np.pi/4, -0.71], [0, np.pi/4, -0.71],
-                    [0, np.pi/4, -1.05], [0, np.pi/4, -1.05]]
-_beta = [0, 0.5, 0, 0.5]
-_height = [0, 0, 0, 0]
-idx_sim = 4
+list_stiffness = [ [15, 8.61, 5], [15, 8.61, 8.34],
+                  [15, 10, 10], [15, 15, 15], [15, 16, 8]]
+list_rest_angles = [ [0, np.pi/4, -0.71], [0, np.pi/4, -1.05],
+                    [0, np.pi/4, -1], [0, np.pi/4, -0.7], [0, np.pi/4, -np.pi/2]]
+# _beta = [0, 0, 0, 0]
+# _height = [0, 0, 0, 0]
+idx_sim = 5
 
 ###################################
 # Initialize simulation
 ###################################
-restart_simulation(_pybullet_client, robot=robot, height=_height[idx_sim])
-motor._setSpringStiffness(list_stiffness[idx_sim])
-motor._setSpringRestAngle(list_rest_angles[idx_sim])
-change_trunk_mass(_pybullet_client, robot, beta=_beta[idx_sim])
-constraint_z_axis(_pybullet_client, robot)
+# restart_simulation(_pybullet_client, robot=robot, height=_height[idx_sim])
+# motor._setSpringStiffness(list_stiffness[idx_sim])
+# motor._setSpringRestAngle(list_rest_angles[idx_sim])
+# change_trunk_mass(_pybullet_client, robot, beta=_beta[idx_sim])
+# constraint_z_axis(_pybullet_client, robot)
 
 default_config = robot_config.INIT_MOTOR_ANGLES
 
+h_fin = 0.8
+h_test = np.linspace(0, h_fin, num=10)
+h_min = 0.18
+success = True
+h_max = 0
+
+for h in h_test:
+    # Initialize height
+    restart_simulation(_pybullet_client, robot=robot, height=h)
+    motor._setSpringStiffness(list_stiffness[idx_sim])
+    motor._setSpringRestAngle(list_rest_angles[idx_sim])
+    constraint_z_axis(_pybullet_client, robot)
+
+    if success:
+        for i in range (timesteps):
+            robot.ApplySpringAction()
+            # robot.ApplyAction(default_config, enable_springs=True)
+
+            # Log values
+            angles = robot.GetMotorAngles()
+            taus = robot._applied_motor_torque
+            taus_springs = robot._spring_torque
+            height = robot.getHeight()
+
+            if height <= h_min:
+                success = False
+            
+            # history_angles[:,i] = angles
+            # history_tau[:,i] = taus
+            # history_tau_spring[:,i] = taus_springs
+            # history_h[i] = height
+
+            # simulate    
+            _pybullet_client.stepSimulation()
+            time.sleep(time_sleep)
+        if success:
+            h_max = h
+
+restart_simulation(_pybullet_client, robot=robot, height=h_max)
+motor._setSpringStiffness(list_stiffness[idx_sim])
+motor._setSpringRestAngle(list_rest_angles[idx_sim])
+constraint_z_axis(_pybullet_client, robot)
+
 for i in range (timesteps):
-    
     robot.ApplySpringAction()
     # robot.ApplyAction(default_config, enable_springs=True)
 
@@ -200,6 +242,7 @@ for i in range (timesteps):
     _pybullet_client.stepSimulation()
     time.sleep(time_sleep)
 
+        
 _pybullet_client.disconnect()
 
 
@@ -219,7 +262,7 @@ dict_figs = dict(zip(figs, names))
 ###########################
 sub_dir_name = f"K={nicePrint(list_stiffness[idx_sim])}&"
 sub_dir_name += f"theta_0={nicePrint(list_rest_angles[idx_sim])}&"
-sub_dir_name += f"h={_height[idx_sim]}&beta={_beta[idx_sim]}"
+sub_dir_name += f"h={h_max:.3g}"
 path_fig = os.path.abspath(os.path.join(path, sub_dir_name))
 if not os.path.exists(path_fig):
     os.makedirs(path_fig)
@@ -233,7 +276,6 @@ path_txt = os.path.abspath(os.path.join(path_fig, "spring_initial_condition.txt"
 with open(path_txt, "w") as file:
     file.write(f'K_springs = {nicePrint(list_stiffness[idx_sim])}\n')
     file.write(f'theta_rest_springs = {nicePrint(list_rest_angles[idx_sim])}\n')
-    file.write(f'beta = {_beta[idx_sim]}\n')
-    file.write(f'initial_height = {_height[idx_sim]}\n')
+    file.write(f'initial_height = {h_max:.3g}\n')
 
 print('done')
