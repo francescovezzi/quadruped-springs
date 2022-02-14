@@ -114,11 +114,17 @@ class QuadrupedMotorModel(object):
   def getSpringStiffness(self):
     return self._kpSprings
 
+  def getSpringDumping(self):
+    return self._kdSprings
+
   def getSpringRestAngles(self):
     return self._restSprings
 
   def _setSpringStiffness(self, k_springs):
     self._kpSprings = np.array(k_springs*NUM_LEGS)
+
+  def _setSpringDumping(self, kd_springs):
+    self._kdSprings = np.array(kd_springs*NUM_LEGS)
 
   def _setSpringRestAngle(self, rest_springs):
     self._restSprings = np.array(rest_springs*NUM_LEGS)
