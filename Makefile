@@ -1,5 +1,5 @@
 SHELL=/bin/bash
-LINT_PATHS=quadruped_spring/setup.py
+LINT_PATHS=quadruped_spring/ setup.py
 
 # pytest:
 # 	./scripts/run_tests.sh

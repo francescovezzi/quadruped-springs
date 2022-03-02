@@ -1,21 +1,23 @@
+import json
 import os
-import numpy as np
+from glob import glob
+
 import matplotlib
 import matplotlib.pyplot as plt
-from glob import glob
+import numpy as np
 import pandas
-import json
-
-#from stable_baselines.bench.monitor import load_results
-from stable_baselines3.common.monitor import load_results
 from stable_baselines3.common.callbacks import BaseCallback
-# matplotlib.use('TkAgg')  # Can change to 'Agg' for non-interactive mode
-plt.rcParams['svg.fonttype'] = 'none'
 
-np.set_printoptions(edgeitems=30, linewidth=100000, 
-    formatter=dict(float=lambda x: "%.3g" % x))
+# from stable_baselines.bench.monitor import load_results
+from stable_baselines3.common.monitor import load_results
+
+# matplotlib.use('TkAgg')  # Can change to 'Agg' for non-interactive mode
+plt.rcParams["svg.fonttype"] = "none"
+
+np.set_printoptions(edgeitems=30, linewidth=100000, formatter=dict(float=lambda x: "%.3g" % x))
 
 """ utils.py - general utilities """
+
 
 class CheckpointCallback(BaseCallback):
     """
@@ -25,20 +27,21 @@ class CheckpointCallback(BaseCallback):
     :param save_path: (str) Path to the folder where the model will be saved.
     :param name_prefix: (str) Common prefix to the saved models
     """
-    def __init__(self, save_freq: int, save_path: str, name_prefix='rl_model', verbose=0):
+
+    def __init__(self, save_freq: int, save_path: str, name_prefix="rl_model", verbose=0):
         super(CheckpointCallback, self).__init__(verbose)
         self.save_freq = save_freq
         self.save_path = save_path
         self.name_prefix = name_prefix
 
-    def _init_callback(self):# -> None:
+    def _init_callback(self):  # -> None:
         # Create folder if needed
         if self.save_path is not None:
             os.makedirs(self.save_path, exist_ok=True)
 
-    def _on_step(self):# -> bool:
+    def _on_step(self):  # -> bool:
         if self.n_calls % self.save_freq == 0:
-            path = os.path.join(self.save_path, '{}_{}_steps'.format(self.name_prefix, self.num_timesteps))
+            path = os.path.join(self.save_path, "{}_{}_steps".format(self.name_prefix, self.num_timesteps))
             self.model.save(path)
 
             stats_path = os.path.join(self.save_path, "vec_normalize.pkl")
@@ -47,9 +50,9 @@ class CheckpointCallback(BaseCallback):
             if self.verbose > 1:
                 print("Saving model checkpoint to {}".format(path))
 
-        if self.n_calls % 500 == 0: # self.save_freq < 10000 and 
+        if self.n_calls % 500 == 0:  # self.save_freq < 10000 and
             # also print out path periodically for off-policy aglorithms: SAC, TD3, etc.
-            print('=================================== Save path is {}'.format(self.save_path))
+            print("=================================== Save path is {}".format(self.save_path))
         return True
 
 
@@ -57,39 +60,64 @@ class CheckpointCallback(BaseCallback):
 ## Printing
 ################################################################
 
+
 def nicePrint(vec):
-    """ Print single vector (list, tuple, or numpy array) """
+    """Print single vector (list, tuple, or numpy array)"""
     # check if vec is a numpy array
-    if isinstance(vec,np.ndarray):
+    if isinstance(vec, np.ndarray):
         np.set_printoptions(precision=3)
         print(vec)
         return
-    currStr = ''
+    currStr = ""
     for x in vec:
-        currStr = currStr + '{: .3f} '.format(x)
+        currStr = currStr + "{: .3f} ".format(x)
     print(currStr)
 
+
 def nicePrint2D(vec):
-    """ Print 2D vector (list of lists, tuple of tuples, or 2D numpy array) """
+    """Print 2D vector (list of lists, tuple of tuples, or 2D numpy array)"""
     for x in vec:
-        currStr = ''
+        currStr = ""
         for y in x:
-            currStr = currStr + '{: .3f} '.format(y)
+            currStr = currStr + "{: .3f} ".format(y)
         print(currStr)
 
 
 ################################################################
 ## Plotting
 ################################################################
-X_TIMESTEPS = 'timesteps'
-X_EPISODES = 'episodes'
-X_WALLTIME = 'walltime_hrs'
+X_TIMESTEPS = "timesteps"
+X_EPISODES = "episodes"
+X_WALLTIME = "walltime_hrs"
 Y_EPLEN = True
 POSSIBLE_X_AXES = [X_TIMESTEPS, X_EPISODES, X_WALLTIME]
 EPISODES_WINDOW = 100
-COLORS = ['blue', 'green', 'red', 'cyan', 'magenta', 'yellow', 'black', 'purple', 'pink',
-          'brown', 'orange', 'teal', 'coral', 'lightblue', 'lime', 'lavender', 'turquoise',
-          'darkgreen', 'tan', 'salmon', 'gold', 'lightpurple', 'darkred', 'darkblue']
+COLORS = [
+    "blue",
+    "green",
+    "red",
+    "cyan",
+    "magenta",
+    "yellow",
+    "black",
+    "purple",
+    "pink",
+    "brown",
+    "orange",
+    "teal",
+    "coral",
+    "lightblue",
+    "lime",
+    "lavender",
+    "turquoise",
+    "darkgreen",
+    "tan",
+    "salmon",
+    "gold",
+    "lightpurple",
+    "darkred",
+    "darkblue",
+]
 
 
 def rolling_window(array, window):
@@ -117,10 +145,10 @@ def window_func(var_1, var_2, window, func):
     """
     var_2_window = rolling_window(var_2, window)
     function_on_var2 = func(var_2_window, axis=-1)
-    return var_1[window - 1:], function_on_var2
+    return var_1[window - 1 :], function_on_var2
 
 
-def ts2xy(timesteps, xaxis,yaxis=None):
+def ts2xy(timesteps, xaxis, yaxis=None):
     """
     Decompose a timesteps variable to x ans ys
 
@@ -136,7 +164,7 @@ def ts2xy(timesteps, xaxis,yaxis=None):
         x_var = np.arange(len(timesteps))
         y_var = timesteps.r.values
     elif xaxis == X_WALLTIME:
-        x_var = timesteps.t.values / 3600.
+        x_var = timesteps.t.values / 3600.0
         y_var = timesteps.r.values
     else:
         raise NotImplementedError
@@ -172,6 +200,7 @@ def plot_curves(xy_list, xaxis, title):
     plt.ylabel("Episode Rewards")
     plt.tight_layout()
 
+
 def plot_results(dirs, num_timesteps, xaxis, task_name):
     """
     plot the results
@@ -189,19 +218,20 @@ def plot_results(dirs, num_timesteps, xaxis, task_name):
         if num_timesteps is not None:
             timesteps = timesteps[timesteps.l.cumsum() <= num_timesteps]
         tslist.append(timesteps)
-    #plt.figure(1)
+    # plt.figure(1)
     xy_list = [ts2xy(timesteps_item, xaxis) for timesteps_item in tslist]
-    plot_curves(xy_list, xaxis, task_name+'Rewards')
+    plot_curves(xy_list, xaxis, task_name + "Rewards")
     plt.ylabel("Episode Rewards")
-    #plt.figure(2)
+    # plt.figure(2)
     xy_list = [ts2xy(timesteps_item, xaxis, Y_EPLEN) for timesteps_item in tslist]
-    plot_curves(xy_list, xaxis, task_name+'Ep Len')
+    plot_curves(xy_list, xaxis, task_name + "Ep Len")
     plt.ylabel("Episode Length")
 
 
 ######################################################################################
 ## Load progress/result files (make general so can use from stable-baselines or rllib)
 ######################################################################################
+
 
 def load_rllib(path: str) -> pandas.DataFrame:
     """
@@ -217,63 +247,57 @@ def load_rllib(path: str) -> pandas.DataFrame:
     data_frames = []
     headers = []
 
-    with open(progress_file, 'rt') as file_handler:
+    with open(progress_file, "rt") as file_handler:
         data_frame = pandas.read_csv(file_handler, index_col=None)
 
-        plt.plot(data_frame['timesteps_total'], data_frame['episode_reward_mean'], label='episode_reward_mean')
+        plt.plot(data_frame["timesteps_total"], data_frame["episode_reward_mean"], label="episode_reward_mean")
         try:
-            plt.plot(data_frame['timesteps_total'], data_frame['episode_reward_max'], label='episode_reward_max')
-            plt.plot(data_frame['timesteps_total'], data_frame['episode_reward_min'], label='episode_reward_min')
+            plt.plot(data_frame["timesteps_total"], data_frame["episode_reward_max"], label="episode_reward_max")
+            plt.plot(data_frame["timesteps_total"], data_frame["episode_reward_min"], label="episode_reward_min")
         except:
             pass
         plt.legend()
-        plt.title('Episode reward stats')
+        plt.title("Episode reward stats")
         plt.show()
 
-        plt.plot(data_frame['timesteps_total'], data_frame['episode_len_mean'], label='episode_len_mean')
+        plt.plot(data_frame["timesteps_total"], data_frame["episode_len_mean"], label="episode_len_mean")
         plt.legend()
-        plt.title('Episode length')
+        plt.title("Episode length")
         plt.show()
 
-    try: 
-        with open(result_file, 'rt') as file_handler: 
+    try:
+        with open(result_file, "rt") as file_handler:
             # result.json, check it out
             all_episode_lengths = []
             all_episode_rewards = []
             timestep_totals = []
             # read in data
             line = file_handler.readline()
-            while line: 
+            while line:
                 ep_data = json.loads(line)
 
-                eplens = ep_data['hist_stats']['episode_lengths']
-                eprews = ep_data['hist_stats']['episode_reward']
+                eplens = ep_data["hist_stats"]["episode_lengths"]
+                eprews = ep_data["hist_stats"]["episode_reward"]
                 # at the beginning will have simulated more than 100 episodes due to early terminations
-                episodes_this_iter = min(ep_data['episodes_this_iter'],len(eplens))
+                episodes_this_iter = min(ep_data["episodes_this_iter"], len(eplens))
                 # buffer has previous 100 episodes, which have mostly already been counted, so just display new ones
                 eplens = eplens[:episodes_this_iter]
                 eprews = eprews[:episodes_this_iter]
 
                 all_episode_lengths.extend(eplens)
                 all_episode_rewards.extend(eprews)
-                timestep_totals.extend( [ep_data['timesteps_total']]*len(eplens))
+                timestep_totals.extend([ep_data["timesteps_total"]] * len(eplens))
                 line = file_handler.readline()
 
             plt.scatter(timestep_totals, all_episode_rewards, s=2)
-            x, y_mean = window_func(np.array(timestep_totals), 
-                                    np.array(all_episode_rewards), 
-                                    EPISODES_WINDOW, 
-                                    np.mean)
-            plt.plot(x, y_mean, color='red')
-            plt.title('Episode Rewards')
+            x, y_mean = window_func(np.array(timestep_totals), np.array(all_episode_rewards), EPISODES_WINDOW, np.mean)
+            plt.plot(x, y_mean, color="red")
+            plt.title("Episode Rewards")
             plt.show()
             plt.scatter(timestep_totals, all_episode_lengths, s=2)
-            x, y_mean = window_func(np.array(timestep_totals), 
-                                    np.array(all_episode_lengths), 
-                                    EPISODES_WINDOW, 
-                                    np.mean)
-            plt.plot(x, y_mean, color='red')
-            plt.title('All Episode Lengths')
+            x, y_mean = window_func(np.array(timestep_totals), np.array(all_episode_lengths), EPISODES_WINDOW, np.mean)
+            plt.plot(x, y_mean, color="red")
+            plt.title("All Episode Lengths")
             plt.show()
             data_frames.append(data_frame)
 
@@ -281,13 +305,13 @@ def load_rllib(path: str) -> pandas.DataFrame:
         return data_frame
 
     except:
-        print('WARNING: ES - so different data for loading result.json')
+        print("WARNING: ES - so different data for loading result.json")
         return None
 
 
 def load_rllib_v2(path: str) -> pandas.DataFrame:
     """
-    Load progress.csv and result.json file, for 1 of several 
+    Load progress.csv and result.json file, for 1 of several
 
     :param path: (str) the directory path containing the log file(s)
     :return: (pandas.DataFrame) the logged data
@@ -299,35 +323,33 @@ def load_rllib_v2(path: str) -> pandas.DataFrame:
     data_frames = []
     headers = []
 
-    with open(progress_file, 'rt') as file_handler:
+    with open(progress_file, "rt") as file_handler:
         data_frame = pandas.read_csv(file_handler, index_col=None)
 
-    with open(result_file, 'rt') as file_handler: 
+    with open(result_file, "rt") as file_handler:
         # result.json, check it out
         all_episode_lengths = []
         all_episode_rewards = []
         timestep_totals = []
         # read in data
         line = file_handler.readline()
-        while line: 
+        while line:
             ep_data = json.loads(line)
 
-            eplens = ep_data['hist_stats']['episode_lengths']
-            eprews = ep_data['hist_stats']['episode_reward']
+            eplens = ep_data["hist_stats"]["episode_lengths"]
+            eprews = ep_data["hist_stats"]["episode_reward"]
             # at the beginning will have simulated more than 100 episodes due to early terminations
-            episodes_this_iter = min(ep_data['episodes_this_iter'],len(eplens))
+            episodes_this_iter = min(ep_data["episodes_this_iter"], len(eplens))
             # buffer has previous 100 episodes, which have mostly already been counted, so just display new ones
             eplens = eplens[:episodes_this_iter]
             eprews = eprews[:episodes_this_iter]
 
             all_episode_lengths.extend(eplens)
             all_episode_rewards.extend(eprews)
-            timestep_totals.extend( [ep_data['timesteps_total']]*len(eplens))
+            timestep_totals.extend([ep_data["timesteps_total"]] * len(eplens))
             line = file_handler.readline()
-
 
         data_frames.append(data_frame)
     data_frame = pandas.concat(data_frames)
 
     return data_frame, timestep_totals, all_episode_rewards, all_episode_lengths
-

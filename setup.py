@@ -12,7 +12,7 @@ setup(
     keywords="reinforcement-learning-algorithms reinforcement-learning machine-learning "
     "gym openai stable baselines toolbox python data-science",
     license="MIT",
-    long_description=long_description,
+    long_description="",
     long_description_content_type="text/markdown",
     version="0.1",
     python_requires=">=3.7",
