@@ -436,10 +436,12 @@ class QuadrupedGymEnv(gym.Env):
         self._env_step_counter += 1
         reward = self._reward()
         done = False
+        infos = {"base_pos": self.robot.GetBasePosition()}
         if self._termination() or self.get_sim_time() > self._MAX_EP_LEN:
+            infos["TimeLimit.truncated"] = not self._termination()
             done = True
 
-        return np.array(self._noisy_observation()), reward, done, {"base_pos": self.robot.GetBasePosition()}
+        return np.array(self._noisy_observation()), reward, done, infos
 
     ######################################################################################
     # Reset
