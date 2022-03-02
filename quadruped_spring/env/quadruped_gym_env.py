@@ -67,7 +67,7 @@ class QuadrupedGymEnv(gym.Env):
     observation_space_mode, motor_control_mode, task_env.
     """
 
-    metadata = {"render_modes": ["rgb_array"]}
+    metadata = {"render.modes": ["rgb_array"]}
 
     def __init__(
         self,
