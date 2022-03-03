@@ -602,9 +602,9 @@ class QuadrupedGymEnv(gym.Env):
         # default rendering options
         self._render_width = 333
         self._render_height = 480
-        self._cam_dist = 4.0
-        self._cam_yaw = 20
-        self._cam_pitch = -20
+        self._cam_dist = 1.5
+        self._cam_yaw = 10
+        self._cam_pitch = -30
         # get rid of visualizer things
         self._pybullet_client.configureDebugVisualizer(self._pybullet_client.COV_ENABLE_RGB_BUFFER_PREVIEW, 0)
         self._pybullet_client.configureDebugVisualizer(self._pybullet_client.COV_ENABLE_DEPTH_BUFFER_PREVIEW, 0)

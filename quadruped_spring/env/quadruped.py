@@ -47,7 +47,7 @@ class Quadruped(object):
         self._applied_motor_torque = np.zeros(self.num_motors)
         self._spring_torque = np.zeros(self.num_motors)
         self._accurate_motor_model_enabled = accurate_motor_model_enabled
-        self._h = 0  # to control the height of the initial position
+        self._h = 0.04  # to control the height of the initial position respect config
 
         # motor control mode for accurate motor model, should only be torque or position at this low level
         if motor_control_mode == "PD":
