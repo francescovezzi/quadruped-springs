@@ -122,3 +122,6 @@ model.save(os.path.join(SAVE_PATH, "rl_model"))
 env.save(os.path.join(SAVE_PATH, "vec_normalize.pkl"))
 if LEARNING_ALG == "SAC":  # save replay buffer
     model.save_replay_buffer(os.path.join(SAVE_PATH, "off_policy_replay_buffer"))
+
+
+print('end of run_sb3.py')

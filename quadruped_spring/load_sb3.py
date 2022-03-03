@@ -54,7 +54,7 @@ model_name = get_latest_model(log_dir)
 env = lambda: QuadrupedGymEnv(**env_config)
 env = make_vec_env(env, n_envs=1)
 env = VecNormalize.load(stats_path, env)
-env = VecVideoRecorder(env, video_folder=log_dir, video_length=5000, record_video_trigger=lambda x: x==0)
+# env = VecVideoRecorder(env, video_folder=log_dir, video_length=2000, record_video_trigger=lambda x: x==0)
 env.training = False  # do not update stats at test time
 env.norm_reward = False  # reward normalization is not needed at test time
 
@@ -71,7 +71,7 @@ episode_reward = 0
 # [TODO] initialize arrays to save data from simulation
 #
 
-for i in range(20000):
+for i in range(5000):
     action, _states = model.predict(obs, deterministic=True)  # sample at test time? ([TODO]: test)
     obs, rewards, dones, info = env.step(action)
     episode_reward += rewards
@@ -82,3 +82,6 @@ for i in range(20000):
     # [TODO] save data from current robot states for plots
 
 # [TODO] make plots:
+
+
+print('end of load_sb3.py')
