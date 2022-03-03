@@ -4,6 +4,10 @@ Check the documentation! https://stable-baselines3.readthedocs.io/en/master/
 """
 import os
 from datetime import datetime
+import inspect
+
+current_file = os.path.abspath(inspect.getfile(inspect.currentframe()))
+current_dir = os.path.dirname(current_file)
 
 from stable_baselines3 import PPO, SAC
 from stable_baselines3.common.env_util import make_vec_env
@@ -39,7 +43,8 @@ if LOAD_NN:
     model_name = get_latest_model(log_dir)
 
 # directory to save policies and normalization parameters
-SAVE_PATH = "./logs/intermediate_models/" + datetime.now().strftime("%m%d%y%H%M%S") + "/"
+SAVE_PATH = os.path.join(current_dir,
+                         "logs/intermediate_models/" + datetime.now().strftime("%m%d%y%H%M%S") + "/")
 os.makedirs(SAVE_PATH, exist_ok=True)
 # checkpoint to save policy network periodically
 checkpoint_callback = CheckpointCallback(save_freq=30000, save_path=SAVE_PATH, name_prefix="rl_model", verbose=2)
@@ -111,7 +116,7 @@ if LOAD_NN:
     print("\nLoaded model", model_name, "\n")
 
 # Learn and save (may need to train for longer)
-model.learn(total_timesteps=2000000, log_interval=1, callback=checkpoint_callback)
+# model.learn(total_timesteps=2000000, log_interval=1, callback=checkpoint_callback)
 # Don't forget to save the VecNormalize statistics when saving the agent
 model.save(os.path.join(SAVE_PATH, "rl_model"))
 env.save(os.path.join(SAVE_PATH, "vec_normalize.pkl"))

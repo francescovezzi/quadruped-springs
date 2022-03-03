@@ -115,8 +115,8 @@ _FOOT_NAME_PATTERN = re.compile(r"\w+_foot_\w+")
 ############################################
 # Spring level joint Variables
 ############################################
-K_HIP = 15
-K_THIGH = 8
-K_CALF = 5
+K_HIP = 25
+K_THIGH = 25
+K_CALF = 30
 SPRINGS_STIFFNESS = [K_HIP, K_CALF, K_THIGH]
-SPRINGS_REST_ANGLE = [DEFAULT_HIP_ANGLE, DEFAULT_THIGH_ANGLE, DEFAULT_CALF_ANGLE]
+SPRINGS_REST_ANGLE = [DEFAULT_HIP_ANGLE, DEFAULT_THIGH_ANGLE, DEFAULT_CALF_ANGLE + 0.3]

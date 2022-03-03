@@ -84,6 +84,7 @@ class QuadrupedGymEnv(gym.Env):
         render=False,
         record_video=False,
         add_noise=True,
+        enable_springs=False,
         test_env=False,  # NOT ALLOWED FOR TRAINING!
         **kwargs
     ):  # any extra arguments from legacy
@@ -122,6 +123,7 @@ class QuadrupedGymEnv(gym.Env):
         self._is_render = render
         self._is_record_video = record_video
         self._add_noise = add_noise
+        self._enable_springs = enable_springs
         self._using_test_env = test_env
         if test_env:
             self._add_noise = True
@@ -425,7 +427,7 @@ class QuadrupedGymEnv(gym.Env):
                 proc_action = self._transform_action_to_motor_command(curr_act)
             else:
                 proc_action = curr_act
-            self.robot.ApplyAction(proc_action)
+            self.robot.ApplyAction(proc_action, enable_springs=self._enable_springs)
             self._pybullet_client.stepSimulation()
             self._sim_step_counter += 1
             self._dt_motor_torques.append(self.robot.GetMotorTorques())
@@ -514,7 +516,7 @@ class QuadrupedGymEnv(gym.Env):
         if self._is_render:
             time.sleep(0.2)
         for _ in range(1000):
-            self.robot.ApplyAction(init_motor_angles)
+            self.robot.ApplyAction(init_motor_angles, enable_springs=self._enable_springs)
             if self._is_render:
                 time.sleep(0.001)
             self._pybullet_client.stepSimulation()
@@ -598,8 +600,8 @@ class QuadrupedGymEnv(gym.Env):
     def _configure_visualizer(self):
         """Remove all visualizer borders, and zoom in"""
         # default rendering options
-        self._render_width = 960
-        self._render_height = 720
+        self._render_width = 333
+        self._render_height = 480
         self._cam_dist = 1.0
         self._cam_yaw = 0
         self._cam_pitch = -30
