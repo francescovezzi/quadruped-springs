@@ -3,10 +3,6 @@ import re
 import sys
 import time
 from sys import platform
-import inspect
-
-current_file = os.path.abspath(inspect.getfile(inspect.currentframe()))
-current_dir = os.path.dirname(current_file)
 
 import gym
 import matplotlib
@@ -29,9 +25,9 @@ from utils.file_utils import get_latest_model, load_all_results, get_latest_dire
 from utils.utils import plot_results
 
 LEARNING_ALG = "PPO"
-interm_dir = os.path.join(current_dir,"logs/intermediate_models/")
+interm_dir = "logs/intermediate_models/"
 # path to saved models, i.e. interm_dir + '111121133812'
-log_dir = os.path.join(interm_dir, get_latest_directory(interm_dir))
+log_dir = get_latest_directory(interm_dir)
 # initialize env configs (render at test time)
 # check ideal conditions, as well as robustness to UNSEEN noise during training
 env_config = {}

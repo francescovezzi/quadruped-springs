@@ -2,10 +2,3 @@
 *.egg-info
 __pycache__/
 logs/
-quad_env/
-env/coding_test.py
-env/coding_test_height.py
-FALLEN_TEST/
-MASS_TEST/
-TEST_p1/
-TEST_video
