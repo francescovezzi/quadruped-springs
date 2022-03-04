@@ -1,15 +1,14 @@
-import gym
-import numpy as np
-
-import cv2
-
 import os
 import time
 
+import cv2
+import gym
+import numpy as np
+
 
 class VideoRec(gym.Wrapper):
-    def __init__(self, env: gym.Env, video_length, path='logs/videos/', name='rl_video', release=True):
-    # Call the parent constructor, so we can access self.env later
+    def __init__(self, env: gym.Env, video_length, path="logs/videos/", name="rl_video", release=True):
+        # Call the parent constructor, so we can access self.env later
         """_summary_
 
         Args:
@@ -21,13 +20,13 @@ class VideoRec(gym.Wrapper):
         """
         super().__init__(env)
         self._path = path
-        self._name = self._path + name + '.mp4'
+        self._name = self._path + name + ".mp4"
         self._video_length = video_length
         self._step_counter = 0
         self._release = release
         self._init_video()
         self._check()
-        
+
     def _check(self):
         if self.env._is_render:
             raise ValueError("I think it's better if you disable rendering for wrapper VideoRec")
@@ -38,24 +37,21 @@ class VideoRec(gym.Wrapper):
         img_height, img_width, _ = np.shape(img)
         self._time_step = 0.001
         self._freq = int(1 / self._time_step)
-        self._fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-        self._movie = cv2.VideoWriter(self._name,
-                                    self._fourcc,
-                                    self._freq,
-                                    (img_width,img_height))
+        self._fourcc = cv2.VideoWriter_fourcc(*"mp4v")
+        self._movie = cv2.VideoWriter(self._name, self._fourcc, self._freq, (img_width, img_height))
         open_cv_image = cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)
         self._movie.write(open_cv_image)
         self._step_counter += 1
-        
+
     def _increase_video(self):
         img = self.env.render()
         open_cv_image = cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)
         self._movie.write(open_cv_image)
         self._step_counter += 1
-        
+
     def reset(self):
         """
-        Reset the environment 
+        Reset the environment
         """
         obs = self.env.reset()
         return obs
@@ -65,9 +61,9 @@ class VideoRec(gym.Wrapper):
         :param action: ([float] or int) Action taken by the agent
         :return: (np.ndarray, float, bool, dict) observation, reward, is the episode over?, additional informations
         """
-        
+
         obs, reward, done, infos = self.env.step(action)
-        
+
         if self._step_counter < self._video_length:
             self._increase_video()
             time.sleep(0.005)
@@ -77,8 +73,8 @@ class VideoRec(gym.Wrapper):
                 time.sleep(0.5)
         else:
             pass
-        
+
         return obs, reward, done, infos
-    
+
     def render(self, mode="rgb_array", **kwargs):
         return self.env.render(mode, **kwargs)

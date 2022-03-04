@@ -21,7 +21,7 @@ class Quadruped(object):
         motor_control_mode="PD",
         on_rack=False,
         render=False,
-        enable_springs=False
+        enable_springs=False,
     ):
         """Construct a quadruped and reset it to the initial states.
 
@@ -328,7 +328,7 @@ class Quadruped(object):
                 else:
                     self._SetMotorTorqueById(motor_id, 0)
             if self._enable_springs == False:
-                raise RuntimeError('check enable_springs')
+                raise RuntimeError("check enable_springs")
 
     ######################################################################################
     # Jacobian, IK, etc.

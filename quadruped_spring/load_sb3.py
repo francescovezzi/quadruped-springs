@@ -19,7 +19,7 @@ from stable_baselines3.common.monitor import load_results
 from stable_baselines3.common.vec_env import VecNormalize, VecVideoRecorder
 
 from env.quadruped_gym_env import QuadrupedGymEnv
-from utils.file_utils import get_latest_model, load_all_results, get_latest_directory
+from utils.file_utils import get_latest_directory, get_latest_model, load_all_results
 
 # utils
 from utils.utils import plot_results
@@ -80,4 +80,4 @@ for i in range(5000):
 # [TODO] make plots:
 
 
-print('end of load_sb3.py')
+print("end of load_sb3.py")

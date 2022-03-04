@@ -471,7 +471,7 @@ class QuadrupedGymEnv(gym.Env):
                 motor_control_mode=self._motor_control_mode,
                 on_rack=self._on_rack,
                 render=self._is_render,
-                enable_springs=self._enable_springs
+                enable_springs=self._enable_springs,
             )
 
             if self._add_noise:
