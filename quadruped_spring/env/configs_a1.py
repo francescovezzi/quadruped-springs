@@ -115,10 +115,17 @@ _FOOT_NAME_PATTERN = re.compile(r"\w+_foot_\w+")
 ############################################
 # Spring level joint Variables
 ############################################
+# stiffness
 K_HIP = 25
 K_THIGH = 25
 K_CALF = 30
+# damping
+D_HIP = 0.4
+D_TIHGH = 0.4
+D_CALF = 0.4
+
 SPRINGS_STIFFNESS = [K_HIP, K_CALF, K_THIGH]
+SPRINGS_DAMPING = [D_HIP, D_TIHGH, D_CALF]
 SPRINGS_REST_ANGLE = [DEFAULT_HIP_ANGLE, DEFAULT_THIGH_ANGLE, DEFAULT_CALF_ANGLE + 0.3]
 # Make the default configuration equals to the one of springs in the rest configuration
 INIT_JOINT_ANGLES = np.array(SPRINGS_REST_ANGLE * NUM_LEGS)
