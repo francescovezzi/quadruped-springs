@@ -1,9 +1,9 @@
+import inspect
 import os
 import re
 import sys
 import time
 from sys import platform
-import inspect
 
 current_file = os.path.abspath(inspect.getfile(inspect.currentframe()))
 current_dir = os.path.dirname(current_file)
@@ -23,13 +23,13 @@ from stable_baselines3.common.monitor import load_results
 from stable_baselines3.common.vec_env import VecNormalize, VecVideoRecorder
 
 from env.quadruped_gym_env import QuadrupedGymEnv
-from utils.file_utils import get_latest_model, load_all_results, get_latest_directory
+from utils.file_utils import get_latest_directory, get_latest_model, load_all_results
 
 # utils
 from utils.utils import plot_results
 
 LEARNING_ALG = "PPO"
-interm_dir = os.path.join(current_dir,"logs/intermediate_models/")
+interm_dir = os.path.join(current_dir, "logs/intermediate_models/")
 # path to saved models, i.e. interm_dir + '111121133812'
 log_dir = os.path.join(interm_dir, get_latest_directory(interm_dir))
 # initialize env configs (render at test time)
@@ -84,4 +84,4 @@ for i in range(5000):
 # [TODO] make plots:
 
 
-print('end of load_sb3.py')
+print("end of load_sb3.py")

@@ -2,9 +2,9 @@
 Run stable baselines 3 on quadruped env 
 Check the documentation! https://stable-baselines3.readthedocs.io/en/master/
 """
+import inspect
 import os
 from datetime import datetime
-import inspect
 
 current_file = os.path.abspath(inspect.getfile(inspect.currentframe()))
 current_dir = os.path.dirname(current_file)
@@ -43,8 +43,7 @@ if LOAD_NN:
     model_name = get_latest_model(log_dir)
 
 # directory to save policies and normalization parameters
-SAVE_PATH = os.path.join(current_dir,
-                         "logs/intermediate_models/" + datetime.now().strftime("%m%d%y%H%M%S") + "/")
+SAVE_PATH = os.path.join(current_dir, "logs/intermediate_models/" + datetime.now().strftime("%m%d%y%H%M%S") + "/")
 os.makedirs(SAVE_PATH, exist_ok=True)
 # checkpoint to save policy network periodically
 checkpoint_callback = CheckpointCallback(save_freq=30000, save_path=SAVE_PATH, name_prefix="rl_model", verbose=2)
@@ -124,4 +123,4 @@ if LEARNING_ALG == "SAC":  # save replay buffer
     model.save_replay_buffer(os.path.join(SAVE_PATH, "off_policy_replay_buffer"))
 
 
-print('end of run_sb3.py')
+print("end of run_sb3.py")

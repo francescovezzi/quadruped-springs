@@ -189,6 +189,7 @@ if __name__ == "__main__":
         motor_control_mode="TORQUE",
         add_noise=False,  # start in ideal conditions
         record_video=False,
+        enable_springs=True,
     )
 
     # initialize Hopf Network, supply gait
@@ -196,14 +197,14 @@ if __name__ == "__main__":
     omega_swing = 16.0 * np.pi
     omega_stance = 4.0 * np.pi
     # WALK
-    # omega_swing = 24.0*np.pi
-    # omega_stance = 25.0*np.pi
+    # omega_swing = 24.0 * np.pi
+    # omega_stance = 25.0 * np.pi
     # PACE
-    # omega_swing = 20.0*np.pi
-    # omega_stance = 20.0*np.pi
+    # omega_swing = 20.0 * np.pi
+    # omega_stance = 20.0 * np.pi
     # BOUND
-    # omega_swing = 10.0*np.pi
-    # omega_stance = 40.0*np.pi
+    # omega_swing = 10.0 * np.pi
+    # omega_stance = 40.0 * np.pi
 
     d_swing = np.pi / omega_swing
     print("Swing duration: ", d_swing)
@@ -216,7 +217,7 @@ if __name__ == "__main__":
 
     cpg = HopfNetwork(gait="TROT", omega_swing=omega_swing, omega_stance=omega_stance, time_step=TIME_STEP)
 
-    T = 1.0
+    T = 10.0
     TEST_STEPS = int(T / (TIME_STEP))
     t = np.arange(TEST_STEPS) * TIME_STEP
 
@@ -289,10 +290,12 @@ if __name__ == "__main__":
 
         # send torques to robot and simulate TIME_STEP seconds
         env.step(action)
+        time.sleep(0.001)
 
         xs_list[j] = xs
         zs_list[j] = zs
 
+    exit()
     #####################################################
     # PLOTS
     #####################################################
