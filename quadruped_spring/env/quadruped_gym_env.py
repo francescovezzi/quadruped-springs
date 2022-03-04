@@ -26,6 +26,7 @@ import configs_a1 as robot_config
 
 # quadruped and configs
 import quadruped
+from scipy.spatial.transform import Rotation as R
 
 ACTION_EPS = 0.01
 OBSERVATION_EPS = 0.01
