@@ -21,6 +21,7 @@ class Quadruped(object):
         motor_control_mode="PD",
         on_rack=False,
         render=False,
+        enable_springs=False
     ):
         """Construct a quadruped and reset it to the initial states.
 
@@ -47,7 +48,8 @@ class Quadruped(object):
         self._applied_motor_torque = np.zeros(self.num_motors)
         self._spring_torque = np.zeros(self.num_motors)
         self._accurate_motor_model_enabled = accurate_motor_model_enabled
-        self._h = 0.04  # to control the height of the initial position respect config
+        self._h = 0.03  # to control the height of the initial position respect config
+        self._enable_springs = enable_springs
 
         # motor control mode for accurate motor model, should only be torque or position at this low level
         if motor_control_mode == "PD":
@@ -68,6 +70,7 @@ class Quadruped(object):
             )
             self._motor_model._setSpringStiffness(self._robot_config.SPRINGS_STIFFNESS)
             self._motor_model._setSpringRestAngle(self._robot_config.SPRINGS_REST_ANGLE)
+            self._motor_model._setSpringDumping(self._robot_config.SPRINGS_DAMPING)
         else:
             raise ValueError("Must use accurate motor model")
 
@@ -279,7 +282,7 @@ class Quadruped(object):
     def _SetDesiredMotorAngleByName(self, motor_name, desired_angle):
         self._SetDesiredMotorAngleById(self._joint_name_to_id[motor_name], desired_angle)
 
-    def ApplyAction(self, motor_commands, enable_springs=False):
+    def ApplyAction(self, motor_commands):
         """Apply the desired motor torques to the motors of the quadruped.
 
         Args:
@@ -292,7 +295,7 @@ class Quadruped(object):
             actual_torque, observed_torque = self._motor_model.convert_to_torque(motor_commands, q, qdot)
             self._observed_motor_torques = observed_torque
 
-            if enable_springs:
+            if self._enable_springs:
                 self._spring_torque = self._motor_model.compute_spring_torques(q, qdot)
             else:
                 self._spring_torque = np.full(self._robot_config.NUM_MOTORS, 0)
@@ -308,7 +311,7 @@ class Quadruped(object):
                 else:
                     self._SetMotorTorqueById(motor_id, 0)
 
-                if enable_springs:
+                if self._enable_springs:
                     self._SetMotorTorqueById(motor_id, spring_torque)
 
     def ApplySpringAction(self):
@@ -320,8 +323,12 @@ class Quadruped(object):
             self._spring_torque = self._motor_model.compute_spring_torques(q, qdot)
 
             for motor_id, spring_torque in zip(self._motor_id_list, self._spring_torque):
-
-                self._SetMotorTorqueById(motor_id, spring_torque)
+                if self._enable_springs:
+                    self._SetMotorTorqueById(motor_id, spring_torque)
+                else:
+                    self._SetMotorTorqueById(motor_id, 0)
+            if self._enable_springs == False:
+                raise RuntimeError('check enable_springs')
 
     ######################################################################################
     # Jacobian, IK, etc.
