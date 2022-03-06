@@ -10,7 +10,9 @@ import matplotlib.pyplot as plt
 
 NUM_MOTORS = 12
 TIME_STEP = 0.001
-
+UPPER_ANGLE_JOINT = np.array([0.802851455917, 4.18879020479, -0.916297857297])
+LOWER_ANGLE_JOINT = np.array([-0.802851455917, -1.0471975512, -2.69653369433])
+JOINT_LIMITS = np.transpose([UPPER_ANGLE_JOINT,LOWER_ANGLE_JOINT])
 
 class MonitorState(gym.Wrapper):
     def __init__(self, env: gym.Env, path="logs/plots/", rec_length=1000, paddle=10, release=True):
@@ -28,6 +30,8 @@ class MonitorState(gym.Wrapper):
         self._plot_counter = 0
         self._release = release
         self._plot_done = False
+        self._h_min = 0.15
+        self._tau_max = 33.5
         # self._check()
 
     def _check(self):  # cannot access to private attribute _is_render
@@ -61,10 +65,10 @@ class MonitorState(gym.Wrapper):
         self._base_pos[i, :] = self.quadruped.GetBasePosition()
         self._base_or[i, :] = self.quadruped.GetBaseOrientationRollPitchYaw()
 
-    def _plot12(self, state, title, ylabel):
+    def _plot12(self, state, title, ylabel, limits=([False]*3, [None]*3)):
         fig, axs = plt.subplots(nrows=3, sharex=True)
         titles = ["HIP", "THIGH", "CALF"]
-        labels = ("FR", "FL", "RR", "RL")
+        labels = ("FR", "FL", "RR", "RL", "up_limit", "low_limit")
         fig.suptitle(title)
         for i, (ax, title) in enumerate(zip(axs, titles)):
             data = state[:, i + np.array([0, 3, 6, 9])]
@@ -72,6 +76,13 @@ class MonitorState(gym.Wrapper):
             ax.set_title(title)
             ax.set_xlabel("t")
             ax.set_ylabel(ylabel, rotation=0)
+            if limits[0][i]:
+                length = np.shape(self._time)[0]
+                n_lines = np.shape(limits[1][i])[0]
+                limits_values = np.zeros((length, n_lines))
+                for line in range(n_lines):
+                    limits_values[:,line] = np.full(length,limits[1][i][line])
+                ax.plot(self._time, limits_values, '--')
             box = ax.get_position()
             ax.set_position([box.x0, box.y0, box.width * 0.8, box.height])
             ax.legend(labels, loc="center left", bbox_to_anchor=(1, 0.5))
@@ -79,7 +90,7 @@ class MonitorState(gym.Wrapper):
         # plt.show()
         return fig, axs
 
-    def _plot3(self, rpy, title, ylabels):
+    def _plot3(self, rpy, title, ylabels, limits=([False]*3, [None]*3)):
         fig, axs = plt.subplots(nrows=3, sharex=True)
         fig.suptitle(title)
         for i, (ax, ylab) in enumerate(zip(axs, ylabels)):
@@ -87,14 +98,27 @@ class MonitorState(gym.Wrapper):
             ax.plot(self._time, data)
             ax.set_xlabel("t")
             ax.set_ylabel(ylab)
+            if limits[0][i]:
+                length = np.shape(self._time)[0]
+                n_lines = np.shape(limits[1])[0]
+                limits_values = np.zeros((length, n_lines))
+                for line in range(n_lines):
+                    limits_values[:,line] = np.full(length,limits[1][line])
+                ax.plot(self._time, limits_values, '--')
+                labels=[ylabels[i],'limit']
+                ax.legend(labels, loc='best')
         return fig, axs
 
     def _create_plots(self):
-        fig_config, _ = self._plot12(self._config, "configuration", ylabel="$q$")
+        tau_lim_aux = [self._tau_max, -self._tau_max]
+        tau_limits = ([True]*3, [tau_lim_aux,tau_lim_aux,tau_lim_aux])
+        pos_limits = ([False, False, True], [None, None, self._h_min])
+        joint_limits = ([True]*3, JOINT_LIMITS)
+        fig_config, _ = self._plot12(self._config, "configuration", "$q$", joint_limits)
         fig_rpy, _ = self._plot3(self._base_or, "Base Orientation", ["roll", "pitch", "yaw"])
-        fig_pos, _ = self._plot3(self._base_pos, "Base Position", ["x", "y", "x"])
+        fig_pos, _ = self._plot3(self._base_pos, "Base Position", ["x", "y", "z"], pos_limits)
         fig_motor_vel, _ = self._plot12(self._motor_vel, "Motor velocities", "$\\omega$")
-        fig_motor_tau, _ = self._plot12(self._motor_tau, "Motor taus", "$\\tau$")
+        fig_motor_tau, _ = self._plot12(self._motor_tau, "Motor taus", "$\\tau$", tau_limits)
         fig_tau_spring, _ = self._plot12(self._tau_spring, "Spring taus", "$\\tau$")
         fig_energy_spring, _ = self._plot12(self._energy_spring, "Spring Energy", "$u$")
         figs = [fig_config, fig_rpy, fig_pos, fig_motor_vel, fig_motor_tau, fig_tau_spring, fig_energy_spring]
