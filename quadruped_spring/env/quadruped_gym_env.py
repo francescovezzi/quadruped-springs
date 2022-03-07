@@ -494,9 +494,12 @@ class QuadrupedGymEnv(gym.Env):
 
         if self._is_render:
             self._pybullet_client.resetDebugVisualizerCamera(self._cam_dist, self._cam_yaw, self._cam_pitch, [0, 0, 0])
+        
+        if self._enable_springs:
+            self._turn_off_temporaneously_motors()
+        else:
+            self._settle_robot()
 
-        # self._settle_robot()
-        self._turn_off_temporaneously_motors()
         self._last_action = np.zeros(self._action_dim)
         if self._is_record_video:
             self.recordVideoHelper()
