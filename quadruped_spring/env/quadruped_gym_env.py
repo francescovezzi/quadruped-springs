@@ -467,7 +467,7 @@ class QuadrupedGymEnv(gym.Env):
                 proc_action = self._transform_action_to_motor_command(curr_act)
             else:
                 proc_action = curr_act
-            self.robot.ApplyAction(proc_action, enable_springs=self._enable_springs)
+            self.robot.ApplyAction(proc_action)
             self._pybullet_client.stepSimulation()
             self._sim_step_counter += 1
             self._dt_motor_torques.append(self.robot.GetMotorTorques())
@@ -531,6 +531,7 @@ class QuadrupedGymEnv(gym.Env):
                 motor_control_mode=self._motor_control_mode,
                 on_rack=self._on_rack,
                 render=self._is_render,
+                enable_springs=self._enable_springs,
             )
 
             if self._add_noise:
@@ -564,6 +565,7 @@ class QuadrupedGymEnv(gym.Env):
         self._robot_orientation_take_off = self.robot.GetBaseOrientationRollPitchYaw()
         self._max_flight_time = 0.0
         self._max_forward_distance = 0.0
+        self._turn_off_temporaneously_motors()
 
         self._last_action = np.zeros(self._action_dim)
         if self._is_record_video:
@@ -585,8 +587,37 @@ class QuadrupedGymEnv(gym.Env):
         init_motor_angles = self._robot_config.INIT_MOTOR_ANGLES + self._robot_config.JOINT_OFFSETS
         if self._is_render:
             time.sleep(0.2)
-        for _ in range(1000):
-            self.robot.ApplyAction(init_motor_angles, enable_springs=self._enable_springs)
+        for _ in range(800):
+            self.robot.ApplyAction(init_motor_angles)
+            if self._is_render:
+                time.sleep(0.001)
+            self._pybullet_client.stepSimulation()
+
+        # set control mode back
+        self._motor_control_mode = tmp_save_motor_control_mode_ENV
+        self.robot._motor_control_mode = tmp_save_motor_control_mode_ROB
+        try:
+            self.robot._motor_model._motor_control_mode = tmp_save_motor_control_mode_MOT
+        except:
+            pass
+
+    def _turn_off_temporaneously_motors(self):
+        """Switch off motors temporaneously."""
+        # change to PD control mode to set initial position, then set back..
+        tmp_save_motor_control_mode_ENV = self._motor_control_mode
+        tmp_save_motor_control_mode_ROB = self.robot._motor_control_mode
+        self._motor_control_mode = "TORQUE"
+        self.robot._motor_control_mode = "TORQUE"
+        try:
+            tmp_save_motor_control_mode_MOT = self.robot._motor_model._motor_control_mode
+            self.robot._motor_model._motor_control_mode = "TORQUE"
+        except:
+            pass
+        torques = np.full(robot_config.NUM_MOTORS, 0)
+        if self._is_render:
+            time.sleep(0.2)
+        for _ in range(2000):
+            self.robot.ApplyAction(torques)
             if self._is_render:
                 time.sleep(0.001)
                 self._render_step_helper()
@@ -674,9 +705,9 @@ class QuadrupedGymEnv(gym.Env):
         # default rendering options
         self._render_width = 333
         self._render_height = 480
-        self._cam_dist = 1.5
-        self._cam_yaw = 10
-        self._cam_pitch = -30
+        self._cam_dist = 3.5
+        self._cam_yaw = 20
+        self._cam_pitch = -20
         # get rid of visualizer things
         self._pybullet_client.configureDebugVisualizer(self._pybullet_client.COV_ENABLE_RGB_BUFFER_PREVIEW, 0)
         self._pybullet_client.configureDebugVisualizer(self._pybullet_client.COV_ENABLE_DEPTH_BUFFER_PREVIEW, 0)

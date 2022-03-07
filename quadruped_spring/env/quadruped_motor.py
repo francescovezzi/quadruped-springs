@@ -26,7 +26,7 @@ class QuadrupedMotorModel(object):
 
     def __init__(self, kp=60, kd=1, torque_limits=None, motor_control_mode="PD"):
         self._kpSprings = np.array([0, 0, 0] * NUM_LEGS)  # Spring stiffness
-        self._kdSprings = np.array([0.1, 0.2, 0.2] * NUM_LEGS)  # Spring friction
+        self._kdSprings = np.array([0.0, 0.0, 0.0] * NUM_LEGS)  # Spring damping
         self._restSprings = np.array([0, 0, 0] * NUM_LEGS)  # Spring rest angles
         self._kp = kp
         self._kd = kd
