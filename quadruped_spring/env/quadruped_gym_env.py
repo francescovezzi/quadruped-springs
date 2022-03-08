@@ -73,7 +73,7 @@ class QuadrupedGymEnv(gym.Env):
         self,
         robot_config=robot_config,
         isRLGymInterface=True,
-        time_step=0.001,
+        time_step=0.0001,
         action_repeat=10,
         distance_weight=1e3,
         energy_weight=1e-4,  # 0.008,
@@ -378,7 +378,7 @@ class QuadrupedGymEnv(gym.Env):
             return self._reward_fwd_locomotion()
         elif self._TASK_ENV == "LR_COURSE_TASK":
             return self._reward_lr_course()
-        elif self.TASK_ENV == "JUMPING_ON_PLACE":
+        elif self._TASK_ENV == "JUMPING_ON_PLACE":
             return self._reward_jumping_on_place()
         else:
             raise ValueError("This task mode not implemented yet.")
