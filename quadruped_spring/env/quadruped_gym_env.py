@@ -3,6 +3,7 @@ import inspect
 import os
 
 from quadruped_spring.utils.monitor_state import MonitorState
+from quadruped_spring.utils.video_recording import VideoRec
 
 # so we can import files
 currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
@@ -791,8 +792,8 @@ def test_env():
         action_repeat=100,
         enable_springs=True
     )
-    sim_steps = 600
-    env = MonitorState(env, rec_length=sim_steps, paddle=10)
+    sim_steps = 1000
+    env = VideoRec(env, video_length=600)
     obs = env.reset()
     for i in range(sim_steps):
         action = np.random.rand(12) * 2 - 1

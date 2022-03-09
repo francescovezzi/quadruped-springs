@@ -132,6 +132,7 @@ class MonitorState(gym.Wrapper):
         dict = self._create_plots()
         for fig, name in dict.items():
             fig.savefig(os.path.join(self._path, name))
+        self._plot_done = True
 
     def step(self, action):
 
@@ -146,7 +147,6 @@ class MonitorState(gym.Wrapper):
             if self._release:
                 if self._step_counter == self._rec_length or done:
                     self._store_plots()
-                    self._plot_done = True
                     time.sleep(1)
 
         return obs, reward, done, infos
