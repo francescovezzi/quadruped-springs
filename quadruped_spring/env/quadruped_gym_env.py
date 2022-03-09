@@ -785,19 +785,18 @@ class QuadrupedGymEnv(gym.Env):
 
 def test_env():
     env = QuadrupedGymEnv(
-        render=True,
+        render=False,
         on_rack=False,
         motor_control_mode="PD",
         action_repeat=100,
-        enable_springs=False
+        enable_springs=True
     )
-    sim_steps = 300
+    sim_steps = 600
     env = MonitorState(env, rec_length=sim_steps, paddle=10)
     obs = env.reset()
     for i in range(sim_steps):
         action = np.random.rand(12) * 2 - 1
         obs, reward, done, info = env.step(action)
-
     print('end')
 
 
