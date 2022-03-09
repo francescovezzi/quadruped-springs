@@ -132,6 +132,10 @@ class QuadrupedGymEnv(gym.Env):
         else:
             self._observation_noise_stdev = 0.01
 
+        if self._enable_springs:
+            self._robot_config.INIT_JOINT_ANGLES = self._robot_config.INIT_SPRING_ANGLES
+            self._robot_config.INIT_MOTOR_ANGLES = self._robot_config.INIT_JOINT_ANGLES
+
         # other bookkeeping
         self._num_bullet_solver_iterations = int(300 / action_repeat)
         self._env_step_counter = 0
