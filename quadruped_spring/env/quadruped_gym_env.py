@@ -2,6 +2,8 @@
 import inspect
 import os
 
+from quadruped_spring.utils.monitor_state import MonitorState
+
 # so we can import files
 currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 os.sys.path.insert(0, currentdir)
@@ -352,25 +354,6 @@ class QuadrupedGymEnv(gym.Env):
         )
 
         return r
-    
-    def _reward_jumping_on_place(self):
-        x, y, z = self.robot.GetBasePosition()
-        z_ref = 0.15
-        cost_height = (z - z_ref)**2
-        vel_linear = self.robot.GetBaseLinearVelocity()
-        vel_angular = self.robot.GetBaseAngularVelocity()
-        cost_vel_lin = np.dot(vel_linear,vel_linear)
-        cost_vel_ang = np.dot(vel_angular, vel_angular)
-        orientation = self.robot.GetBaseOrientation()
-        cost_orientation = np.dot(cost_orientation, cost_orientation)
-        dq = self.robot.GetMotorVelocities()
-        cost_dq = np.dot(dq,dq)
-        reward = - (cost_height +
-                    0.1*cost_orientation +
-                    0.1*cost_vel_ang +
-                    0.5*cost_vel_lin +
-                    0.2*dq)
-        return reward
 
     def _reward(self):
         """Get reward depending on task"""
@@ -378,8 +361,6 @@ class QuadrupedGymEnv(gym.Env):
             return self._reward_fwd_locomotion()
         elif self._TASK_ENV == "LR_COURSE_TASK":
             return self._reward_lr_course()
-        elif self._TASK_ENV == "JUMPING_ON_PLACE":
-            return self._reward_jumping_on_place()
         else:
             raise ValueError("This task mode not implemented yet.")
 
@@ -808,19 +789,16 @@ def test_env():
         on_rack=False,
         motor_control_mode="PD",
         action_repeat=100,
+        enable_springs=False
     )
-
+    sim_steps = 300
+    env = MonitorState(env, rec_length=sim_steps, paddle=10)
     obs = env.reset()
-    print("obs len", len(obs))
-    action_dim = env._action_dim
-    action_low = -np.ones(action_dim)
-    print("act len", action_dim)
-    action = action_low.copy()
-    while True:
-        pass
-        # action = 2*np.random.rand(action_dim)-1  # actions [-1, 1]
-        # action = np.zeros(action_dim)
+    for i in range(sim_steps):
+        action = np.random.rand(12) * 2 - 1
         obs, reward, done, info = env.step(action)
+
+    print('end')
 
 
 if __name__ == "__main__":

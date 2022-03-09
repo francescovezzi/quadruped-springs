@@ -32,12 +32,7 @@ class MonitorState(gym.Wrapper):
         self._plot_done = False
         self._h_min = 0.15
         self._tau_max = 33.5
-        # self._check()
-
-    def _check(self):  # cannot access to private attribute _is_render
-        if self.env._is_render:
-            raise ValueError("I think it's better if you disable rendering for wrapper MonitorState")
-
+       
     def _init_storage(self):
         self._length = self._rec_length // self._paddle
         self._time = np.zeros(self._length)
@@ -50,16 +45,20 @@ class MonitorState(gym.Wrapper):
         self._base_or = np.zeros((self._length, 3))
 
     def _compute_energy_spring(self, q):
-        q_bar = self._spring_rest_angles
-        k = self._spring_stiffness
-        U = 0.5 * k * (q - q_bar) ** 2
-        return U
+        if self.env._enable_springs:
+            q_bar = self._spring_rest_angles
+            k = self._spring_stiffness
+            U = 0.5 * k * (q - q_bar) ** 2
+            return U
+        else:
+            return np.zeros(12)
 
     def _get_data(self, i):
-        self._time[i] = self._step_counter * self._time_step
+        self._time[i] = self.env.get_sim_time()
         self._config[i, :] = self.quadruped.GetMotorAngles()
         self._motor_vel[i, :] = self.quadruped.GetMotorVelocities()
         self._motor_tau[i, :] = self.quadruped._applied_motor_torque
+        print(self.quadruped._applied_motor_torque)
         self._tau_spring[i, :] = self.quadruped._spring_torque
         self._energy_spring[i, :] = self._compute_energy_spring(self._config[i, :])
         self._base_pos[i, :] = self.quadruped.GetBasePosition()
@@ -134,15 +133,15 @@ class MonitorState(gym.Wrapper):
     def step(self, action):
 
         obs, reward, done, infos = self.env.step(action)
+        self._step_counter += 1
 
         if not self._plot_done:
             if self._step_counter % self._paddle == 0:
                 self._get_data(self._plot_counter)
                 time.sleep(0.05)
                 self._plot_counter += 1
-            self._step_counter += 1
 
-            if self._step_counter == self._rec_length and self._release:
+            if (self._step_counter == self._rec_length or done) and self._release:
                 self._store_plots()
                 self._plot_done = True
                 time.sleep(1)
