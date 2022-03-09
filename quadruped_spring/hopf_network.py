@@ -189,7 +189,7 @@ if __name__ == "__main__":
         motor_control_mode="TORQUE",
         add_noise=False,  # start in ideal conditions
         record_video=False,
-        enable_springs=True,
+        enable_springs=False,
     )
 
     # initialize Hopf Network, supply gait
@@ -290,7 +290,6 @@ if __name__ == "__main__":
 
         # send torques to robot and simulate TIME_STEP seconds
         env.step(action)
-        time.sleep(0.001)
 
         xs_list[j] = xs
         zs_list[j] = zs
