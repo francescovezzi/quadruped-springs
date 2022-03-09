@@ -555,7 +555,10 @@ class QuadrupedGymEnv(gym.Env):
         if self._is_render:
             self._pybullet_client.resetDebugVisualizerCamera(self._cam_dist, self._cam_yaw, self._cam_pitch, [0, 0, 0])
 
-        self._settle_robot()
+        if self._enable_springs:
+            self._turn_off_temporaneously_motors()
+        else:
+            self._settle_robot()
 
         # For the jumping task
         self._init_height = self.robot.GetBasePosition()[2]
@@ -565,7 +568,6 @@ class QuadrupedGymEnv(gym.Env):
         self._robot_orientation_take_off = self.robot.GetBaseOrientationRollPitchYaw()
         self._max_flight_time = 0.0
         self._max_forward_distance = 0.0
-        self._turn_off_temporaneously_motors()
 
         self._last_action = np.zeros(self._action_dim)
         if self._is_record_video:
