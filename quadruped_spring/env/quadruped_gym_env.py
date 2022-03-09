@@ -707,7 +707,7 @@ class QuadrupedGymEnv(gym.Env):
         # default rendering options
         self._render_width = 333
         self._render_height = 480
-        self._cam_dist = 3.5
+        self._cam_dist = 1.5
         self._cam_yaw = 20
         self._cam_pitch = -20
         # get rid of visualizer things
