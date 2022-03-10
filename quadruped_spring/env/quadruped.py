@@ -50,6 +50,11 @@ class Quadruped(object):
         self._accurate_motor_model_enabled = accurate_motor_model_enabled
         self._h = 0.03  # to control the height of the initial position respect config
         self._enable_springs = enable_springs
+        if self._enable_springs:
+            self._set_spring_default_config()
+            self._h = 0.03  # to control the height of the initial position respect config
+        else:
+            self._h = 0.0
 
         # motor control mode for accurate motor model, should only be torque or position at this low level
         if motor_control_mode == "PD":
@@ -75,6 +80,8 @@ class Quadruped(object):
             raise ValueError("Must use accurate motor model")
 
         self.Reset(reload_urdf=True)
+        print(self._GetDefaultInitPosition())
+        print(self.GetMotorAngles())
 
     ######################################################################################
     # Robot states and observation related
@@ -482,6 +489,13 @@ class Quadruped(object):
     def Reset_height(self, h):
         self._h = h
         self.Reset(reload_urdf=True)
+
+    def _set_spring_default_config(self):
+        """Make the default configuration equals to the one of springs in the rest configuration
+        """
+        self._robot_config.INIT_JOINT_ANGLES = np.array(self._robot_config.SPRINGS_REST_ANGLE * self._robot_config.NUM_LEGS)
+        self._robot_config.INIT_MOTOR_ANGLES = self._robot_config.INIT_JOINT_ANGLES
+            
 
     ######################################################################################
     # URDF related

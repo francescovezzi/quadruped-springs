@@ -189,6 +189,7 @@ if __name__ == "__main__":
         motor_control_mode="TORQUE",
         add_noise=False,  # start in ideal conditions
         record_video=False,
+        enable_springs=False
     )
 
     # initialize Hopf Network, supply gait
@@ -216,7 +217,7 @@ if __name__ == "__main__":
 
     cpg = HopfNetwork(gait="TROT", omega_swing=omega_swing, omega_stance=omega_stance, time_step=TIME_STEP)
 
-    T = 1.0
+    T = 20.0
     TEST_STEPS = int(T / (TIME_STEP))
     t = np.arange(TEST_STEPS) * TIME_STEP
 
