@@ -80,8 +80,6 @@ class Quadruped(object):
             raise ValueError("Must use accurate motor model")
 
         self.Reset(reload_urdf=True)
-        print(self._GetDefaultInitPosition())
-        print(self.GetMotorAngles())
 
     ######################################################################################
     # Robot states and observation related
