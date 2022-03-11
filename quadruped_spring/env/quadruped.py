@@ -489,11 +489,9 @@ class Quadruped(object):
         self.Reset(reload_urdf=True)
 
     def _set_spring_default_config(self):
-        """Make the default configuration equals to the one of springs in the rest configuration
-        """
+        """Make the default configuration equals to the one of springs in the rest configuration"""
         self._robot_config.INIT_JOINT_ANGLES = np.array(self._robot_config.SPRINGS_REST_ANGLE * self._robot_config.NUM_LEGS)
         self._robot_config.INIT_MOTOR_ANGLES = self._robot_config.INIT_JOINT_ANGLES
-            
 
     ######################################################################################
     # URDF related

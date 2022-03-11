@@ -189,7 +189,7 @@ if __name__ == "__main__":
         motor_control_mode="TORQUE",
         add_noise=False,  # start in ideal conditions
         record_video=False,
-        enable_springs=False
+        enable_springs=False,
     )
 
     # initialize Hopf Network, supply gait

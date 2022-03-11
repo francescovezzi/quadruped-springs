@@ -55,7 +55,7 @@ class VideoRec(gym.Wrapper):
         self._movie.release()
         self._video_done = True
         time.sleep(0.5)
-        
+
     def step(self, action):
         """
         :param action: ([float] or int) Action taken by the agent

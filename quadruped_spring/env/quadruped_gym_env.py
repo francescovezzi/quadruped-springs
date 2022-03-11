@@ -2,9 +2,6 @@
 import inspect
 import os
 
-from quadruped_spring.utils.monitor_state import MonitorState
-from quadruped_spring.utils.video_recording import VideoRec
-
 # so we can import files
 currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 os.sys.path.insert(0, currentdir)
@@ -76,7 +73,7 @@ class QuadrupedGymEnv(gym.Env):
         self,
         robot_config=robot_config,
         isRLGymInterface=True,
-        time_step=0.0001,
+        time_step=0.001,
         action_repeat=10,
         distance_weight=1e3,
         energy_weight=1e-4,  # 0.008,
@@ -89,8 +86,7 @@ class QuadrupedGymEnv(gym.Env):
         add_noise=True,
         enable_springs=False,
         test_env=False,  # NOT ALLOWED FOR TRAINING!
-        **kwargs
-    ):  # any extra arguments from legacy
+    ):
         """Initialize the quadruped gym environment.
 
         Args:
@@ -497,7 +493,7 @@ class QuadrupedGymEnv(gym.Env):
 
         if self._is_render:
             self._pybullet_client.resetDebugVisualizerCamera(self._cam_dist, self._cam_yaw, self._cam_pitch, [0, 0, 0])
-        
+
         if self._enable_springs:
             self._turn_off_temporaneously_motors()
         else:
@@ -786,12 +782,7 @@ class QuadrupedGymEnv(gym.Env):
 
 def test_env():
     env = QuadrupedGymEnv(
-        render=True,
-        on_rack=False,
-        motor_control_mode="PD",
-        action_repeat=100,
-        enable_springs=True,
-        add_noise=False
+        render=True, on_rack=False, motor_control_mode="PD", action_repeat=100, enable_springs=True, add_noise=False
     )
     sim_steps = 1000
     # env = VideoRec(env, video_length=600)
@@ -799,7 +790,7 @@ def test_env():
     for i in range(sim_steps):
         action = np.random.rand(12) * 2 - 1
         obs, reward, done, info = env.step(action)
-    print('end')
+    print("end")
 
 
 if __name__ == "__main__":

@@ -13,8 +13,8 @@ import matplotlib.pyplot as plt
 NUM_MOTORS = 12
 UPPER_ANGLE_JOINT = np.array([0.802851455917, 4.18879020479, -0.916297857297])
 LOWER_ANGLE_JOINT = np.array([-0.802851455917, -1.0471975512, -2.69653369433])
-JOINT_LIMITS = np.transpose([UPPER_ANGLE_JOINT,LOWER_ANGLE_JOINT])
-VELOCITY_LIMITS = [21.0 , -21.0]
+JOINT_LIMITS = np.transpose([UPPER_ANGLE_JOINT, LOWER_ANGLE_JOINT])
+VELOCITY_LIMITS = [21.0, -21.0]
 
 
 class MonitorState(gym.Wrapper):
@@ -35,7 +35,7 @@ class MonitorState(gym.Wrapper):
         self._plot_done = False
         self._h_min = 0.15
         self._tau_max = 33.5
-       
+
     def _init_storage(self):
         self._length = self._rec_length // self._paddle
         self._time = np.zeros(self._length)
@@ -66,7 +66,7 @@ class MonitorState(gym.Wrapper):
         self._base_pos[i, :] = self.quadruped.GetBasePosition()
         self._base_or[i, :] = self.quadruped.GetBaseOrientationRollPitchYaw()
 
-    def _plot12(self, state, title, ylabel, limits=([False]*3, [None]*3)):
+    def _plot12(self, state, title, ylabel, limits=([False] * 3, [None] * 3)):
         fig, axs = plt.subplots(nrows=3, sharex=True)
         titles = ["HIP", "THIGH", "CALF"]
         labels = ("FR", "FL", "RR", "RL", "up_limit", "low_limit")
@@ -82,8 +82,8 @@ class MonitorState(gym.Wrapper):
                 n_lines = np.shape(limits[1][i])[0]
                 limits_values = np.zeros((length, n_lines))
                 for line in range(n_lines):
-                    limits_values[:,line] = np.full(length,limits[1][i][line])
-                ax.plot(self._time, limits_values, '--')
+                    limits_values[:, line] = np.full(length, limits[1][i][line])
+                ax.plot(self._time, limits_values, "--")
             box = ax.get_position()
             ax.set_position([box.x0, box.y0, box.width * 0.8, box.height])
             ax.legend(labels, loc="center left", bbox_to_anchor=(1, 0.5))
@@ -91,7 +91,7 @@ class MonitorState(gym.Wrapper):
         # plt.show()
         return fig, axs
 
-    def _plot3(self, rpy, title, ylabels, limits=([False]*3, [None]*3)):
+    def _plot3(self, rpy, title, ylabels, limits=([False] * 3, [None] * 3)):
         fig, axs = plt.subplots(nrows=3, sharex=True)
         fig.suptitle(title)
         for i, (ax, ylab) in enumerate(zip(axs, ylabels)):
@@ -104,18 +104,18 @@ class MonitorState(gym.Wrapper):
                 n_lines = np.shape(limits[1])[0]
                 limits_values = np.zeros((length, n_lines))
                 for line in range(n_lines):
-                    limits_values[:,line] = np.full(length,limits[1][line])
-                ax.plot(self._time, limits_values, '--')
-                labels=[ylabels[i],'limit']
-                ax.legend(labels, loc='best')
+                    limits_values[:, line] = np.full(length, limits[1][line])
+                ax.plot(self._time, limits_values, "--")
+                labels = [ylabels[i], "limit"]
+                ax.legend(labels, loc="best")
         return fig, axs
 
     def _create_plots(self):
         tau_lim_aux = [self._tau_max, -self._tau_max]
-        tau_limits = ([True]*3, [tau_lim_aux,tau_lim_aux,tau_lim_aux])
+        tau_limits = ([True] * 3, [tau_lim_aux, tau_lim_aux, tau_lim_aux])
         pos_limits = ([False, False, True], [None, None, self._h_min])
-        joint_limits = ([True]*3, JOINT_LIMITS)
-        velocity_limits = ([True]*3, [VELOCITY_LIMITS,VELOCITY_LIMITS, VELOCITY_LIMITS])
+        joint_limits = ([True] * 3, JOINT_LIMITS)
+        velocity_limits = ([True] * 3, [VELOCITY_LIMITS, VELOCITY_LIMITS, VELOCITY_LIMITS])
         fig_config, _ = self._plot12(self._config, "configuration", "$q$", joint_limits)
         fig_rpy, _ = self._plot3(self._base_or, "Base Orientation", ["roll", "pitch", "yaw"])
         fig_pos, _ = self._plot3(self._base_pos, "Base Position", ["x", "y", "z"], pos_limits)
