@@ -65,8 +65,9 @@ UPPER_ANGLE_JOINT = np.array([0.2, DEFAULT_THIGH_ANGLE + 0.4, DEFAULT_CALF_ANGLE
 LOWER_ANGLE_JOINT = np.array([-0.2, DEFAULT_THIGH_ANGLE - 0.4, DEFAULT_CALF_ANGLE - 0.4] * NUM_LEGS)
 
 # torque and velocity limits
-TORQUE_LIMITS = np.asarray([33.5] * NUM_MOTORS)
-VELOCITY_LIMITS = np.asarray([21.0] * NUM_MOTORS)
+# Set to 0.4 * ... to limit max torque
+TORQUE_LIMITS = 1.0 * np.asarray([33.5] * NUM_MOTORS)
+VELOCITY_LIMITS = 1.0 * np.asarray([21.0] * NUM_MOTORS)
 
 # Sample Joint Gains
 MOTOR_KP = [100.0, 100.0, 100.0] * NUM_LEGS
@@ -128,5 +129,4 @@ SPRINGS_STIFFNESS = [K_HIP, K_CALF, K_THIGH]
 SPRINGS_DAMPING = [D_HIP, D_TIHGH, D_CALF]
 SPRINGS_REST_ANGLE = [DEFAULT_HIP_ANGLE, DEFAULT_THIGH_ANGLE, DEFAULT_CALF_ANGLE + 0.3]
 # Make the default configuration equals to the one of springs in the rest configuration
-# INIT_JOINT_ANGLES = np.array(SPRINGS_REST_ANGLE * NUM_LEGS)
-# INIT_MOTOR_ANGLES = INIT_JOINT_ANGLES
+INIT_SPRING_ANGLES = np.array(SPRINGS_REST_ANGLE * NUM_LEGS)

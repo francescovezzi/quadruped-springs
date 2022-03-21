@@ -197,14 +197,14 @@ if __name__ == "__main__":
     omega_swing = 16.0 * np.pi
     omega_stance = 4.0 * np.pi
     # WALK
-    # omega_swing = 24.0*np.pi
-    # omega_stance = 25.0*np.pi
+    # omega_swing = 24.0 * np.pi
+    # omega_stance = 25.0 * np.pi
     # PACE
-    # omega_swing = 20.0*np.pi
-    # omega_stance = 20.0*np.pi
+    # omega_swing = 20.0 * np.pi
+    # omega_stance = 20.0 * np.pi
     # BOUND
-    # omega_swing = 10.0*np.pi
-    # omega_stance = 40.0*np.pi
+    # omega_swing = 10.0 * np.pi
+    # omega_stance = 40.0 * np.pi
 
     d_swing = np.pi / omega_swing
     print("Swing duration: ", d_swing)
@@ -217,7 +217,7 @@ if __name__ == "__main__":
 
     cpg = HopfNetwork(gait="TROT", omega_swing=omega_swing, omega_stance=omega_stance, time_step=TIME_STEP)
 
-    T = 20.0
+    T = 10.0
     TEST_STEPS = int(T / (TIME_STEP))
     t = np.arange(TEST_STEPS) * TIME_STEP
 
@@ -294,6 +294,15 @@ if __name__ == "__main__":
         xs_list[j] = xs
         zs_list[j] = zs
 
+    # fig = plt.figure(1, figsize=(16, 6), dpi=200, facecolor="w", edgecolor="k")
+    # k = 1000
+    # plt.plot(xs_list[-k:, 0], zs_list[-k:, 0], "b", label=r"x vs z (des)")
+    # plt.plot(x_list[-k:, 0], z_list[-k:, 0], "b--", label=r"x vs z")
+    # plt.legend(loc="right")
+    # plt.xlabel(r"$x vs z$")
+    # plt.show()
+
+    exit()
     #####################################################
     # PLOTS
     #####################################################

@@ -1,7 +1,8 @@
 """
-Run stable baselines 3 on quadruped env 
+Run stable baselines 3 on quadruped env
 Check the documentation! https://stable-baselines3.readthedocs.io/en/master/
 """
+import inspect
 import os
 from datetime import datetime
 
