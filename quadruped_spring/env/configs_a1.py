@@ -65,7 +65,8 @@ UPPER_ANGLE_JOINT = np.array([0.2, DEFAULT_THIGH_ANGLE + 0.4, DEFAULT_CALF_ANGLE
 LOWER_ANGLE_JOINT = np.array([-0.2, DEFAULT_THIGH_ANGLE - 0.4, DEFAULT_CALF_ANGLE - 0.4] * NUM_LEGS)
 
 # torque and velocity limits
-TORQUE_LIMITS = 0.4 * np.asarray([33.5] * NUM_MOTORS)
+# Set to 0.4 * ... to limit max torque
+TORQUE_LIMITS = 1.0 * np.asarray([33.5] * NUM_MOTORS)
 VELOCITY_LIMITS = 1.0 * np.asarray([21.0] * NUM_MOTORS)
 
 # Sample Joint Gains
