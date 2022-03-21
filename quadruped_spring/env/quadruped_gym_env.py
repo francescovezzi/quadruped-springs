@@ -857,23 +857,15 @@ class QuadrupedGymEnv(gym.Env):
 
 def test_env():
     env = QuadrupedGymEnv(
-        render=True,
-        on_rack=False,
-        motor_control_mode="PD",
-        action_repeat=100,
+        render=True, on_rack=False, motor_control_mode="PD", action_repeat=100, enable_springs=True, add_noise=False
     )
-
+    sim_steps = 1000
+    # env = VideoRec(env, video_length=600)
     obs = env.reset()
-    print("obs len", len(obs))
-    action_dim = env._action_dim
-    action_low = -np.ones(action_dim)
-    print("act len", action_dim)
-    action = action_low.copy()
-    while True:
-        pass
-        # action = 2*np.random.rand(action_dim)-1  # actions [-1, 1]
-        # action = np.zeros(action_dim)
+    for i in range(sim_steps):
+        action = np.random.rand(12) * 2 - 1
         obs, reward, done, info = env.step(action)
+    print("end")
 
 
 if __name__ == "__main__":

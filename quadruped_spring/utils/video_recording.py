@@ -24,18 +24,14 @@ class VideoRec(gym.Wrapper):
         self._video_length = video_length
         self._step_counter = 0
         self._release = release
+        self._video_done = False
         self._init_video()
-        self._check()
-
-    def _check(self):
-        if self.env._is_render:
-            raise ValueError("I think it's better if you disable rendering for wrapper VideoRec")
 
     def _init_video(self):
         os.makedirs(self._path, exist_ok=True)
         img = self.env.render()
         img_height, img_width, _ = np.shape(img)
-        self._time_step = 0.001
+        self._time_step = self.env._time_step * self.env._action_repeat
         self._freq = int(1 / self._time_step)
         self._fourcc = cv2.VideoWriter_fourcc(*"mp4v")
         self._movie = cv2.VideoWriter(self._name, self._fourcc, self._freq, (img_width, img_height))
@@ -47,7 +43,6 @@ class VideoRec(gym.Wrapper):
         img = self.env.render()
         open_cv_image = cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)
         self._movie.write(open_cv_image)
-        self._step_counter += 1
 
     def reset(self):
         """
@@ -56,6 +51,11 @@ class VideoRec(gym.Wrapper):
         obs = self.env.reset()
         return obs
 
+    def _release_video(self):
+        self._movie.release()
+        self._video_done = True
+        time.sleep(0.5)
+
     def step(self, action):
         """
         :param action: ([float] or int) Action taken by the agent
@@ -63,16 +63,17 @@ class VideoRec(gym.Wrapper):
         """
 
         obs, reward, done, infos = self.env.step(action)
+        self._step_counter += 1
 
-        if self._step_counter < self._video_length:
-            self._increase_video()
-            time.sleep(0.005)
-        elif self._step_counter == self._video_length:
-            if self._release:
-                self._movie.release()
-                time.sleep(0.5)
-        else:
-            pass
+        if not self._video_done:
+            if self._step_counter < self._video_length:
+                self._increase_video()
+                time.sleep(0.005)
+            elif self._step_counter == self._video_length or done:
+                if self._release:
+                    self._release_video()
+            else:
+                pass
 
         return obs, reward, done, infos
 
