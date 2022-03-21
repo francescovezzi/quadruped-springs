@@ -294,6 +294,14 @@ if __name__ == "__main__":
         xs_list[j] = xs
         zs_list[j] = zs
 
+    # fig = plt.figure(1, figsize=(16, 6), dpi=200, facecolor="w", edgecolor="k")
+    # k = 1000
+    # plt.plot(xs_list[-k:, 0], zs_list[-k:, 0], "b", label=r"x vs z (des)")
+    # plt.plot(x_list[-k:, 0], z_list[-k:, 0], "b--", label=r"x vs z")
+    # plt.legend(loc="right")
+    # plt.xlabel(r"$x vs z$")
+    # plt.show()
+
     exit()
     #####################################################
     # PLOTS
