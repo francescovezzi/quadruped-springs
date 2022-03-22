@@ -44,6 +44,8 @@ VIDEO_LOG_DIRECTORY = "videos/" + datetime.datetime.now().strftime("vid-%Y-%m-%d
 #         Ideally we want to command A1 to run in any direction while expending minimal energy
 #         It is suggested to first train to run at 3 sample velocities (0.5 m/s, 1 m/s, 1.5 m/s)
 #         How will you construct your reward function?
+#     - "JUMPING_TASK"
+#         Sparse reward, maximizing flight time + bonus forward_distance + malus on crashing
 
 # Motor control modes:
 #   - "TORQUE":
@@ -492,21 +494,23 @@ class QuadrupedGymEnv(gym.Env):
             done = True
             # Malus for crashing
             # Optionally: no reward in case of crash
-            reward -= 0.08
+            if self._TASK_ENV=='JUMPING_TASK':
+                reward -= 0.08
 
         if self.get_sim_time() > self._MAX_EP_LEN:
             infos["TimeLimit.truncated"] = not done
             done = True
 
         if done:
-            reward += self._max_flight_time
-            max_distance = 0.2
-            # Normalize forward distance reward
-            reward += 0.1 * self._max_forward_distance / max_distance
-            if self._max_flight_time > 0 and not self._termination():
-                # Alive bonus proportional to the risk taken
-                reward += 0.1 * self._max_flight_time
-            # print(f"Forward dist: {self._max_forward_distance}")
+             if self._TASK_ENV=='JUMPING_TASK':
+                reward += self._max_flight_time
+                max_distance = 0.2
+                # Normalize forward distance reward
+                reward += 0.1 * self._max_forward_distance / max_distance
+                if self._max_flight_time > 0 and not self._termination():
+                    # Alive bonus proportional to the risk taken
+                    reward += 0.1 * self._max_flight_time
+                # print(f"Forward dist: {self._max_forward_distance}")
 
         return np.array(self._noisy_observation()), reward, done, infos
 
@@ -563,14 +567,15 @@ class QuadrupedGymEnv(gym.Env):
         else:
             self._settle_robot()
 
-        # For the jumping task
-        self._init_height = self.robot.GetBasePosition()[2]
-        self._all_feet_in_the_air = False
-        self._time_take_off = self.get_sim_time()
-        self._robot_pose_take_off = self.robot.GetBasePosition()
-        self._robot_orientation_take_off = self.robot.GetBaseOrientationRollPitchYaw()
-        self._max_flight_time = 0.0
-        self._max_forward_distance = 0.0
+        if self._TASK_ENV=='JUMPING_TASK':
+            # For the jumping task
+            self._init_height = self.robot.GetBasePosition()[2]
+            self._all_feet_in_the_air = False
+            self._time_take_off = self.get_sim_time()
+            self._robot_pose_take_off = self.robot.GetBasePosition()
+            self._robot_orientation_take_off = self.robot.GetBaseOrientationRollPitchYaw()
+            self._max_flight_time = 0.0
+            self._max_forward_distance = 0.0
 
         self._last_action = np.zeros(self._action_dim)
         if self._is_record_video:
