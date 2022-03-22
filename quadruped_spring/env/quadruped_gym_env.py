@@ -494,7 +494,7 @@ class QuadrupedGymEnv(gym.Env):
             done = True
             # Malus for crashing
             # Optionally: no reward in case of crash
-            if self._TASK_ENV=='JUMPING_TASK':
+            if self._TASK_ENV == "JUMPING_TASK":
                 reward -= 0.08
 
         if self.get_sim_time() > self._MAX_EP_LEN:
@@ -502,7 +502,7 @@ class QuadrupedGymEnv(gym.Env):
             done = True
 
         if done:
-             if self._TASK_ENV=='JUMPING_TASK':
+            if self._TASK_ENV == "JUMPING_TASK":
                 reward += self._max_flight_time
                 max_distance = 0.2
                 # Normalize forward distance reward
@@ -567,7 +567,7 @@ class QuadrupedGymEnv(gym.Env):
         else:
             self._settle_robot()
 
-        if self._TASK_ENV=='JUMPING_TASK':
+        if self._TASK_ENV == "JUMPING_TASK":
             # For the jumping task
             self._init_height = self.robot.GetBasePosition()[2]
             self._all_feet_in_the_air = False
