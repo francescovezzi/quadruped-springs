@@ -18,7 +18,7 @@ quad = p.loadURDF(urdf_file,
 num_joints = p.getNumJoints(quad)
 print('*****************************')
 print(f"joint numbers = {num_joints}")
-print('they are 21, one is the trunk, 4 are dummy joints for collision on shoulders, 4 are the feet')
+print(f'they are {num_joints}, one is the trunk/imu joint 4 are dummy joints for collision on shoulders, 4 are the feet')
 print('******************************')
 theta0 = np.pi/4
 p.setGravity(0, 0, -9.81)

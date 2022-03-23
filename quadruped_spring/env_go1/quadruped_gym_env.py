@@ -22,7 +22,7 @@ from gym import spaces
 from gym.utils import seeding
 
 random.seed(10)
-import configs_a1 as robot_config
+import configs_go1 as robot_config
 
 # quadruped and configs
 import quadruped
