@@ -107,7 +107,7 @@ JOINT_NAMES = (
 MOTOR_NAMES = JOINT_NAMES
 
 # standard across all robots
-_CHASSIS_NAME_PATTERN = re.compile(r"\w*chassis\w*")  # No link called chassis something
+_CHASSIS_NAME_PATTERN = re.compile(r"\w*floating_base\w*")
 _HIP_NAME_PATTERN = re.compile(r"\w+_hip_j\w+")
 _THIGH_NAME_PATTERN = re.compile(r"\w+_thigh_j\w+")
 _CALF_NAME_PATTERN = re.compile(r"\w+_calf_j\w+")
