@@ -88,6 +88,7 @@ class QuadrupedGymEnv(gym.Env):
         record_video=False,
         add_noise=True,
         enable_springs=False,
+        enable_action_interpolation=False,
         test_env=False,  # NOT ALLOWED FOR TRAINING!
     ):
         """Initialize the quadruped gym environment.
@@ -126,6 +127,7 @@ class QuadrupedGymEnv(gym.Env):
         self._is_record_video = record_video
         self._add_noise = add_noise
         self._enable_springs = enable_springs
+        self._enable_action_interpolation = enable_action_interpolation
         self._using_test_env = test_env
         if test_env:
             self._add_noise = True
@@ -410,6 +412,25 @@ class QuadrupedGymEnv(gym.Env):
     ######################################################################################
     # Step simulation, map policy network actions to joint commands, etc.
     ######################################################################################
+    def _InterpAction(self, action, substep_count):
+        """If enabled, interpolates between the current and previous actions.
+
+        Args:
+        action: current action.
+        substep_count: the step count should be between [0, self.__action_repeat).
+
+        Returns:
+        If interpolation is enabled, returns interpolated action depending on
+        the current action repeat substep.
+        """
+        if self._enable_action_interpolation and self._last_action is not None:
+            lerp = float(substep_count + 1) / self._action_repeat
+            proc_action = self._last_action + lerp * (action - self._last_action)
+        else:
+            proc_action = action
+
+        return proc_action
+
     def _transform_action_to_motor_command(self, action):
         """Map actions from RL (i.e. in [-1,1]) to joint commands based on motor_control_mode."""
         # clip actions to action bounds
@@ -467,8 +488,10 @@ class QuadrupedGymEnv(gym.Env):
         self._dt_motor_torques = []
         self._dt_motor_velocities = []
 
-        for _ in range(self._action_repeat):
+        for sub_step in range(self._action_repeat):
             if self._isRLGymInterface:
+                if self._enable_action_interpolation:
+                    curr_act = self._InterpAction(action, sub_step)
                 proc_action = self._transform_action_to_motor_command(curr_act)
             else:
                 proc_action = curr_act
@@ -862,13 +885,18 @@ class QuadrupedGymEnv(gym.Env):
 
 def test_env():
     env = QuadrupedGymEnv(
-        render=True, on_rack=False, motor_control_mode="PD", action_repeat=100, enable_springs=False, add_noise=False
+        render=True,
+        on_rack=False,
+        motor_control_mode="PD",
+        action_repeat=100,
+        enable_springs=False,
+        add_noise=False,
+        enable_action_interpolation=True,
     )
     sim_steps = 10000
     obs = env.reset()
     for i in range(sim_steps):
         action = np.random.rand(12) * 2 - 1
-        action = np.full(12, 0)
         obs, reward, done, info = env.step(action)
     print("end")
 
