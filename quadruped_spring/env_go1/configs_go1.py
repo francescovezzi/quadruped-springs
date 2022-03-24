@@ -130,3 +130,8 @@ SPRINGS_DAMPING = [D_HIP, D_TIHGH, D_CALF]
 SPRINGS_REST_ANGLE = [DEFAULT_HIP_ANGLE, DEFAULT_THIGH_ANGLE, DEFAULT_CALF_ANGLE + 0.3]
 # Make the default configuration equals to the one of springs in the rest configuration
 INIT_SPRING_ANGLES = np.array(SPRINGS_REST_ANGLE * NUM_LEGS)
+
+################################################
+# Parameters for smoothing action/torques
+################################################
+MAX_DELTA_TAU = 5
