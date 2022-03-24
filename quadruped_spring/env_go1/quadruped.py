@@ -10,7 +10,7 @@ import quadruped_motor
 
 
 class Quadruped(object):
-    """The quadruped class to simulate Unitree A1."""
+    """The quadruped class to simulate Unitree GO1."""
 
     def __init__(
         self,

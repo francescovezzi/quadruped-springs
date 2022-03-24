@@ -32,15 +32,36 @@
   <material name="white">
     <color rgba="1.0 1.0 1.0 1.0"/>
   </material>
+   <material name="gold" >
+    <color rgba="0.8588235294117647 0.7058823529411765 0.047058823529411764 1.0" />
+  </material>
 
-
+  <link name="base">
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <box size="0.001 0.001 0.001"/>
+      </geometry>
+    </visual>
+    <!-- added so pybullet doesn't complain and set mass 1 diagintertia 1-->
+    <inertial>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <mass value="0.00001"/>
+      <inertia ixx="1e-5" ixy="0" ixz="0" iyy="1e-5" iyz="0" izz="1e-5"/>
+    </inertial>
+  </link>
+  <joint name="floating_base" type="fixed">
+    <origin rpy="0 0 0" xyz="0 0 0"/>
+    <parent link="base"/>
+    <child link="trunk"/>
+  </joint>
   <link name="trunk">
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
         <mesh filename="package://go1_description/meshes/trunk.stl" scale="1 1 1"/>
       </geometry>
-      <!-- <material name="orange"/> -->
+      <material name="silver"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="0 0 0"/>
@@ -90,9 +111,9 @@
     <visual>
       <origin rpy="3.14159265359 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="package://go1_description/meshes/hip.stl" scale="1 1 1"/>
+        <mesh filename="package://go1_description/meshes/hip.obj" scale="1 1 1"/>
       </geometry>
-      <!-- <material name="orange"/> -->
+      <material name="silver"/>
     </visual>
     <collision>
       <origin rpy="1.57079632679 0 0" xyz="0 0 0"/>
@@ -106,25 +127,31 @@
       <inertia ixx="0.000374268192" ixy="-3.6844422e-05" ixz="-9.86754e-07" iyy="0.000635923669" iyz="1.172894e-06" izz="0.000457647394"/>
     </inertial>
   </link>
-  <joint name="FR_hip_fixed" type="fixed">
+  <!-- <joint name="FR_hip_fixed" type="fixed">
     <origin rpy="0 0 0" xyz="0 -0.08 0"/>
     <parent link="FR_hip"/>
     <child link="FR_thigh_shoulder"/>
-  </joint>
+  </joint> -->
   <!-- this link is only for collision -->
-  <link name="FR_thigh_shoulder">
+  <!--<link name="FR_thigh_shoulder">
     <inertial>
       <mass value="0.001"/>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
     </inertial>
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <box size="0.001 0.001 0.001"/>
+      </geometry>
+    </visual>
     <collision>
       <origin rpy="1.57079632679 0 0" xyz="0 0 0"/>
       <geometry>
         <cylinder length="0.032" radius="0.041"/>
       </geometry>
-    </collision>
-  </link>
+    </collision> 
+  </link> -->
   <joint name="FR_thigh_joint" type="revolute">
     <origin rpy="0 0 0" xyz="0 -0.08 0"/>
     <parent link="FR_hip"/>
@@ -136,9 +163,9 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="package://go1_description/meshes/thigh_mirror.stl" scale="1 1 1"/>
+        <mesh filename="package://go1_description/meshes/thigh_mirror.obj" scale="1 1 1"/>
       </geometry>
-      <!-- <material name="orange"/> -->
+      <material name="silver"/>
     </visual>
     <collision>
       <origin rpy="0 1.57079632679 0" xyz="0 0 -0.1065"/>
@@ -163,9 +190,9 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="package://go1_description/meshes/calf.stl" scale="1 1 1"/>
+        <mesh filename="package://go1_description/meshes/calf.obj" scale="1 1 1"/>
       </geometry>
-      <!-- <material name="orange"/> -->
+      <material name="silver"/>
     </visual>
     <collision>
       <origin rpy="0 1.57079632679 0" xyz="0 0 -0.1065"/>
@@ -190,7 +217,7 @@
       <geometry>
         <sphere radius="0.01"/>
       </geometry>
-      <!-- <material name="orange"/> -->
+      <material name="silver"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="0 0 0"/>
@@ -244,9 +271,9 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="package://go1_description/meshes/hip.stl" scale="1 1 1"/>
+        <mesh filename="package://go1_description/meshes/hip.obj" scale="1 1 1"/>
       </geometry>
-      <!-- <material name="orange"/> -->
+      <material name="silver"/>
     </visual>
     <collision>
       <origin rpy="1.57079632679 0 0" xyz="0 0 0"/>
@@ -260,25 +287,31 @@
       <inertia ixx="0.000374268192" ixy="3.6844422e-05" ixz="-9.86754e-07" iyy="0.000635923669" iyz="-1.172894e-06" izz="0.000457647394"/>
     </inertial>
   </link>
-  <joint name="FL_hip_fixed" type="fixed">
+  <!-- <joint name="FL_hip_fixed" type="fixed">
     <origin rpy="0 0 0" xyz="0 0.08 0"/>
     <parent link="FL_hip"/>
     <child link="FL_thigh_shoulder"/>
-  </joint>
+  </joint> -->
   <!-- this link is only for collision -->
-  <link name="FL_thigh_shoulder">
+  <!-- <link name="FL_thigh_shoulder">
     <inertial>
       <mass value="0.001"/>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
     </inertial>
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <box size="0.001 0.001 0.001"/>
+      </geometry>
+    </visual>
     <collision>
       <origin rpy="1.57079632679 0 0" xyz="0 0 0"/>
       <geometry>
         <cylinder length="0.032" radius="0.041"/>
       </geometry>
     </collision>
-  </link>
+  </link> -->
   <joint name="FL_thigh_joint" type="revolute">
     <origin rpy="0 0 0" xyz="0 0.08 0"/>
     <parent link="FL_hip"/>
@@ -290,9 +323,9 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="package://go1_description/meshes/thigh.stl" scale="1 1 1"/>
+        <mesh filename="package://go1_description/meshes/thigh.obj" scale="1 1 1"/>
       </geometry>
-      <!-- <material name="orange"/> -->
+     <material name="silver"/>
     </visual>
     <collision>
       <origin rpy="0 1.57079632679 0" xyz="0 0 -0.1065"/>
@@ -317,9 +350,9 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="package://go1_description/meshes/calf.stl" scale="1 1 1"/>
+        <mesh filename="package://go1_description/meshes/calf.obj" scale="1 1 1"/>
       </geometry>
-      <!-- <material name="orange"/> -->
+      <material name="silver"/>
     </visual>
     <collision>
       <origin rpy="0 1.57079632679 0" xyz="0 0 -0.1065"/>
@@ -344,7 +377,7 @@
       <geometry>
         <sphere radius="0.01"/>
       </geometry>
-      <!-- <material name="orange"/> -->
+    <material name="silver"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="0 0 0"/>
@@ -398,9 +431,9 @@
     <visual>
       <origin rpy="3.14159265359 3.14159265359 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="package://go1_description/meshes/hip.stl" scale="1 1 1"/>
+        <mesh filename="package://go1_description/meshes/hip.obj" scale="1 1 1"/>
       </geometry>
-      <!-- <material name="orange"/> -->
+      <material name="silver"/>
     </visual>
     <collision>
       <origin rpy="1.57079632679 0 0" xyz="0 0 0"/>
@@ -414,25 +447,31 @@
       <inertia ixx="0.000374268192" ixy="3.6844422e-05" ixz="9.86754e-07" iyy="0.000635923669" iyz="1.172894e-06" izz="0.000457647394"/>
     </inertial>
   </link>
-  <joint name="RR_hip_fixed" type="fixed">
+  <!-- <joint name="RR_hip_fixed" type="fixed">
     <origin rpy="0 0 0" xyz="0 -0.08 0"/>
     <parent link="RR_hip"/>
     <child link="RR_thigh_shoulder"/>
-  </joint>
+  </joint> -->
   <!-- this link is only for collision -->
-  <link name="RR_thigh_shoulder">
+  <!-- <link name="RR_thigh_shoulder">
     <inertial>
       <mass value="0.001"/>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
     </inertial>
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <box size="0.001 0.001 0.001"/>
+      </geometry>
+    </visual>
     <collision>
       <origin rpy="1.57079632679 0 0" xyz="0 0 0"/>
       <geometry>
         <cylinder length="0.032" radius="0.041"/>
       </geometry>
-    </collision>
-  </link>
+    </collision>+
+  </link> -->
   <joint name="RR_thigh_joint" type="revolute">
     <origin rpy="0 0 0" xyz="0 -0.08 0"/>
     <parent link="RR_hip"/>
@@ -444,9 +483,9 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="package://go1_description/meshes/thigh_mirror.stl" scale="1 1 1"/>
+        <mesh filename="package://go1_description/meshes/thigh_mirror.obj" scale="1 1 1"/>
       </geometry>
-      <!-- <material name="orange"/> -->
+     <material name="silver"/>
     </visual>
     <collision>
       <origin rpy="0 1.57079632679 0" xyz="0 0 -0.1065"/>
@@ -471,9 +510,9 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="package://go1_description/meshes/calf.stl" scale="1 1 1"/>
+        <mesh filename="package://go1_description/meshes/calf.obj" scale="1 1 1"/>
       </geometry>
-      <!-- <material name="orange"/> -->
+      <material name="silver"/>
     </visual>
     <collision>
       <origin rpy="0 1.57079632679 0" xyz="0 0 -0.1065"/>
@@ -498,7 +537,7 @@
       <geometry>
         <sphere radius="0.01"/>
       </geometry>
-      <!-- <material name="orange"/> -->
+      <material name="silver"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="0 0 0"/>
@@ -552,9 +591,9 @@
     <visual>
       <origin rpy="0 3.14159265359 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="package://go1_description/meshes/hip.stl" scale="1 1 1"/>
+        <mesh filename="package://go1_description/meshes/hip.obj" scale="1 1 1"/>
       </geometry>
-      <!-- <material name="orange"/> -->
+      <material name="silver"/>
     </visual>
     <collision>
       <origin rpy="1.57079632679 0 0" xyz="0 0 0"/>
@@ -568,25 +607,31 @@
       <inertia ixx="0.000374268192" ixy="-3.6844422e-05" ixz="9.86754e-07" iyy="0.000635923669" iyz="-1.172894e-06" izz="0.000457647394"/>
     </inertial>
   </link>
-  <joint name="RL_hip_fixed" type="fixed">
+  <!-- <joint name="RL_hip_fixed" type="fixed">
     <origin rpy="0 0 0" xyz="0 0.08 0"/>
     <parent link="RL_hip"/>
     <child link="RL_thigh_shoulder"/>
-  </joint>
+  </joint> -->
   <!-- this link is only for collision -->
-  <link name="RL_thigh_shoulder">
+  <!-- <link name="RL_thigh_shoulder">
     <inertial>
       <mass value="0.001"/>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
     </inertial>
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <box size="0.001 0.001 0.001"/>
+      </geometry>
+    </visual>
     <collision>
       <origin rpy="1.57079632679 0 0" xyz="0 0 0"/>
       <geometry>
         <cylinder length="0.032" radius="0.041"/>
       </geometry>
     </collision>
-  </link>
+  </link> -->
   <joint name="RL_thigh_joint" type="revolute">
     <origin rpy="0 0 0" xyz="0 0.08 0"/>
     <parent link="RL_hip"/>
@@ -598,9 +643,9 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="package://go1_description/meshes/thigh.stl" scale="1 1 1"/>
+        <mesh filename="package://go1_description/meshes/thigh.obj" scale="1 1 1"/>
       </geometry>
-      <!-- <material name="orange"/> -->
+     <material name="silver"/>
     </visual>
     <collision>
       <origin rpy="0 1.57079632679 0" xyz="0 0 -0.1065"/>
@@ -625,9 +670,9 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="package://go1_description/meshes/calf.stl" scale="1 1 1"/>
+        <mesh filename="package://go1_description/meshes/calf.obj" scale="1 1 1"/>
       </geometry>
-      <!-- <material name="orange"/> -->
+      <material name="silver"/>
     </visual>
     <collision>
       <origin rpy="0 1.57079632679 0" xyz="0 0 -0.1065"/>
@@ -652,7 +697,7 @@
       <geometry>
         <sphere radius="0.01"/>
       </geometry>
-      <!-- <material name="orange"/> -->
+      <material name="silver"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="0 0 0"/>

@@ -41,7 +41,7 @@ VIDEO_LOG_DIRECTORY = "videos/" + datetime.datetime.now().strftime("vid-%Y-%m-%d
 #         reward forward progress only
 #     - "LR_COURSE_TASK"
 #         [TODO: what should you train for?]
-#         Ideally we want to command A1 to run in any direction while expending minimal energy
+#         Ideally we want to command GO1 to run in any direction while expending minimal energy
 #         It is suggested to first train to run at 3 sample velocities (0.5 m/s, 1 m/s, 1.5 m/s)
 #         How will you construct your reward function?
 #     - "JUMPING_TASK"
@@ -63,7 +63,7 @@ MAX_FWD_VELOCITY = 5  # to avoid exploiting simulator dynamics, cap max reward f
 
 
 class QuadrupedGymEnv(gym.Env):
-    """The gym environment for a quadruped {Unitree A1}.
+    """The gym environment for a quadruped {Unitree GO1}.
 
     It simulates the locomotion of a quadrupedal robot.
     The state space, action space, and reward functions can be chosen with:
@@ -862,12 +862,13 @@ class QuadrupedGymEnv(gym.Env):
 
 def test_env():
     env = QuadrupedGymEnv(
-        render=True, on_rack=False, motor_control_mode="PD", action_repeat=100, enable_springs=True, add_noise=False
+        render=True, on_rack=False, motor_control_mode="PD", action_repeat=100, enable_springs=False, add_noise=False
     )
-    sim_steps = 1000
+    sim_steps = 10000
     obs = env.reset()
     for i in range(sim_steps):
         action = np.random.rand(12) * 2 - 1
+        action = np.full(12, 0)
         obs, reward, done, info = env.step(action)
     print("end")
 
