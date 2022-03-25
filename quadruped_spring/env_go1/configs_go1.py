@@ -73,18 +73,15 @@ VELOCITY_LIMITS = 1.0 * np.asarray([30.1, 30.1, 30.1] * NUM_LEGS)
 MOTOR_KP = [100.0, 100.0, 100.0] * NUM_LEGS
 MOTOR_KD = [1.0, 2.0, 2.0] * NUM_LEGS
 
-# MOTOR_KP = [55, 55, 55] * NUM_LEGS
-# MOTOR_KD = [0.8, 0.8, 0.8] * NUM_LEGS
-
-MOTOR_KP = [100.0, 100.0, 100.0] * NUM_LEGS
-MOTOR_KD = [1.0, 3.0, 3.0] * NUM_LEGS
+MOTOR_KP = [55, 55, 55] * NUM_LEGS
+MOTOR_KD = [0.8, 0.8, 0.8] * NUM_LEGS
 
 # Sample Cartesian Gains
 kpCartesian = np.diag([500, 500, 500])
 kdCartesian = np.diag([10, 10, 10])
 
-kpCartesian = np.diag([700, 700, 700])
-kdCartesian = np.diag([12, 12, 12])
+# kpCartesian = np.diag([700, 700, 700])
+# kdCartesian = np.diag([12, 12, 12])
 
 ##################################################################################
 # Hip, thigh, calf strings, naming conventions from URDF (don't modify)
