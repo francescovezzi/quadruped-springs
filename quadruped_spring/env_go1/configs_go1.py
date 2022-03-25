@@ -57,12 +57,12 @@ NOMINAL_FOOT_POS_LEG_FRAME = np.array(
 # Actuation limits/gains, position, and velocity limits
 ##################################################################################
 # joint limits on real system
-UPPER_ANGLE_JOINT = np.array([1.0471975512, 2.96705972839, -0.837758040957] * NUM_LEGS)
-LOWER_ANGLE_JOINT = np.array([-1.0471975512 - 0.663225115758, -2.72271363311] * NUM_LEGS)
+REAL_UPPER_ANGLE_JOINT = np.array([1.0471975512, 2.96705972839, -0.837758040957] * NUM_LEGS)
+REAL_LOWER_ANGLE_JOINT = np.array([-1.0471975512 - 0.663225115758, -2.72271363311] * NUM_LEGS)
 
 # modified range in simulation (min observation space for RL)
-UPPER_ANGLE_JOINT = np.array([0.2, DEFAULT_THIGH_ANGLE + 0.4, DEFAULT_CALF_ANGLE + 0.4] * NUM_LEGS)
-LOWER_ANGLE_JOINT = np.array([-0.2, DEFAULT_THIGH_ANGLE - 0.4, DEFAULT_CALF_ANGLE - 0.4] * NUM_LEGS)
+RL_UPPER_ANGLE_JOINT = np.array([0.2, DEFAULT_THIGH_ANGLE + 0.4, DEFAULT_CALF_ANGLE + 0.4] * NUM_LEGS)
+RL_LOWER_ANGLE_JOINT = np.array([-0.2, DEFAULT_THIGH_ANGLE - 0.4, DEFAULT_CALF_ANGLE - 0.4] * NUM_LEGS)
 
 # torque and velocity limits
 # Set to 0.4 * ... to limit max torque
