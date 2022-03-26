@@ -496,7 +496,7 @@ class QuadrupedGymEnv(gym.Env):
         """Step forward the simulation, given the action."""
         curr_act = action.copy()
         if self._enable_action_filter:
-            proc_action = self._FilterAction(proc_action)
+            curr_act = self._FilterAction(curr_act)
         # save motor torques and velocities to compute power in reward function
         self._dt_motor_torques = []
         self._dt_motor_velocities = []
@@ -968,19 +968,19 @@ class QuadrupedGymEnv(gym.Env):
 def test_env():
     env = QuadrupedGymEnv(
         render=True,
-        on_rack=False,
+        on_rack=True,
         motor_control_mode="CARTESIAN_PD",
         action_repeat=10,
         enable_springs=False,
         add_noise=False,
         enable_action_interpolation=False,
-        enable_action_filter=False,
+        enable_action_filter=True,
     )
     sim_steps = 1000
     obs = env.reset()
     for i in range(sim_steps):
-        # action = np.random.rand(12) * 2 - 1
-        action = np.full(12,0)
+        action = np.random.rand(12) * 2 - 1
+        # action = np.full(12,0)
         obs, reward, done, info = env.step(action)
     print("end")
 
