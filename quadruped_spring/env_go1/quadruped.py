@@ -48,13 +48,7 @@ class Quadruped(object):
         self._applied_motor_torque = np.zeros(self.num_motors)
         self._spring_torque = np.zeros(self.num_motors)
         self._accurate_motor_model_enabled = accurate_motor_model_enabled
-        self._h = 0.03  # to control the height of the initial position respect config
         self._enable_springs = enable_springs
-        if self._enable_springs:
-            self._set_spring_default_config()
-            self._h = 0.03  # to control the height of the initial position respect config
-        else:
-            self._h = 0.0
 
         # motor control mode for accurate motor model, should only be torque or position at this low level
         if motor_control_mode == "PD":
@@ -98,8 +92,7 @@ class Quadruped(object):
         if self._on_rack:
             return self._robot_config.INIT_RACK_POSITION
         else:
-            return [x + y for x, y in zip(self._robot_config.INIT_POSITION, [0, 0, self._h])]
-            # return self._robot_config.INIT_POSITION + [0,0,self._h]
+            return self._robot_config.INIT_POSITION
 
     def _GetDefaultInitOrientation(self):
         z = 0.2 * (np.random.uniform() - 0.5)
@@ -484,14 +477,6 @@ class Quadruped(object):
             angle = self._robot_config.INIT_MOTOR_ANGLES[i] + self._robot_config.JOINT_OFFSETS[i]
             self._pybullet_client.resetJointState(self.quadruped, jointId, angle, targetVelocity=0)
 
-    def Reset_height(self, h):
-        self._h = h
-        self.Reset(reload_urdf=True)
-
-    def _set_spring_default_config(self):
-        """Make the default configuration equals to the one of springs in the rest configuration"""
-        self._robot_config.INIT_JOINT_ANGLES = np.array(self._robot_config.SPRINGS_REST_ANGLE * self._robot_config.NUM_LEGS)
-        self._robot_config.INIT_MOTOR_ANGLES = self._robot_config.INIT_JOINT_ANGLES
 
     ######################################################################################
     # URDF related
