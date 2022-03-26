@@ -92,6 +92,7 @@ class QuadrupedGymEnv(gym.Env):
         enable_springs=False,
         enable_action_interpolation=False,
         enable_action_filter=False,
+        enable_action_clipping=False,
         test_env=False,  # NOT ALLOWED FOR TRAINING!
     ):
         """Initialize the quadruped gym environment.
@@ -114,11 +115,13 @@ class QuadrupedGymEnv(gym.Env):
           record_video: Whether to record a video of each trial.
           add_noise: vary coefficient of friction
           test_env: add random terrain
-          enable_springs: Whether to springs or not
+          enable_springs: Whether to enable springs or not
           enable_action_interpolation: Whether to interpolate the current action
             with the previous action in order to produce smoother motions
           enable_action_filter: Boolean specifying if a lowpass filter should be
             used to smooth actions.
+          enable_action_clipping: Boolean specifying if motor commands should be
+            clipped or not. It's not implemented for pure torque control.
         """
         self._robot_config = robot_config
         self._isRLGymInterface = isRLGymInterface
@@ -137,6 +140,7 @@ class QuadrupedGymEnv(gym.Env):
         self._enable_springs = enable_springs
         self._enable_action_interpolation = enable_action_interpolation
         self._enable_action_filter = enable_action_filter
+        self._enable_action_clipping = enable_action_clipping
         self._using_test_env = test_env
         if test_env:
             self._add_noise = True
@@ -446,6 +450,8 @@ class QuadrupedGymEnv(gym.Env):
         if self._motor_control_mode == "PD":
             action = self._scale_helper(action, self._robot_config.RL_LOWER_ANGLE_JOINT, self._robot_config.RL_UPPER_ANGLE_JOINT)
             action = np.clip(action, self._robot_config.RL_LOWER_ANGLE_JOINT, self._robot_config.RL_UPPER_ANGLE_JOINT)
+            if self._enable_action_clipping:
+                action = self._ClipMotorCommands(action)
         elif self._motor_control_mode == "CARTESIAN_PD":
             action = self.ScaleActionToCartesianPos(action)
         else:
@@ -481,12 +487,41 @@ class QuadrupedGymEnv(gym.Env):
             J, xyz = self.robot.ComputeJacobianAndPosition(i)
             # Get current foot velocity in leg frame (Equation 2)
             dxyz = J @ dq[3 * i : 3 * (i + 1)]
-
-            F_foot = -kpCartesian @ (xyz - des_foot_pos[3 * i : 3 * (i + 1)]) - kdCartesian @ dxyz
+            delta_foot_pos = xyz - des_foot_pos[3 * i : 3 * (i + 1)]
+            
+             # clamp the motor command by the joint limit, in case weired things happens
+            if self._enable_action_clipping:
+                delta_foot_pos = np.clip(delta_foot_pos,
+                                        -self._robot_config.MAX_CARTESIAN_FOOT_POS_CHANGE_PER_STEP,
+                                        self._robot_config.MAX_CARTESIAN_FOOT_POS_CHANGE_PER_STEP)
+            
+            F_foot = -kpCartesian @ delta_foot_pos - kdCartesian @ dxyz
             # Calculate torque contribution from Cartesian PD (Equation 5) [Make sure you are using matrix multiplications]
             tau = J.T @ F_foot
             action[3 * i : 3 * (i + 1)] = tau  # TODO: add white noise
         return action
+
+    def _ClipMotorCommands(self, des_angles):
+        """Clips motor commands.
+
+        Args:
+        des_angles: np.array. They are the desired motor angles (for PD control only)
+
+        Returns:
+        Clipped motor commands.
+        """
+
+        # clamp the motor command by the joint limit, in case weired things happens
+        if self._motor_control_mode == 'PD':
+            max_angle_change = self._robot_config.MAX_MOTOR_ANGLE_CHANGE_PER_STEP
+            current_motor_angles = self.robot.GetMotorAngles()
+            motor_commands = np.clip(des_angles,
+                                    current_motor_angles - max_angle_change,
+                                    current_motor_angles + max_angle_change)
+            return motor_commands
+        else:
+            raise ValueError(f'Clipping angles available for PD control only, not in {self._motor_control_mode}')
+
 
     def step(self, action):
         """Step forward the simulation, given the action."""
@@ -964,13 +999,14 @@ class QuadrupedGymEnv(gym.Env):
 def test_env():
     env = QuadrupedGymEnv(
         render=True,
-        on_rack=True,
-        motor_control_mode="CARTESIAN_PD",
+        on_rack=False,
+        motor_control_mode="PD",
         action_repeat=10,
         enable_springs=False,
         add_noise=False,
         enable_action_interpolation=False,
-        enable_action_filter=True,
+        enable_action_filter=False,
+        enable_action_clipping=False,
     )
     sim_steps = 1000
     obs = env.reset()

@@ -132,5 +132,5 @@ SPRINGS_REST_ANGLE = [DEFAULT_HIP_ANGLE, DEFAULT_THIGH_ANGLE, DEFAULT_CALF_ANGLE
 ################################################
 # Parameters for actions clipping
 ################################################
-MAX_CHANGE_ANGLE_PER_STEP = 0.2
-MAX_CHANGE_CARTESIAN_FOOT_POS_PER_STEP = [0.1, 0.02, 0.08]
+MAX_MOTOR_ANGLE_CHANGE_PER_STEP = 0.2
+MAX_CARTESIAN_FOOT_POS_CHANGE_PER_STEP = np.array([0.1, 0.02, 0.08])
