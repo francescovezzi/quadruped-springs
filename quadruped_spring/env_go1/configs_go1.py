@@ -130,6 +130,7 @@ SPRINGS_DAMPING = [D_HIP, D_TIHGH, D_CALF]
 SPRINGS_REST_ANGLE = [DEFAULT_HIP_ANGLE, DEFAULT_THIGH_ANGLE, DEFAULT_CALF_ANGLE + 0.3]
 
 ################################################
-# Parameters for smoothing action/torques
+# Parameters for actions clipping
 ################################################
-MAX_DELTA_TAU = 5
+MAX_CHANGE_ANGLE_PER_STEP = 0.2
+MAX_CHANGE_CARTESIAN_FOOT_POS_PER_STEP = [0.1, 0.02, 0.08]
