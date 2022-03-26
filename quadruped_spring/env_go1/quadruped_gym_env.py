@@ -27,6 +27,8 @@ import configs_go1 as robot_config
 # quadruped and configs
 import quadruped
 from scipy.spatial.transform import Rotation as R
+from quadruped_spring.utils import action_filter
+
 
 ACTION_EPS = 0.01
 OBSERVATION_EPS = 0.01
@@ -89,6 +91,7 @@ class QuadrupedGymEnv(gym.Env):
         add_noise=True,
         enable_springs=False,
         enable_action_interpolation=False,
+        enable_action_filter=False,
         test_env=False,  # NOT ALLOWED FOR TRAINING!
     ):
         """Initialize the quadruped gym environment.
@@ -111,6 +114,11 @@ class QuadrupedGymEnv(gym.Env):
           record_video: Whether to record a video of each trial.
           add_noise: vary coefficient of friction
           test_env: add random terrain
+          enable_springs: Whether to springs or not
+          enable_action_interpolation: Whether to interpolate the current action
+            with the previous action in order to produce smoother motions
+          enable_action_filter: Boolean specifying if a lowpass filter should be
+            used to smooth actions.
         """
         self._robot_config = robot_config
         self._isRLGymInterface = isRLGymInterface
@@ -128,6 +136,7 @@ class QuadrupedGymEnv(gym.Env):
         self._add_noise = add_noise
         self._enable_springs = enable_springs
         self._enable_action_interpolation = enable_action_interpolation
+        self._enable_action_filter = enable_action_filter
         self._using_test_env = test_env
         if test_env:
             self._add_noise = True
@@ -155,6 +164,9 @@ class QuadrupedGymEnv(gym.Env):
         else:
             self._pybullet_client = bc.BulletClient()
         self._configure_visualizer()
+        
+        if self._enable_action_filter:
+            self._action_filter = self._BuildActionFilter()
 
         self.videoLogID = None
         self.seed()
@@ -167,18 +179,18 @@ class QuadrupedGymEnv(gym.Env):
         """Set up observation space for RL."""
         if self._observation_space_mode == "DEFAULT":
             observation_high = (
-                np.concatenate((self._robot_config.UPPER_ANGLE_JOINT, self._robot_config.VELOCITY_LIMITS, np.array([1.0] * 4)))
+                np.concatenate((self._robot_config.RL_UPPER_ANGLE_JOINT, self._robot_config.VELOCITY_LIMITS, np.array([1.0] * 4)))
                 + OBSERVATION_EPS
             )
             observation_low = (
                 np.concatenate(
-                    (self._robot_config.LOWER_ANGLE_JOINT, -self._robot_config.VELOCITY_LIMITS, np.array([-1.0] * 4))
+                    (self._robot_config.RL_LOWER_ANGLE_JOINT, -self._robot_config.VELOCITY_LIMITS, np.array([-1.0] * 4))
                 )
                 - OBSERVATION_EPS
             )
         elif self._observation_space_mode == "LR_COURSE_OBS":
-            q_high = self._robot_config.UPPER_ANGLE_JOINT
-            q_low = self._robot_config.LOWER_ANGLE_JOINT
+            q_high = self._robot_config.RL_UPPER_ANGLE_JOINT
+            q_low = self._robot_config.RL_LOWER_ANGLE_JOINT
             dq_high = self._robot_config.VELOCITY_LIMITS
             dq_low = -self._robot_config.VELOCITY_LIMITS
             vel_high = np.array([MAX_FWD_VELOCITY] * 3)
@@ -407,7 +419,7 @@ class QuadrupedGymEnv(gym.Env):
         elif self._TASK_ENV == "JUMPING_TASK":
             return self._reward_jumping()
         else:
-            raise ValueError("This task mode not implemented yet.")
+            raise ValueError("This task mode is not implemented yet.")
 
     ######################################################################################
     # Step simulation, map policy network actions to joint commands, etc.
@@ -436,14 +448,14 @@ class QuadrupedGymEnv(gym.Env):
         # clip actions to action bounds
         action = np.clip(action, -self._action_bound - ACTION_EPS, self._action_bound + ACTION_EPS)
         if self._motor_control_mode == "PD":
-            action = self._scale_helper(action, self._robot_config.LOWER_ANGLE_JOINT, self._robot_config.UPPER_ANGLE_JOINT)
-            action = np.clip(action, self._robot_config.LOWER_ANGLE_JOINT, self._robot_config.UPPER_ANGLE_JOINT)
+            action = self._scale_helper(action, self._robot_config.RL_LOWER_ANGLE_JOINT, self._robot_config.RL_UPPER_ANGLE_JOINT)
+            action = np.clip(action, self._robot_config.RL_LOWER_ANGLE_JOINT, self._robot_config.RL_UPPER_ANGLE_JOINT)
         elif self._motor_control_mode == "CARTESIAN_PD":
             action = self.ScaleActionToCartesianPos(action)
         else:
             raise ValueError("RL motor control mode" + self._motor_control_mode + "not implemented yet.")
         return action
-
+    
     def _scale_helper(self, action, lower_lim, upper_lim):
         """Helper to linearly scale from [-1,1] to lower/upper limits."""
         new_a = lower_lim + 0.5 * (action + 1) * (upper_lim - lower_lim)
@@ -461,7 +473,6 @@ class QuadrupedGymEnv(gym.Env):
         scale_array = np.array([0.2, 0.05, 0.15] * 4)  # [0.1, 0.05, 0.08]*4)
         # add to nominal foot position in leg frame (what are the final ranges?)
         des_foot_pos = self._robot_config.NOMINAL_FOOT_POS_LEG_FRAME + scale_array * u
-
         # get Cartesian kp and kd gains (can be modified)
         kpCartesian = self._robot_config.kpCartesian
         kdCartesian = self._robot_config.kdCartesian
@@ -484,10 +495,11 @@ class QuadrupedGymEnv(gym.Env):
     def step(self, action):
         """Step forward the simulation, given the action."""
         curr_act = action.copy()
+        if self._enable_action_filter:
+            proc_action = self._FilterAction(proc_action)
         # save motor torques and velocities to compute power in reward function
         self._dt_motor_torques = []
         self._dt_motor_velocities = []
-
         for sub_step in range(self._action_repeat):
             if self._isRLGymInterface:
                 if self._enable_action_interpolation:
@@ -537,6 +549,43 @@ class QuadrupedGymEnv(gym.Env):
 
         return np.array(self._noisy_observation()), reward, done, infos
 
+###################################################
+# Filtering to smooth actions
+###################################################
+    def _BuildActionFilter(self):
+        sampling_rate = 1 / (self._time_step * self._action_repeat)
+        num_joints = self._action_dim
+        a_filter = action_filter.ActionFilterButter(sampling_rate=sampling_rate,
+                                                    num_joints=num_joints)
+        return a_filter
+
+    def _ResetActionFilter(self):
+        self._action_filter.reset()
+
+    def _FilterAction(self, action):
+        filtered_action = self._action_filter.filter(action)
+        return filtered_action
+    
+    def _initFilter(self):
+        # initialize the filter history, since resetting the filter will fill
+        # the history with zeros and this can cause sudden movements at the start
+        # of each episode
+        default_action = self._compute_first_actions()
+        self._action_filter.init_history(default_action)
+    
+    def _compute_first_actions(self):
+        if self._motor_control_mode == 'PD':
+            init_angles = self._robot_config.INIT_MOTOR_ANGLES + self._robot_config.JOINT_OFFSETS
+            default_action = self._map_command_to_action(init_angles)
+        elif self._motor_control_mode == 'CARTESIAN_PD':
+            # go toward NOMINAL_FOOT_POS_LEG_FRAME
+            default_action = np.array([0, 0, 0]*self._robot_config.NUM_LEGS) 
+        else:
+            raise ValueError(f'The motor control mode {self._motor_control_mode} is not implemented for RL')
+        
+        return np.clip(default_action, -1, 1)
+        
+
     ######################################################################################
     # Reset
     ######################################################################################
@@ -584,11 +633,16 @@ class QuadrupedGymEnv(gym.Env):
 
         if self._is_render:
             self._pybullet_client.resetDebugVisualizerCamera(self._cam_dist, self._cam_yaw, self._cam_pitch, [0, 0, 0])
-
-        if self._enable_springs:
-            self._turn_off_temporaneously_motors()
-        else:
-            self._settle_robot()
+        
+        if self._enable_action_filter:
+            self._ResetActionFilter()
+            self._initFilter()
+            
+        # if self._enable_springs:
+        #     self._turn_off_temporaneously_motors()
+        # else:
+        #     self._settle_robot()
+        self._settle_robot_by_action()
 
         if self._TASK_ENV == "JUMPING_TASK":
             # For the jumping task
@@ -620,7 +674,7 @@ class QuadrupedGymEnv(gym.Env):
         init_motor_angles = self._robot_config.INIT_MOTOR_ANGLES + self._robot_config.JOINT_OFFSETS
         if self._is_render:
             time.sleep(0.2)
-        for _ in range(800):
+        for _ in range(1000):
             self.robot.ApplyAction(init_motor_angles)
             if self._is_render:
                 time.sleep(0.001)
@@ -633,6 +687,18 @@ class QuadrupedGymEnv(gym.Env):
             self.robot._motor_model._motor_control_mode = tmp_save_motor_control_mode_MOT
         except:
             pass
+        
+    def _settle_robot_by_action(self):
+        """Settle robot in according to the used motor control mode"""
+        init_action = self._compute_first_actions()
+        if self._is_render:
+            time.sleep(0.2)
+        for _ in range(1000):
+            proc_action = self._transform_action_to_motor_command(init_action)
+            self.robot.ApplyAction(proc_action)
+            if self._is_render:
+                time.sleep(0.001)
+            self._pybullet_client.stepSimulation()
 
     def _turn_off_temporaneously_motors(self):
         """Switch off motors temporaneously."""
@@ -664,6 +730,22 @@ class QuadrupedGymEnv(gym.Env):
             self.robot._motor_model._motor_control_mode = tmp_save_motor_control_mode_MOT
         except:
             pass
+
+
+    def _map_command_to_action(self, command):
+        if self._motor_control_mode == 'PD':
+            max_angles = self._robot_config.RL_UPPER_ANGLE_JOINT
+            min_angles = self._robot_config.RL_LOWER_ANGLE_JOINT
+            command = np.clip(command, min_angles, max_angles)
+            action = 2 * (command - min_angles) / (max_angles - min_angles) - 1
+        elif self._motor_control_mode == 'CARTESIAN_PD':
+            raise ValueError(f'for the motor control mode {self._motor_control_mode} the mapping from foot cartesian position to action not implemented yet.')
+        else:
+            raise ValueError(f'The motor control mode {self._motor_control_mode} is not implemented for RL')
+        
+        action = np.clip(action, -1, 1)
+        command = self._transform_action_to_motor_command(action)
+        return action
 
     ######################################################################################
     # Render, record videos, bookkeping, and misc pybullet helpers.
@@ -887,16 +969,18 @@ def test_env():
     env = QuadrupedGymEnv(
         render=True,
         on_rack=False,
-        motor_control_mode="PD",
-        action_repeat=100,
+        motor_control_mode="CARTESIAN_PD",
+        action_repeat=10,
         enable_springs=False,
         add_noise=False,
-        enable_action_interpolation=True,
+        enable_action_interpolation=False,
+        enable_action_filter=False,
     )
-    sim_steps = 10000
+    sim_steps = 1000
     obs = env.reset()
     for i in range(sim_steps):
-        action = np.random.rand(12) * 2 - 1
+        # action = np.random.rand(12) * 2 - 1
+        action = np.full(12,0)
         obs, reward, done, info = env.step(action)
     print("end")
 
