@@ -22,7 +22,8 @@ from gym import spaces
 from gym.utils import seeding
 
 random.seed(10)
-import configs_go1 as robot_config
+import quadruped_spring.robots.go1.configs_go1 as go1_config
+import quadruped_spring.robots.a1.configs_a1 as a1_config
 
 # quadruped and configs
 import quadruped
@@ -63,6 +64,8 @@ VIDEO_LOG_DIRECTORY = "videos/" + datetime.datetime.now().strftime("vid-%Y-%m-%d
 EPISODE_LENGTH = 10  # how long before we reset the environment (max episode length for RL)
 MAX_FWD_VELOCITY = 5  # to avoid exploiting simulator dynamics, cap max reward for body velocity
 
+ROBOT_CLASS_MAP = {'A1': a1_config, 'GO1': go1_config}
+
 
 class QuadrupedGymEnv(gym.Env):
     """The gym environment for a quadruped {Unitree GO1}.
@@ -76,7 +79,7 @@ class QuadrupedGymEnv(gym.Env):
 
     def __init__(
         self,
-        robot_config=robot_config,
+        robot_model="GO1",
         isRLGymInterface=True,
         time_step=0.001,
         action_repeat=10,
@@ -98,7 +101,7 @@ class QuadrupedGymEnv(gym.Env):
         """Initialize the quadruped gym environment.
 
         Args:
-          robot_config: The robot config file, contains A1 parameters.
+          robot_model: String representing the robot model. Select between "A1" or "GO1".
           isRLGymInterface: If the gym environment is being run as RL or not. Affects
             if the actions should be scaled.
           time_step: Simulation time step.
@@ -123,6 +126,10 @@ class QuadrupedGymEnv(gym.Env):
           enable_action_clipping: Boolean specifying if motor commands should be
             clipped or not. It's not implemented for pure torque control.
         """
+        try:
+            robot_config = ROBOT_CLASS_MAP[robot_model]
+        except:
+            raise KeyError('Robot model should be "A1 or "GO1"')
         self._robot_config = robot_config
         self._isRLGymInterface = isRLGymInterface
         self._time_step = time_step
@@ -1002,6 +1009,7 @@ class QuadrupedGymEnv(gym.Env):
 
 def test_env():
     env = QuadrupedGymEnv(
+        robot_model="G1",
         render=True,
         on_rack=False,
         motor_control_mode="PD",
