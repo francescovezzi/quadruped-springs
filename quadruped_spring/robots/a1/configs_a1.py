@@ -8,7 +8,7 @@ currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentfram
 parentdir = os.path.dirname(currentdir)
 
 URDF_ROOT = parentdir 
-URDF_FILENAME = "a1_description/urdf/a1.urdf"
+URDF_FILENAME = "a1/a1_description/urdf/a1.urdf"
 
 ##################################################################################
 # Default robot configuration (i.e. base and joint positions, etc.)
@@ -62,12 +62,12 @@ NOMINAL_FOOT_POS_LEG_FRAME = np.array([ 0, -HIP_LINK_LENGTH, -0.3,
 # Actuation limits/gains, position, and velocity limits
 ##################################################################################
 # joint limits on real system
-UPPER_ANGLE_JOINT = np.array([ 0.802851455917,  4.18879020479, -0.916297857297 ] * NUM_LEGS)
-LOWER_ANGLE_JOINT = np.array([-0.802851455917, -1.0471975512 , -2.69653369433  ] * NUM_LEGS)
+REAL_UPPER_ANGLE_JOINT = np.array([ 0.802851455917,  4.18879020479, -0.916297857297 ] * NUM_LEGS)
+REAL_LOWER_ANGLE_JOINT = np.array([-0.802851455917, -1.0471975512 , -2.69653369433  ] * NUM_LEGS)
 
 # modified range in simulation (min observation space for RL)
-UPPER_ANGLE_JOINT = np.array([ 0.2,  DEFAULT_THIGH_ANGLE + 0.4, DEFAULT_CALF_ANGLE + 0.4 ] * NUM_LEGS)
-LOWER_ANGLE_JOINT = np.array([-0.2,  DEFAULT_THIGH_ANGLE - 0.4, DEFAULT_CALF_ANGLE - 0.4 ] * NUM_LEGS)
+RL_UPPER_ANGLE_JOINT = np.array([ 0.2,  DEFAULT_THIGH_ANGLE + 0.4, DEFAULT_CALF_ANGLE + 0.4 ] * NUM_LEGS)
+RL_LOWER_ANGLE_JOINT = np.array([-0.2,  DEFAULT_THIGH_ANGLE - 0.4, DEFAULT_CALF_ANGLE - 0.4 ] * NUM_LEGS)
 
 # torque and velocity limits 
 TORQUE_LIMITS   = np.asarray( [33.5] * NUM_MOTORS )
@@ -118,12 +118,23 @@ _CALF_NAME_PATTERN = re.compile(r"\w+_calf_j\w+")
 _FOOT_NAME_PATTERN = re.compile(r"\w+_foot_\w+")
 
 ############################################
-# Spring level joint Variables 
+# Spring level joint Variables
 ############################################
-K_HIP = 15
-K_THIGH = 8
-K_CALF = 5
+# stiffness
+K_HIP = 25
+K_THIGH = 25
+K_CALF = 30
+# damping
+D_HIP = 0.4
+D_TIHGH = 0.4
+D_CALF = 0.4
+
 SPRINGS_STIFFNESS = [K_HIP, K_CALF, K_THIGH]
-SPRINGS_REST_ANGLE = [  DEFAULT_HIP_ANGLE, 
-                        DEFAULT_THIGH_ANGLE, 
-                        DEFAULT_CALF_ANGLE]
+SPRINGS_DAMPING = [D_HIP, D_TIHGH, D_CALF]
+SPRINGS_REST_ANGLE = [DEFAULT_HIP_ANGLE, DEFAULT_THIGH_ANGLE, DEFAULT_CALF_ANGLE + 0.3]
+
+################################################
+# Parameters for actions clipping
+################################################
+MAX_MOTOR_ANGLE_CHANGE_PER_STEP = 0.2
+MAX_CARTESIAN_FOOT_POS_CHANGE_PER_STEP = np.array([0.1, 0.02, 0.08])
