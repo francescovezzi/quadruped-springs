@@ -22,13 +22,12 @@ from gym import spaces
 from gym.utils import seeding
 
 random.seed(10)
-import quadruped_spring.robots.go1.configs_go1 as go1_config
-import quadruped_spring.robots.a1.configs_a1 as a1_config
-
 # quadruped and configs
 import quadruped
 from scipy.spatial.transform import Rotation as R
 
+import quadruped_spring.robots.a1.configs_a1 as a1_config
+import quadruped_spring.robots.go1.configs_go1 as go1_config
 from quadruped_spring.utils import action_filter
 
 ACTION_EPS = 0.01
@@ -64,7 +63,7 @@ VIDEO_LOG_DIRECTORY = "videos/" + datetime.datetime.now().strftime("vid-%Y-%m-%d
 EPISODE_LENGTH = 10  # how long before we reset the environment (max episode length for RL)
 MAX_FWD_VELOCITY = 5  # to avoid exploiting simulator dynamics, cap max reward for body velocity
 
-ROBOT_CLASS_MAP = {'A1': a1_config, 'GO1': go1_config}
+ROBOT_CLASS_MAP = {"A1": a1_config, "GO1": go1_config}
 
 
 class QuadrupedGymEnv(gym.Env):
@@ -327,11 +326,10 @@ class QuadrupedGymEnv(gym.Env):
 
     def _termination(self):
         """Decide whether we should stop the episode and reset the environment."""
-        if self._TASK_ENV == 'JUMPING_TASK' or self._TASK_ENV == 'LR_COURSE_TASK' or self._TASK_ENV == 'FWD_LOCOMOTION':
+        if self._TASK_ENV == "JUMPING_TASK" or self._TASK_ENV == "LR_COURSE_TASK" or self._TASK_ENV == "FWD_LOCOMOTION":
             return self.is_fallen()
         else:
             raise ValueError("This task mode is not implemented yet.")
-
 
     def _reward_jumping(self):
         # Change is fallen height
@@ -433,15 +431,15 @@ class QuadrupedGymEnv(gym.Env):
             return self._reward_jumping()
         else:
             raise ValueError("This task mode is not implemented yet.")
-        
+
     def _reward_end_episode(self, reward):
         """add bonus and malus at the end of the episode"""
-        if self._TASK_ENV == 'JUMPING_TASK':
+        if self._TASK_ENV == "JUMPING_TASK":
             return self._reward_end_jumping(reward)
         else:
             # do nothing
             return reward
-            
+
     def _reward_end_jumping(self, reward):
         """Add bonus and malus at the end of the episode for jumping task"""
         if self._termination():
@@ -609,7 +607,7 @@ class QuadrupedGymEnv(gym.Env):
         reward = self._reward()
         done = False
         infos = {"base_pos": self.robot.GetBasePosition()}
-        
+
         if self._termination() or self.get_sim_time() > self._MAX_EP_LEN:
             infos["TimeLimit.truncated"] = not self._termination()
             done = True
@@ -733,16 +731,15 @@ class QuadrupedGymEnv(gym.Env):
             self._v_des = np.array([2.0, 0.0])  # (np.random.uniform(), 2.*np.random.uniform()-1.)
 
     def _init_variables_jumping(self):
-            # For the jumping task
-            self._v_des = np.array([2.0, 0.0])  # (np.random.uniform(), 2.*np.random.uniform()-1.)
-            self._init_height = self.robot.GetBasePosition()[2]
-            self._all_feet_in_the_air = False
-            self._time_take_off = self.get_sim_time()
-            self._robot_pose_take_off = self.robot.GetBasePosition()
-            self._robot_orientation_take_off = self.robot.GetBaseOrientationRollPitchYaw()
-            self._max_flight_time = 0.0
-            self._max_forward_distance = 0.0
-        
+        # For the jumping task
+        self._v_des = np.array([2.0, 0.0])  # (np.random.uniform(), 2.*np.random.uniform()-1.)
+        self._init_height = self.robot.GetBasePosition()[2]
+        self._all_feet_in_the_air = False
+        self._time_take_off = self.get_sim_time()
+        self._robot_pose_take_off = self.robot.GetBasePosition()
+        self._robot_orientation_take_off = self.robot.GetBaseOrientationRollPitchYaw()
+        self._max_flight_time = 0.0
+        self._max_forward_distance = 0.0
 
     ######################################################################################
     # Render, record videos, bookkeping, and misc pybullet helpers.
@@ -974,7 +971,7 @@ def test_env():
         enable_action_interpolation=False,
         enable_action_filter=False,
         enable_action_clipping=False,
-        task_env='JUMPING_TASK',
+        task_env="JUMPING_TASK",
     )
     sim_steps = 1000
     obs = env.reset()
