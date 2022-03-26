@@ -660,7 +660,6 @@ class QuadrupedGymEnv(gym.Env):
     ######################################################################################
     def reset(self):
         """Set up simulation environment."""
-        self._v_des = np.array([2.0, 0.0])  # (np.random.uniform(), 2.*np.random.uniform()-1.)
         mu_min = 0.5
         if self._hard_reset:
             # set up pybullet simulation
@@ -699,6 +698,7 @@ class QuadrupedGymEnv(gym.Env):
         self._env_step_counter = 0
         self._sim_step_counter = 0
         self._last_base_position = [0, 0, 0]
+        self._init_task_variables()
 
         if self._is_render:
             self._pybullet_client.resetDebugVisualizerCamera(self._cam_dist, self._cam_yaw, self._cam_pitch, [0, 0, 0])
@@ -712,8 +712,6 @@ class QuadrupedGymEnv(gym.Env):
         # else:
         #     self._settle_robot()
         self._settle_robot_by_action()
-
-        self._init_task_variables()
 
         self._last_action = np.zeros(self._action_dim)
         if self._is_record_video:
@@ -795,9 +793,12 @@ class QuadrupedGymEnv(gym.Env):
     def _init_task_variables(self):
         if self._TASK_ENV == "JUMPING_TASK":
             self._init_variables_jumping()
+        elif self._TASK_ENV == "LR_COURSE_TASK" or self._TASK_ENV == "FWD_LOCOMOTION":
+            self._v_des = np.array([2.0, 0.0])  # (np.random.uniform(), 2.*np.random.uniform()-1.)
 
     def _init_variables_jumping(self):
             # For the jumping task
+            self._v_des = np.array([2.0, 0.0])  # (np.random.uniform(), 2.*np.random.uniform()-1.)
             self._init_height = self.robot.GetBasePosition()[2]
             self._all_feet_in_the_air = False
             self._time_take_off = self.get_sim_time()
