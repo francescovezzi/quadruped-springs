@@ -707,45 +707,12 @@ class QuadrupedGymEnv(gym.Env):
             self._ResetActionFilter()
             self._initFilter()
 
-        # if self._enable_springs:
-        #     self._turn_off_temporaneously_motors()
-        # else:
-        #     self._settle_robot()
         self._settle_robot_by_action()
 
         self._last_action = np.zeros(self._action_dim)
         if self._is_record_video:
             self.recordVideoHelper()
         return self._noisy_observation()
-
-    def _settle_robot(self):
-        """Settle robot and add noise to init configuration."""
-        # change to PD control mode to set initial position, then set back..
-        tmp_save_motor_control_mode_ENV = self._motor_control_mode
-        tmp_save_motor_control_mode_ROB = self.robot._motor_control_mode
-        self._motor_control_mode = "PD"
-        self.robot._motor_control_mode = "PD"
-        try:
-            tmp_save_motor_control_mode_MOT = self.robot._motor_model._motor_control_mode
-            self.robot._motor_model._motor_control_mode = "PD"
-        except:
-            pass
-        init_motor_angles = self._robot_config.INIT_MOTOR_ANGLES + self._robot_config.JOINT_OFFSETS
-        if self._is_render:
-            time.sleep(0.2)
-        for _ in range(1000):
-            self.robot.ApplyAction(init_motor_angles)
-            if self._is_render:
-                time.sleep(0.001)
-            self._pybullet_client.stepSimulation()
-
-        # set control mode back
-        self._motor_control_mode = tmp_save_motor_control_mode_ENV
-        self.robot._motor_control_mode = tmp_save_motor_control_mode_ROB
-        try:
-            self.robot._motor_model._motor_control_mode = tmp_save_motor_control_mode_MOT
-        except:
-            pass
 
     def _settle_robot_by_action(self):
         """Settle robot in according to the used motor control mode"""
@@ -758,37 +725,6 @@ class QuadrupedGymEnv(gym.Env):
             if self._is_render:
                 time.sleep(0.001)
             self._pybullet_client.stepSimulation()
-
-    def _turn_off_temporaneously_motors(self):
-        """Switch off motors temporaneously."""
-        # change to PD control mode to set initial position, then set back..
-        tmp_save_motor_control_mode_ENV = self._motor_control_mode
-        tmp_save_motor_control_mode_ROB = self.robot._motor_control_mode
-        self._motor_control_mode = "TORQUE"
-        self.robot._motor_control_mode = "TORQUE"
-        try:
-            tmp_save_motor_control_mode_MOT = self.robot._motor_model._motor_control_mode
-            self.robot._motor_model._motor_control_mode = "TORQUE"
-        except:
-            pass
-        torques = np.full(self._robot_config.NUM_MOTORS, 0)
-        if self._is_render:
-            time.sleep(0.2)
-        for _ in range(2000):
-            self.robot.ApplyAction(torques)
-            if self._is_render:
-                time.sleep(0.001)
-                self._render_step_helper()
-
-            self._pybullet_client.stepSimulation()
-
-        # set control mode back
-        self._motor_control_mode = tmp_save_motor_control_mode_ENV
-        self.robot._motor_control_mode = tmp_save_motor_control_mode_ROB
-        try:
-            self.robot._motor_model._motor_control_mode = tmp_save_motor_control_mode_MOT
-        except:
-            pass
 
     def _init_task_variables(self):
         if self._TASK_ENV == "JUMPING_TASK":
