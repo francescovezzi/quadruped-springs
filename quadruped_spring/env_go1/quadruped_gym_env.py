@@ -27,8 +27,8 @@ import configs_go1 as robot_config
 # quadruped and configs
 import quadruped
 from scipy.spatial.transform import Rotation as R
-from quadruped_spring.utils import action_filter
 
+from quadruped_spring.utils import action_filter
 
 ACTION_EPS = 0.01
 OBSERVATION_EPS = 0.01
@@ -164,7 +164,7 @@ class QuadrupedGymEnv(gym.Env):
         else:
             self._pybullet_client = bc.BulletClient()
         self._configure_visualizer()
-        
+
         if self._enable_action_filter:
             self._action_filter = self._BuildActionFilter()
 
@@ -179,7 +179,9 @@ class QuadrupedGymEnv(gym.Env):
         """Set up observation space for RL."""
         if self._observation_space_mode == "DEFAULT":
             observation_high = (
-                np.concatenate((self._robot_config.RL_UPPER_ANGLE_JOINT, self._robot_config.VELOCITY_LIMITS, np.array([1.0] * 4)))
+                np.concatenate(
+                    (self._robot_config.RL_UPPER_ANGLE_JOINT, self._robot_config.VELOCITY_LIMITS, np.array([1.0] * 4))
+                )
                 + OBSERVATION_EPS
             )
             observation_low = (
@@ -448,7 +450,9 @@ class QuadrupedGymEnv(gym.Env):
         # clip actions to action bounds
         action = np.clip(action, -self._action_bound - ACTION_EPS, self._action_bound + ACTION_EPS)
         if self._motor_control_mode == "PD":
-            action = self._scale_helper(action, self._robot_config.RL_LOWER_ANGLE_JOINT, self._robot_config.RL_UPPER_ANGLE_JOINT)
+            action = self._scale_helper(
+                action, self._robot_config.RL_LOWER_ANGLE_JOINT, self._robot_config.RL_UPPER_ANGLE_JOINT
+            )
             action = np.clip(action, self._robot_config.RL_LOWER_ANGLE_JOINT, self._robot_config.RL_UPPER_ANGLE_JOINT)
             if self._enable_action_clipping:
                 action = self._ClipMotorCommands(action)
@@ -457,7 +461,7 @@ class QuadrupedGymEnv(gym.Env):
         else:
             raise ValueError("RL motor control mode" + self._motor_control_mode + "not implemented yet.")
         return action
-    
+
     def _scale_helper(self, action, lower_lim, upper_lim):
         """Helper to linearly scale from [-1,1] to lower/upper limits."""
         new_a = lower_lim + 0.5 * (action + 1) * (upper_lim - lower_lim)
@@ -488,13 +492,15 @@ class QuadrupedGymEnv(gym.Env):
             # Get current foot velocity in leg frame (Equation 2)
             dxyz = J @ dq[3 * i : 3 * (i + 1)]
             delta_foot_pos = xyz - des_foot_pos[3 * i : 3 * (i + 1)]
-            
-             # clamp the motor command by the joint limit, in case weired things happens
+
+            # clamp the motor command by the joint limit, in case weired things happens
             if self._enable_action_clipping:
-                delta_foot_pos = np.clip(delta_foot_pos,
-                                        -self._robot_config.MAX_CARTESIAN_FOOT_POS_CHANGE_PER_STEP,
-                                        self._robot_config.MAX_CARTESIAN_FOOT_POS_CHANGE_PER_STEP)
-            
+                delta_foot_pos = np.clip(
+                    delta_foot_pos,
+                    -self._robot_config.MAX_CARTESIAN_FOOT_POS_CHANGE_PER_STEP,
+                    self._robot_config.MAX_CARTESIAN_FOOT_POS_CHANGE_PER_STEP,
+                )
+
             F_foot = -kpCartesian @ delta_foot_pos - kdCartesian @ dxyz
             # Calculate torque contribution from Cartesian PD (Equation 5) [Make sure you are using matrix multiplications]
             tau = J.T @ F_foot
@@ -512,16 +518,15 @@ class QuadrupedGymEnv(gym.Env):
         """
 
         # clamp the motor command by the joint limit, in case weired things happens
-        if self._motor_control_mode == 'PD':
+        if self._motor_control_mode == "PD":
             max_angle_change = self._robot_config.MAX_MOTOR_ANGLE_CHANGE_PER_STEP
             current_motor_angles = self.robot.GetMotorAngles()
-            motor_commands = np.clip(des_angles,
-                                    current_motor_angles - max_angle_change,
-                                    current_motor_angles + max_angle_change)
+            motor_commands = np.clip(
+                des_angles, current_motor_angles - max_angle_change, current_motor_angles + max_angle_change
+            )
             return motor_commands
         else:
-            raise ValueError(f'Clipping angles available for PD control only, not in {self._motor_control_mode}')
-
+            raise ValueError(f"Clipping angles available for PD control only, not in {self._motor_control_mode}")
 
     def step(self, action):
         """Step forward the simulation, given the action."""
@@ -580,14 +585,13 @@ class QuadrupedGymEnv(gym.Env):
 
         return np.array(self._noisy_observation()), reward, done, infos
 
-###################################################
-# Filtering to smooth actions
-###################################################
+    ###################################################
+    # Filtering to smooth actions
+    ###################################################
     def _BuildActionFilter(self):
         sampling_rate = 1 / (self._time_step * self._action_repeat)
         num_joints = self._action_dim
-        a_filter = action_filter.ActionFilterButter(sampling_rate=sampling_rate,
-                                                    num_joints=num_joints)
+        a_filter = action_filter.ActionFilterButter(sampling_rate=sampling_rate, num_joints=num_joints)
         return a_filter
 
     def _ResetActionFilter(self):
@@ -596,26 +600,25 @@ class QuadrupedGymEnv(gym.Env):
     def _FilterAction(self, action):
         filtered_action = self._action_filter.filter(action)
         return filtered_action
-    
+
     def _initFilter(self):
         # initialize the filter history, since resetting the filter will fill
         # the history with zeros and this can cause sudden movements at the start
         # of each episode
         default_action = self._compute_first_actions()
         self._action_filter.init_history(default_action)
-    
+
     def _compute_first_actions(self):
-        if self._motor_control_mode == 'PD':
+        if self._motor_control_mode == "PD":
             init_angles = self._robot_config.INIT_MOTOR_ANGLES + self._robot_config.JOINT_OFFSETS
             default_action = self._map_command_to_action(init_angles)
-        elif self._motor_control_mode == 'CARTESIAN_PD':
+        elif self._motor_control_mode == "CARTESIAN_PD":
             # go toward NOMINAL_FOOT_POS_LEG_FRAME
-            default_action = np.array([0, 0, 0]*self._robot_config.NUM_LEGS) 
+            default_action = np.array([0, 0, 0] * self._robot_config.NUM_LEGS)
         else:
-            raise ValueError(f'The motor control mode {self._motor_control_mode} is not implemented for RL')
-        
+            raise ValueError(f"The motor control mode {self._motor_control_mode} is not implemented for RL")
+
         return np.clip(default_action, -1, 1)
-        
 
     ######################################################################################
     # Reset
@@ -664,11 +667,11 @@ class QuadrupedGymEnv(gym.Env):
 
         if self._is_render:
             self._pybullet_client.resetDebugVisualizerCamera(self._cam_dist, self._cam_yaw, self._cam_pitch, [0, 0, 0])
-        
+
         if self._enable_action_filter:
             self._ResetActionFilter()
             self._initFilter()
-            
+
         # if self._enable_springs:
         #     self._turn_off_temporaneously_motors()
         # else:
@@ -718,7 +721,7 @@ class QuadrupedGymEnv(gym.Env):
             self.robot._motor_model._motor_control_mode = tmp_save_motor_control_mode_MOT
         except:
             pass
-        
+
     def _settle_robot_by_action(self):
         """Settle robot in according to the used motor control mode"""
         init_action = self._compute_first_actions()
@@ -762,18 +765,19 @@ class QuadrupedGymEnv(gym.Env):
         except:
             pass
 
-
     def _map_command_to_action(self, command):
-        if self._motor_control_mode == 'PD':
+        if self._motor_control_mode == "PD":
             max_angles = self._robot_config.RL_UPPER_ANGLE_JOINT
             min_angles = self._robot_config.RL_LOWER_ANGLE_JOINT
             command = np.clip(command, min_angles, max_angles)
             action = 2 * (command - min_angles) / (max_angles - min_angles) - 1
-        elif self._motor_control_mode == 'CARTESIAN_PD':
-            raise ValueError(f'for the motor control mode {self._motor_control_mode} the mapping from foot cartesian position to action not implemented yet.')
+        elif self._motor_control_mode == "CARTESIAN_PD":
+            raise ValueError(
+                f"for the motor control mode {self._motor_control_mode} the mapping from foot cartesian position to action not implemented yet."
+            )
         else:
-            raise ValueError(f'The motor control mode {self._motor_control_mode} is not implemented for RL')
-        
+            raise ValueError(f"The motor control mode {self._motor_control_mode} is not implemented for RL")
+
         action = np.clip(action, -1, 1)
         command = self._transform_action_to_motor_command(action)
         return action

@@ -477,7 +477,6 @@ class Quadruped(object):
             angle = self._robot_config.INIT_MOTOR_ANGLES[i] + self._robot_config.JOINT_OFFSETS[i]
             self._pybullet_client.resetJointState(self.quadruped, jointId, angle, targetVelocity=0)
 
-
     ######################################################################################
     # URDF related
     ######################################################################################
