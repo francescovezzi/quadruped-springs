@@ -10,7 +10,7 @@ currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentfram
 parentdir = os.path.dirname(currentdir)
 
 URDF_ROOT = parentdir
-URDF_FILENAME = "go1_description/urdf/go1.urdf"
+URDF_FILENAME = "go1/go1_description/urdf/go1.urdf"
 
 ##################################################################################
 # Default robot configuration (i.e. base and joint positions, etc.)
