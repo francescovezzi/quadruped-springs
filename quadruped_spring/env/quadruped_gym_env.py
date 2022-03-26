@@ -327,7 +327,11 @@ class QuadrupedGymEnv(gym.Env):
 
     def _termination(self):
         """Decide whether we should stop the episode and reset the environment."""
-        return self.is_fallen()
+        if self._TASK_ENV == 'JUMPING_TASK' or self._TASK_ENV == 'LR_COURSE_TASK' or self._TASK_ENV == 'FWD_LOCOMOTION':
+            return self.is_fallen()
+        else:
+            raise ValueError("This task mode is not implemented yet.")
+
 
     def _reward_jumping(self):
         # Change is fallen height
@@ -429,6 +433,30 @@ class QuadrupedGymEnv(gym.Env):
             return self._reward_jumping()
         else:
             raise ValueError("This task mode is not implemented yet.")
+        
+    def _reward_end_episode(self, reward):
+        """add bonus and malus at the end of the episode"""
+        if self._TASK_ENV == 'JUMPING_TASK':
+            return self._reward_end_jumping(reward)
+        else:
+            # do nothing
+            return reward
+            
+    def _reward_end_jumping(self, reward):
+        """Add bonus and malus at the end of the episode for jumping task"""
+        if self._termination():
+            # Malus for crashing
+            # Optionally: no reward in case of crash
+            reward -= 0.08
+        reward += self._max_flight_time
+        max_distance = 0.2
+        # Normalize forward distance reward
+        reward += 0.1 * self._max_forward_distance / max_distance
+        if self._max_flight_time > 0 and not self._termination():
+            # Alive bonus proportional to the risk taken
+            reward += 0.1 * self._max_flight_time
+        # print(f"Forward dist: {self._max_forward_distance}")
+        return reward
 
     ######################################################################################
     # Step simulation, map policy network actions to joint commands, etc.
@@ -514,6 +542,23 @@ class QuadrupedGymEnv(gym.Env):
             action[3 * i : 3 * (i + 1)] = tau  # TODO: add white noise
         return action
 
+    def _map_command_to_action(self, command):
+        if self._motor_control_mode == "PD":
+            max_angles = self._robot_config.RL_UPPER_ANGLE_JOINT
+            min_angles = self._robot_config.RL_LOWER_ANGLE_JOINT
+            command = np.clip(command, min_angles, max_angles)
+            action = 2 * (command - min_angles) / (max_angles - min_angles) - 1
+        elif self._motor_control_mode == "CARTESIAN_PD":
+            raise ValueError(
+                f"for the motor control mode {self._motor_control_mode} the mapping from foot cartesian position to action not implemented yet."
+            )
+        else:
+            raise ValueError(f"The motor control mode {self._motor_control_mode} is not implemented for RL")
+
+        action = np.clip(action, -1, 1)
+        command = self._transform_action_to_motor_command(action)
+        return action
+
     def _ClipMotorCommands(self, des_angles):
         """Clips motor commands.
 
@@ -564,31 +609,14 @@ class QuadrupedGymEnv(gym.Env):
         reward = self._reward()
         done = False
         infos = {"base_pos": self.robot.GetBasePosition()}
-        # if self._termination() or self.get_sim_time() > self._MAX_EP_LEN:
-        #     infos["TimeLimit.truncated"] = not self._termination()
-        #     done = True
-
-        if self._termination():
-            done = True
-            if self._TASK_ENV == "JUMPING_TASK":
-                # Malus for crashing
-                # Optionally: no reward in case of crash
-                reward -= 0.08
-
-        if self.get_sim_time() > self._MAX_EP_LEN:
-            infos["TimeLimit.truncated"] = not done
+        
+        if self._termination() or self.get_sim_time() > self._MAX_EP_LEN:
+            infos["TimeLimit.truncated"] = not self._termination()
             done = True
 
+        # Update the actual reward at the end of the episode with bonus or malus
         if done:
-            if self._TASK_ENV == "JUMPING_TASK":
-                reward += self._max_flight_time
-                max_distance = 0.2
-                # Normalize forward distance reward
-                reward += 0.1 * self._max_forward_distance / max_distance
-                if self._max_flight_time > 0 and not self._termination():
-                    # Alive bonus proportional to the risk taken
-                    reward += 0.1 * self._max_flight_time
-                # print(f"Forward dist: {self._max_forward_distance}")
+            reward = self._reward_end_episode(reward)
 
         return np.array(self._noisy_observation()), reward, done, infos
 
@@ -685,15 +713,7 @@ class QuadrupedGymEnv(gym.Env):
         #     self._settle_robot()
         self._settle_robot_by_action()
 
-        if self._TASK_ENV == "JUMPING_TASK":
-            # For the jumping task
-            self._init_height = self.robot.GetBasePosition()[2]
-            self._all_feet_in_the_air = False
-            self._time_take_off = self.get_sim_time()
-            self._robot_pose_take_off = self.robot.GetBasePosition()
-            self._robot_orientation_take_off = self.robot.GetBaseOrientationRollPitchYaw()
-            self._max_flight_time = 0.0
-            self._max_forward_distance = 0.0
+        self._init_task_variables()
 
         self._last_action = np.zeros(self._action_dim)
         if self._is_record_video:
@@ -753,7 +773,7 @@ class QuadrupedGymEnv(gym.Env):
             self.robot._motor_model._motor_control_mode = "TORQUE"
         except:
             pass
-        torques = np.full(robot_config.NUM_MOTORS, 0)
+        torques = np.full(self._robot_config.NUM_MOTORS, 0)
         if self._is_render:
             time.sleep(0.2)
         for _ in range(2000):
@@ -772,22 +792,20 @@ class QuadrupedGymEnv(gym.Env):
         except:
             pass
 
-    def _map_command_to_action(self, command):
-        if self._motor_control_mode == "PD":
-            max_angles = self._robot_config.RL_UPPER_ANGLE_JOINT
-            min_angles = self._robot_config.RL_LOWER_ANGLE_JOINT
-            command = np.clip(command, min_angles, max_angles)
-            action = 2 * (command - min_angles) / (max_angles - min_angles) - 1
-        elif self._motor_control_mode == "CARTESIAN_PD":
-            raise ValueError(
-                f"for the motor control mode {self._motor_control_mode} the mapping from foot cartesian position to action not implemented yet."
-            )
-        else:
-            raise ValueError(f"The motor control mode {self._motor_control_mode} is not implemented for RL")
+    def _init_task_variables(self):
+        if self._TASK_ENV == "JUMPING_TASK":
+            self._init_variables_jumping()
 
-        action = np.clip(action, -1, 1)
-        command = self._transform_action_to_motor_command(action)
-        return action
+    def _init_variables_jumping(self):
+            # For the jumping task
+            self._init_height = self.robot.GetBasePosition()[2]
+            self._all_feet_in_the_air = False
+            self._time_take_off = self.get_sim_time()
+            self._robot_pose_take_off = self.robot.GetBasePosition()
+            self._robot_orientation_take_off = self.robot.GetBaseOrientationRollPitchYaw()
+            self._max_flight_time = 0.0
+            self._max_forward_distance = 0.0
+        
 
     ######################################################################################
     # Render, record videos, bookkeping, and misc pybullet helpers.
@@ -1009,7 +1027,7 @@ class QuadrupedGymEnv(gym.Env):
 
 def test_env():
     env = QuadrupedGymEnv(
-        robot_model="G1",
+        robot_model="GO1",
         render=True,
         on_rack=False,
         motor_control_mode="PD",
@@ -1019,6 +1037,7 @@ def test_env():
         enable_action_interpolation=False,
         enable_action_filter=False,
         enable_action_clipping=False,
+        task_env='JUMPING_TASK',
     )
     sim_steps = 1000
     obs = env.reset()
