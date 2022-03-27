@@ -10,6 +10,8 @@ import datetime
 import random
 import time
 
+random.seed(10)
+
 # gym
 import gym
 import numpy as np
@@ -18,12 +20,9 @@ import numpy as np
 import pybullet
 import pybullet_data
 import pybullet_utils.bullet_client as bc
+import quadruped
 from gym import spaces
 from gym.utils import seeding
-
-random.seed(10)
-# quadruped and configs
-import quadruped
 from scipy.spatial.transform import Rotation as R
 
 import quadruped_spring.robots.a1.configs_a1 as a1_config
@@ -127,7 +126,7 @@ class QuadrupedGymEnv(gym.Env):
         """
         try:
             robot_config = ROBOT_CLASS_MAP[robot_model]
-        except:
+        except KeyError:
             raise KeyError('Robot model should be "A1 or "GO1"')
         self._robot_config = robot_config
         self._isRLGymInterface = isRLGymInterface
@@ -974,6 +973,8 @@ def test_env():
         task_env="JUMPING_TASK",
     )
     sim_steps = 1000
+    from quadruped_spring.utils.monitor_state import MonitorState
+    env = MonitorState(env, rec_length=100)
     obs = env.reset()
     for i in range(sim_steps):
         action = np.random.rand(12) * 2 - 1
