@@ -1,0 +1,28 @@
+### Description
+
+Integrate GO1 in the environment and add some tools for action filtering and smoothing.
+
+<hr  hr\>
+
+### Motivation and Context
+
+- In the lab we have GO1.
+- Action smoothing with the hope to experience a more realistic behavior from pybullet simulator.
+
+It's known that complex dynamics ,not captured by simulators, mostly arise in the high frequency regime. The idea is to exploit the simulator in a frequency range which is able to perform realistic simulations inside. (some note on simulations here: [SpaceBok](https://arxiv.org/pdf/2106.09357.pdf))
+<hr  hr\>
+
+### Types of changes
+
+- [ ] added action interpolation during action repeat
+- [ ] added a lowpass action filter
+- [ ] added action clipping
+- [ ] added possibility to select go1 or a1
+- [ ] changed folder tree
+- [ ] robot settling (after reset) is the same regardless of spring presence
+- [ ] robot settling takes into account the motor control mode
+- [ ] same initial default robot position regardless of spring presence
+- [ ] deleted turn_off motors method
+- [ ] added a method to add sparse reward
+<hr  hr\>
+
