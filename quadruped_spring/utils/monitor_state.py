@@ -107,14 +107,14 @@ class MonitorState(gym.Wrapper):
         print(tau_lim)
         tau_lim_aux = np.stack([tau_lim, -tau_lim], axis=1)
         tau_limits = ([True] * 3, tau_lim_aux)
-        
+
         pos_limits = ([False, False, True], [None, None, self._h_min])
 
         joint_lim_up = self.env._robot_config.RL_UPPER_ANGLE_JOINT[0:3]
         joint_lim_down = self.env._robot_config.RL_LOWER_ANGLE_JOINT[0:3]
         joint_lim_aux = np.stack([joint_lim_up, joint_lim_down], axis=1)
         joint_limits = ([True] * 3, joint_lim_aux)
-        
+
         velocity_lim = self.env._robot_config.VELOCITY_LIMITS[0:3]
         velocity_lim_aux = np.stack([velocity_lim, -velocity_lim], axis=1)
         velocity_limits = ([True] * 3, velocity_lim_aux)
@@ -137,7 +137,7 @@ class MonitorState(gym.Wrapper):
         self._plot_done = True
 
     def step(self, action):
-        
+
         obs, reward, done, infos = self.env.step(action)
         self._step_counter += 1
 

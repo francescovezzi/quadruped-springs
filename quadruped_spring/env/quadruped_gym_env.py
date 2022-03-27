@@ -974,6 +974,7 @@ def test_env():
     )
     sim_steps = 1000
     from quadruped_spring.utils.monitor_state import MonitorState
+
     env = MonitorState(env, rec_length=100)
     obs = env.reset()
     for i in range(sim_steps):
