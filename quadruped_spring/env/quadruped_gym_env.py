@@ -725,6 +725,15 @@ class QuadrupedGymEnv(gym.Env):
             if self._is_render:
                 time.sleep(0.001)
             self._pybullet_client.stepSimulation()
+        
+    # def _settle_robot_by_PD(self):
+
+    
+    # def _settle_robot(self):
+    #     if self._isRLGymInterface:
+    #         self._settle_robot_by_action()
+    #     else:
+    #         self._settle_robot_by_PD()
 
     def _init_task_variables(self):
         if self._TASK_ENV == "JUMPING_TASK":
