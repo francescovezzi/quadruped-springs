@@ -174,7 +174,7 @@ class QuadrupedGymEnv(gym.Env):
         self._configure_visualizer()
 
         if self._enable_action_filter:
-            self._action_filter = self._BuildActionFilter()
+            self._action_filter = self._build_action_filter()
 
         self.videoLogID = None
         self.seed()
@@ -588,7 +588,7 @@ class QuadrupedGymEnv(gym.Env):
         """Step forward the simulation, given the action."""
         curr_act = action.copy()
         if self._enable_action_filter:
-            curr_act = self._FilterAction(curr_act)
+            curr_act = self._filter_action(curr_act)
         # save motor torques and velocities to compute power in reward function
         self._dt_motor_torques = []
         self._dt_motor_velocities = []
@@ -627,20 +627,20 @@ class QuadrupedGymEnv(gym.Env):
     ###################################################
     # Filtering to smooth actions
     ###################################################
-    def _BuildActionFilter(self):
+    def _build_action_filter(self):
         sampling_rate = 1 / (self._time_step * self._action_repeat)
         num_joints = self._action_dim
         a_filter = action_filter.ActionFilterButter(sampling_rate=sampling_rate, num_joints=num_joints)
         return a_filter
 
-    def _ResetActionFilter(self):
+    def _reset_action_filter(self):
         self._action_filter.reset()
 
-    def _FilterAction(self, action):
+    def _filter_action(self, action):
         filtered_action = self._action_filter.filter(action)
         return filtered_action
 
-    def _initFilter(self):
+    def _init_filter(self):
         # initialize the filter history, since resetting the filter will fill
         # the history with zeros and this can cause sudden movements at the start
         # of each episode
@@ -708,8 +708,8 @@ class QuadrupedGymEnv(gym.Env):
             self._pybullet_client.resetDebugVisualizerCamera(self._cam_dist, self._cam_yaw, self._cam_pitch, [0, 0, 0])
 
         if self._enable_action_filter:
-            self._ResetActionFilter()
-            self._initFilter()
+            self._reset_action_filter()
+            self._init_filter()
 
         self._settle_robot()  # Settle robot after being spawned
 
@@ -1015,9 +1015,7 @@ def test_env():
         task_env="JUMPING_TASK",
     )
     sim_steps = 1000
-    from quadruped_spring.utils.monitor_state import MonitorState
-
-    env = MonitorState(env, rec_length=100)
+   
     obs = env.reset()
     for i in range(sim_steps):
         action = np.random.rand(12) * 2 - 1
