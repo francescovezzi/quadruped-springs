@@ -180,10 +180,10 @@ class QuadrupedGymEnv(gym.Env):
     def setupObservationSpace(self):
         if self._observation_space_mode == "DEFAULT":
             obs_high, obs_low = self._set_obs_space_default()
-        elif self._observation_space_mode == "LR_COURSE":
+        elif self._observation_space_mode == "LR_COURSE_OBS":
             obs_high, obs_low = self._set_obs_space_lr_course()
         else:
-            raise ValueError("observation space not defined or not intended")
+            raise ValueError(f"observation space {self._observation_space_mode} not defined or not intended")
 
         self.observation_space = spaces.Box(obs_low, obs_high, dtype=np.float32)
 
@@ -267,9 +267,9 @@ class QuadrupedGymEnv(gym.Env):
 
     def _get_observation(self):
         """Get observation, depending on obs space selected."""
-        if self._observation_space_mode == 'DEFAULT':
+        if self._observation_space_mode == "DEFAULT":
             self._get_obs_default()
-        elif self._observation_space_mode == 'LR_COURSE_OBS':
+        elif self._observation_space_mode == "LR_COURSE_OBS":
             self._get_obs_lr_course()
         else:
             raise ValueError("observation space not defined or not intended")
@@ -278,12 +278,12 @@ class QuadrupedGymEnv(gym.Env):
             np.random.normal(scale=self._observation_noise_stdev, size=self._observation.shape) * self.observation_space.high
         )
         return self._observation
-            
+
     def _get_obs_default(self):
         self._observation = np.concatenate(
             (self.robot.GetMotorAngles(), self.robot.GetMotorVelocities(), self.robot.GetBaseOrientation())
         )
-            
+
     def _get_obs_lr_course(self):
         # q = self.robot.GetMotorAngles()
         dq = self.robot.GetMotorVelocities()
