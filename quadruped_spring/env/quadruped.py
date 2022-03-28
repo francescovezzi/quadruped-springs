@@ -418,6 +418,17 @@ class Quadruped(object):
         joint_angles = np.array([-shoulder_angle, elbow_angle, wrist_angle])
         return joint_angles
 
+    def ComputeFeetPosAndVel(self):
+        dq = self.robot.GetMotorVelocities()
+        foot_pos = np.zeros(12)
+        foot_vel = np.zeros(12)
+        for i in range(4):
+            dq_i = dq[3 * i : 3 * (i + 1)]
+            J, xyz = self.ComputeJacobianAndPosition(i)
+            foot_pos[3 * i : 3 * (i + 1)] = xyz
+            foot_vel[3 * i : 3 * (i + 1)] = J @ dq_i
+        return foot_pos, foot_vel
+
     ######################################################################################
     # RESET related
     ######################################################################################
