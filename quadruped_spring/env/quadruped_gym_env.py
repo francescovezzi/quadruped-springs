@@ -493,6 +493,7 @@ class QuadrupedGymEnv(gym.Env):
                 action = self._clip_motor_commands(action)
         elif self._motor_control_mode == "CARTESIAN_PD":
             action = self.ScaleActionToCartesianPos(action)
+            # Here the clipping happens inside ScaleActionToCartesianPos
         else:
             raise ValueError("RL motor control mode" + self._motor_control_mode + "not implemented yet.")
         return action
