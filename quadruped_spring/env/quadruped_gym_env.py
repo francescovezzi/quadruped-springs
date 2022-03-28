@@ -461,7 +461,7 @@ class QuadrupedGymEnv(gym.Env):
     ######################################################################################
     # Step simulation, map policy network actions to joint commands, etc.
     ######################################################################################
-    def _InterpAction(self, action, substep_count):
+    def _interpolate_actions(self, action, substep_count):
         """If enabled, interpolates between the current and previous actions.
 
         Args:
@@ -591,7 +591,7 @@ class QuadrupedGymEnv(gym.Env):
         for sub_step in range(self._action_repeat):
             if self._isRLGymInterface:
                 if self._enable_action_interpolation:
-                    curr_act = self._InterpAction(action, sub_step)
+                    curr_act = self._interpolate_actions(action, sub_step)
                 proc_action = self._transform_action_to_motor_command(curr_act)
             else:
                 proc_action = curr_act
