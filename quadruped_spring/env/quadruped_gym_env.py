@@ -473,12 +473,12 @@ class QuadrupedGymEnv(gym.Env):
         the current action repeat substep.
         """
         if self._enable_action_interpolation and self._last_action is not None:
-            lerp = float(substep_count + 1) / self._action_repeat
-            proc_action = self._last_action + lerp * (action - self._last_action)
+            interp_fraction = float(substep_count + 1) / self._action_repeat  
+            interpolated_action = self._last_action + interp_fraction * (action - self._last_action)
         else:
-            proc_action = action
+            interpolated_action = action
 
-        return proc_action
+        return interpolated_action
 
     def _transform_action_to_motor_command(self, action):
         """Map actions from RL (i.e. in [-1,1]) to joint commands based on motor_control_mode."""
@@ -490,7 +490,7 @@ class QuadrupedGymEnv(gym.Env):
             )
             action = np.clip(action, self._robot_config.RL_LOWER_ANGLE_JOINT, self._robot_config.RL_UPPER_ANGLE_JOINT)
             if self._enable_action_clipping:
-                action = self._ClipMotorCommands(action)
+                action = self._clip_motor_commands(action)
         elif self._motor_control_mode == "CARTESIAN_PD":
             action = self.ScaleActionToCartesianPos(action)
         else:
@@ -559,7 +559,7 @@ class QuadrupedGymEnv(gym.Env):
         command = self._transform_action_to_motor_command(action)
         return action
 
-    def _ClipMotorCommands(self, des_angles):
+    def _clip_motor_commands(self, des_angles):
         """Clips motor commands.
 
         Args:
