@@ -419,7 +419,7 @@ class Quadruped(object):
         return joint_angles
 
     def ComputeFeetPosAndVel(self):
-        dq = self.robot.GetMotorVelocities()
+        dq = self.GetMotorVelocities()
         foot_pos = np.zeros(12)
         foot_vel = np.zeros(12)
         for i in range(4):
