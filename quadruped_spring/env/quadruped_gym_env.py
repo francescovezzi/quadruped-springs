@@ -182,7 +182,7 @@ class QuadrupedGymEnv(gym.Env):
     ######################################################################################
     def setupObservationSpace(self):
         # NOTE:
-        # The observation space is actually used to calulate the observation noise. 
+        # The observation space is actually used to calulate the observation noise.
         # It is proportional to obs_high
         if self._observation_space_mode == "DEFAULT":
             obs_high, obs_low = self._set_obs_space_default()
@@ -332,7 +332,7 @@ class QuadrupedGymEnv(gym.Env):
             self._get_obs_default()
         elif self._observation_space_mode == "LR_COURSE_OBS":
             self._get_obs_lr_course()
-        elif self._observation_space_mode == 'JUMPING_ON_PLACE_OBS':
+        elif self._observation_space_mode == "JUMPING_ON_PLACE_OBS":
             self._get_obs_jump_on_place()
         else:
             raise ValueError("observation space not defined or not intended")
@@ -342,7 +342,6 @@ class QuadrupedGymEnv(gym.Env):
         )
         return self._observation
 
-<<<<<<< HEAD
     def _get_obs_jump_on_place(self):
         q = self.robot.GetMotorAngles()
         vel = self.robot.GetBaseLinearVelocity()
@@ -354,9 +353,6 @@ class QuadrupedGymEnv(gym.Env):
 
         self._observation = np.concatenate((vel, rpy, drpy, foot_pos, foot_vel, feetInContactBool))
 
-            
-=======
->>>>>>> integrate_environments
     def _get_obs_default(self):
         self._observation = np.concatenate(
             (self.robot.GetMotorAngles(), self.robot.GetMotorVelocities(), self.robot.GetBaseOrientation())
@@ -408,14 +404,14 @@ class QuadrupedGymEnv(gym.Env):
         return (
             np.dot(np.asarray([0, 0, 1]), np.asarray(local_up)) < dot_prod_min or pos[2] < self._robot_config.IS_FALLEN_HEIGHT
         )
-        
+
     def _not_allowed_contact(self):
         """
         Return True if the robot is performing some not allowed contact
         as touching the ground with knees
         """
         _, num_invalid_contacts, _, _ = self.robot.GetContactInfo()
-        
+
         return num_invalid_contacts
 
     def _termination(self):
@@ -463,7 +459,7 @@ class QuadrupedGymEnv(gym.Env):
         # max_height_reward = only_positive_height ** 2 / self._init_height ** 2
         # return max_height_reward + flight_time_reward
         # return max_height_reward + no_feet_in_contact_reward
-        
+
     def _reward_jumping_on_place(self):
         """Reward maximum flight time"""
         # Change is fallen height
@@ -592,7 +588,7 @@ class QuadrupedGymEnv(gym.Env):
             reward += 0.1 * self._max_flight_time
         # print(f"Forward dist: {self._max_forward_distance}")
         return reward
-    
+
     def _reward_end_jumping_on_place(self, reward):
         """Add bonus and malus at the end of the episode for jumping on place task"""
         if self._termination():
@@ -600,8 +596,8 @@ class QuadrupedGymEnv(gym.Env):
             # Optionally: no reward in case of crash
             reward -= 0.08
         reward += self._max_flight_time
-        reward += 0.05 * np.exp(-self._max_yaw**2/0.01)  # orientation
-        reward += 0.1 * np.exp(-self._max_forward_distance**2/0.05)
+        reward += 0.05 * np.exp(-self._max_yaw**2 / 0.01)  # orientation
+        reward += 0.1 * np.exp(-self._max_forward_distance**2 / 0.05)
 
         if self._max_flight_time > 0 and not self._termination():
             # Alive bonus proportional to the risk taken
@@ -939,7 +935,7 @@ class QuadrupedGymEnv(gym.Env):
         self._max_forward_distance = 0.0
 
     def _init_variables_jumping_on_place(self):
-        self._v_des = np.array([0.0, 0.0]) 
+        self._v_des = np.array([0.0, 0.0])
         self._init_height = self.robot.GetBasePosition()[2]
         self._all_feet_in_the_air = False
         self._time_take_off = self.get_sim_time()
@@ -1181,7 +1177,7 @@ def test_env():
         enable_action_filter=False,
         enable_action_clipping=False,
         task_env="JUMPING_ON_PLACE_TASK",
-        observation_space_mode="JUMPING_ON_PLACE_OBS"
+        observation_space_mode="JUMPING_ON_PLACE_OBS",
     )
     sim_steps = 1000
 
