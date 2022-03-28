@@ -181,76 +181,82 @@ class QuadrupedGymEnv(gym.Env):
     # RL Observation and Action spaces
     ######################################################################################
     def setupObservationSpace(self):
-        """Set up observation space for RL."""
         if self._observation_space_mode == "DEFAULT":
-            observation_high = (
-                np.concatenate(
-                    (self._robot_config.RL_UPPER_ANGLE_JOINT, self._robot_config.VELOCITY_LIMITS, np.array([1.0] * 4))
-                )
-                + OBSERVATION_EPS
-            )
-            observation_low = (
-                np.concatenate(
-                    (self._robot_config.RL_LOWER_ANGLE_JOINT, -self._robot_config.VELOCITY_LIMITS, np.array([-1.0] * 4))
-                )
-                - OBSERVATION_EPS
-            )
-        elif self._observation_space_mode == "LR_COURSE_OBS":
-            q_high = self._robot_config.RL_UPPER_ANGLE_JOINT
-            q_low = self._robot_config.RL_LOWER_ANGLE_JOINT
-            dq_high = self._robot_config.VELOCITY_LIMITS
-            dq_low = -self._robot_config.VELOCITY_LIMITS
-            vel_high = np.array([MAX_FWD_VELOCITY] * 3)
-            vel_low = np.array([-MAX_FWD_VELOCITY] * 3)
-            rpy_high = np.array([np.pi] * 3)
-            rpy_low = np.array([-np.pi] * 3)
-            drpy_high = np.array([5.0] * 3)
-            drpy_low = np.array([-5.0] * 3)
-            foot_pos_high = np.array([0.1, 0.05, 0.1])
-            foot_pos_low = -foot_pos_high
-            foot_vel_high = np.array([10.0] * 12)
-            foot_vel_low = np.array([-10.0] * 12)
-            contact_high = np.array([1.0] * 4)
-            contact_low = np.array([0.0] * 4)
-
-            observation_high = (
-                np.concatenate(
-                    (
-                        vel_high,
-                        vel_high[:2],
-                        rpy_high,
-                        drpy_high,
-                        foot_pos_high,
-                        foot_pos_high,
-                        foot_pos_high,
-                        foot_pos_high,
-                        foot_vel_high,
-                        contact_high,
-                    )
-                )
-                + OBSERVATION_EPS
-            )
-            observation_low = (
-                np.concatenate(
-                    (
-                        vel_low,
-                        vel_low[:2],
-                        rpy_low,
-                        drpy_low,
-                        foot_pos_low,
-                        foot_pos_low,
-                        foot_pos_low,
-                        foot_pos_low,
-                        foot_vel_low,
-                        contact_low,
-                    )
-                )
-                - OBSERVATION_EPS
-            )
+            obs_high, obs_low = self._set_obs_space_default()
+        elif self._observation_space_mode == "LR_COURSE":
+            obs_high, obs_low = self._set_obs_space_lr_course()
         else:
             raise ValueError("observation space not defined or not intended")
 
-        self.observation_space = spaces.Box(observation_low, observation_high, dtype=np.float32)
+        self.observation_space = spaces.Box(obs_low, obs_high, dtype=np.float32)
+
+    def _set_obs_space_default(self):
+        observation_high = (
+            np.concatenate((self._robot_config.RL_UPPER_ANGLE_JOINT, self._robot_config.VELOCITY_LIMITS, np.array([1.0] * 4)))
+            + OBSERVATION_EPS
+        )
+        observation_low = (
+            np.concatenate(
+                (self._robot_config.RL_LOWER_ANGLE_JOINT, -self._robot_config.VELOCITY_LIMITS, np.array([-1.0] * 4))
+            )
+            - OBSERVATION_EPS
+        )
+        return observation_high, observation_low
+
+    def _set_obs_space_lr_course(self):
+        q_high = self._robot_config.RL_UPPER_ANGLE_JOINT
+        q_low = self._robot_config.RL_LOWER_ANGLE_JOINT
+        dq_high = self._robot_config.VELOCITY_LIMITS
+        dq_low = -self._robot_config.VELOCITY_LIMITS
+        vel_high = np.array([MAX_FWD_VELOCITY] * 3)
+        vel_low = np.array([-MAX_FWD_VELOCITY] * 3)
+        rpy_high = np.array([np.pi] * 3)
+        rpy_low = np.array([-np.pi] * 3)
+        drpy_high = np.array([5.0] * 3)
+        drpy_low = np.array([-5.0] * 3)
+        foot_pos_high = np.array([0.1, 0.05, 0.1])
+        foot_pos_low = -foot_pos_high
+        foot_vel_high = np.array([10.0] * 12)
+        foot_vel_low = np.array([-10.0] * 12)
+        contact_high = np.array([1.0] * 4)
+        contact_low = np.array([0.0] * 4)
+
+        observation_high = (
+            np.concatenate(
+                (
+                    vel_high,
+                    vel_high[:2],
+                    rpy_high,
+                    drpy_high,
+                    foot_pos_high,
+                    foot_pos_high,
+                    foot_pos_high,
+                    foot_pos_high,
+                    foot_vel_high,
+                    contact_high,
+                )
+            )
+            + OBSERVATION_EPS
+        )
+        observation_low = (
+            np.concatenate(
+                (
+                    vel_low,
+                    vel_low[:2],
+                    rpy_low,
+                    drpy_low,
+                    foot_pos_low,
+                    foot_pos_low,
+                    foot_pos_low,
+                    foot_pos_low,
+                    foot_vel_low,
+                    contact_low,
+                )
+            )
+            - OBSERVATION_EPS
+        )
+
+        return observation_high, observation_low
 
     def setupActionSpace(self):
         """Set up action space for RL."""
