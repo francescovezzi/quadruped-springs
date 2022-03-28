@@ -270,28 +270,10 @@ class QuadrupedGymEnv(gym.Env):
 
     def _get_observation(self):
         """Get observation, depending on obs space selected."""
-        if self._observation_space_mode == "DEFAULT":
-            self._observation = np.concatenate(
-                (self.robot.GetMotorAngles(), self.robot.GetMotorVelocities(), self.robot.GetBaseOrientation())
-            )
-        elif self._observation_space_mode == "LR_COURSE_OBS":
-            # q = self.robot.GetMotorAngles()
-            dq = self.robot.GetMotorVelocities()
-            vel = self.robot.GetBaseLinearVelocity()
-            rpy = self.robot.GetBaseOrientationRollPitchYaw()
-            drpy = self.robot.GetTrueBaseRollPitchYawRate()
-            foot_pos = np.zeros(12)
-            foot_vel = np.zeros(12)
-            for i in range(4):
-                dq_i = dq[3 * i : 3 * (i + 1)]
-                J, xyz = self.robot.ComputeJacobianAndPosition(i)
-                foot_pos[3 * i : 3 * (i + 1)] = xyz
-                foot_vel[3 * i : 3 * (i + 1)] = J @ dq_i
-
-            numValidContacts, numInvalidContacts, feetNormalForces, feetInContactBool = self.robot.GetContactInfo()
-
-            self._observation = np.concatenate((vel, self._v_des, rpy, drpy, foot_pos, foot_vel, feetInContactBool))
-
+        if self._observation_space_mode == 'DEFAULT':
+            self._get_obs_default()
+        elif self._observation_space_mode == 'LR_COURSE_OBS':
+            self._get_obs_lr_course()
         else:
             raise ValueError("observation space not defined or not intended")
 
@@ -299,6 +281,29 @@ class QuadrupedGymEnv(gym.Env):
             np.random.normal(scale=self._observation_noise_stdev, size=self._observation.shape) * self.observation_space.high
         )
         return self._observation
+            
+    def _get_obs_default(self):
+        self._observation = np.concatenate(
+            (self.robot.GetMotorAngles(), self.robot.GetMotorVelocities(), self.robot.GetBaseOrientation())
+        )
+            
+    def _get_obs_lr_course(self):
+        # q = self.robot.GetMotorAngles()
+        dq = self.robot.GetMotorVelocities()
+        vel = self.robot.GetBaseLinearVelocity()
+        rpy = self.robot.GetBaseOrientationRollPitchYaw()
+        drpy = self.robot.GetTrueBaseRollPitchYawRate()
+        foot_pos = np.zeros(12)
+        foot_vel = np.zeros(12)
+        for i in range(4):
+            dq_i = dq[3 * i : 3 * (i + 1)]
+            J, xyz = self.robot.ComputeJacobianAndPosition(i)
+            foot_pos[3 * i : 3 * (i + 1)] = xyz
+            foot_vel[3 * i : 3 * (i + 1)] = J @ dq_i
+
+        numValidContacts, numInvalidContacts, feetNormalForces, feetInContactBool = self.robot.GetContactInfo()
+
+        self._observation = np.concatenate((vel, self._v_des, rpy, drpy, foot_pos, foot_vel, feetInContactBool))
 
     def _noisy_observation(self):
         self._get_observation()
