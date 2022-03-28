@@ -7,10 +7,7 @@ currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentfram
 os.sys.path.insert(0, currentdir)
 
 import datetime
-import random
 import time
-
-random.seed(10)
 
 # gym
 import gym
@@ -124,6 +121,7 @@ class QuadrupedGymEnv(gym.Env):
           enable_action_clipping: Boolean specifying if motor commands should be
             clipped or not. It's not implemented for pure torque control.
         """
+        self.seed()
         try:
             robot_config = ROBOT_CLASS_MAP[robot_model]
         except KeyError:
@@ -174,7 +172,6 @@ class QuadrupedGymEnv(gym.Env):
             self._action_filter = self._build_action_filter()
 
         self.videoLogID = None
-        self.seed()
         self.reset()
 
     ######################################################################################
