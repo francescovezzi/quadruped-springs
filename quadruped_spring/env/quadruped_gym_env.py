@@ -328,7 +328,7 @@ class QuadrupedGymEnv(gym.Env):
 
     def _termination(self):
         """Decide whether we should stop the episode and reset the environment."""
-        if self._TASK_ENV == "JUMPING_TASK" or self._TASK_ENV == "LR_COURSE_TASK" or self._TASK_ENV == "FWD_LOCOMOTION":
+        if self._TASK_ENV in ["JUMPING_TASK", "LR_COURSE_TASK", "FWD_LOCOMOTION"]:
             return self.is_fallen()
         else:
             raise ValueError("This task mode is not implemented yet.")
