@@ -7,10 +7,7 @@ currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentfram
 os.sys.path.insert(0, currentdir)
 
 import datetime
-import random
 import time
-
-random.seed(10)
 
 # gym
 import gym
@@ -127,6 +124,7 @@ class QuadrupedGymEnv(gym.Env):
           enable_action_clipping: Boolean specifying if motor commands should be
             clipped or not. It's not implemented for pure torque control.
         """
+        self.seed()
         try:
             robot_config = ROBOT_CLASS_MAP[robot_model]
         except KeyError:
@@ -177,21 +175,78 @@ class QuadrupedGymEnv(gym.Env):
             self._action_filter = self._build_action_filter()
 
         self.videoLogID = None
-        self.seed()
         self.reset()
 
     ######################################################################################
     # RL Observation and Action spaces
     ######################################################################################
     def setupObservationSpace(self):
+        # NOTE:
+        # The observation space is actually used to calulate the observation noise. 
+        # It is proportional to obs_high
         if self._observation_space_mode == "DEFAULT":
             obs_high, obs_low = self._set_obs_space_default()
         elif self._observation_space_mode == "LR_COURSE":
             obs_high, obs_low = self._set_obs_space_lr_course()
+        elif self._observation_space_mode == "JUMPING_ON_PLACE_OBS":
+            obs_high, obs_low = self._set_obs_space_jump_on_place()
         else:
             raise ValueError("observation space not defined or not intended")
 
         self.observation_space = spaces.Box(obs_low, obs_high, dtype=np.float32)
+
+    def _set_obs_space_jump_on_place(self):
+        q_high = self._robot_config.RL_UPPER_ANGLE_JOINT
+        q_low = self._robot_config.RL_LOWER_ANGLE_JOINT
+        dq_high = self._robot_config.VELOCITY_LIMITS
+        dq_low = -self._robot_config.VELOCITY_LIMITS
+        vel_high = np.array([MAX_FWD_VELOCITY] * 3)
+        vel_low = np.array([-MAX_FWD_VELOCITY] * 3)
+        rpy_high = np.array([np.pi] * 3)
+        rpy_low = np.array([-np.pi] * 3)
+        drpy_high = np.array([5.0] * 3)
+        drpy_low = np.array([-5.0] * 3)
+        foot_pos_high = np.array([0.1, 0.05, 0.1])
+        foot_pos_low = -foot_pos_high
+        foot_vel_high = np.array([10.0] * 12)
+        foot_vel_low = np.array([-10.0] * 12)
+        contact_high = np.array([1.0] * 4)
+        contact_low = np.array([0.0] * 4)
+
+        observation_high = (
+            np.concatenate(
+                (
+                    vel_high,
+                    rpy_high,
+                    drpy_high,
+                    foot_pos_high,
+                    foot_pos_high,
+                    foot_pos_high,
+                    foot_pos_high,
+                    foot_vel_high,
+                    contact_high,
+                )
+            )
+            + OBSERVATION_EPS
+        )
+        observation_low = (
+            np.concatenate(
+                (
+                    vel_low,
+                    rpy_low,
+                    drpy_low,
+                    foot_pos_low,
+                    foot_pos_low,
+                    foot_pos_low,
+                    foot_pos_low,
+                    foot_vel_low,
+                    contact_low,
+                )
+            )
+            - OBSERVATION_EPS
+        )
+
+        return observation_high, observation_low
 
     def _set_obs_space_default(self):
         observation_high = (
@@ -277,6 +332,8 @@ class QuadrupedGymEnv(gym.Env):
             self._get_obs_default()
         elif self._observation_space_mode == 'LR_COURSE_OBS':
             self._get_obs_lr_course()
+        elif self._observation_space_mode == 'JUMPING_ON_PLACE_OBS':
+            self._get_obs_jump_on_place()
         else:
             raise ValueError("observation space not defined or not intended")
 
@@ -284,6 +341,18 @@ class QuadrupedGymEnv(gym.Env):
             np.random.normal(scale=self._observation_noise_stdev, size=self._observation.shape) * self.observation_space.high
         )
         return self._observation
+
+    def _get_obs_jump_on_place(self):
+        q = self.robot.GetMotorAngles()
+        vel = self.robot.GetBaseLinearVelocity()
+        rpy = self.robot.GetBaseOrientationRollPitchYaw()
+        drpy = self.robot.GetTrueBaseRollPitchYawRate()
+        foot_pos, foot_vel = self.robot.ComputeFeetPosAndVel()
+
+        numValidContacts, numInvalidContacts, feetNormalForces, feetInContactBool = self.robot.GetContactInfo()
+
+        self._observation = np.concatenate((vel, rpy, drpy, foot_pos, foot_vel, feetInContactBool))
+
             
     def _get_obs_default(self):
         self._observation = np.concatenate(
@@ -351,7 +420,7 @@ class QuadrupedGymEnv(gym.Env):
         if self._TASK_ENV in ["JUMPING_TASK", "LR_COURSE_TASK", "FWD_LOCOMOTION"]:
             return self.is_fallen()
         elif self._TASK_ENV == "JUMPING_ON_PLACE_TASK":
-            return self.is_fallen() or self.not_allowed_contact()
+            return self.is_fallen() or self._not_allowed_contact()
         else:
             raise ValueError("This task mode is not implemented yet.")
 
@@ -392,7 +461,7 @@ class QuadrupedGymEnv(gym.Env):
         # return max_height_reward + flight_time_reward
         # return max_height_reward + no_feet_in_contact_reward
         
-    def _reward_on_place_jumping(self):
+    def _reward_jumping_on_place(self):
         """Reward maximum flight time"""
         # Change is fallen height
         self._robot_config.IS_FALLEN_HEIGHT = 0.01
@@ -490,6 +559,8 @@ class QuadrupedGymEnv(gym.Env):
             return self._reward_lr_course()
         elif self._TASK_ENV == "JUMPING_TASK":
             return self._reward_jumping()
+        elif self._TASK_ENV == "JUMPING_ON_PLACE_TASK":
+            return self._reward_jumping_on_place()
         else:
             raise ValueError("This task mode is not implemented yet.")
 
@@ -863,7 +934,6 @@ class QuadrupedGymEnv(gym.Env):
         self._robot_orientation_take_off = self.robot.GetBaseOrientationRollPitchYaw()
         self._max_flight_time = 0.0
         self._max_forward_distance = 0.0
-        self._robot_max_yaw = 0.0
 
     def _init_variables_jumping_on_place(self):
         self._v_des = np.array([0.0, 0.0]) 
@@ -875,6 +945,7 @@ class QuadrupedGymEnv(gym.Env):
         self._robot_orientation_take_off_quat = self.robot.GetBaseOrientation()
         self._max_flight_time = 0.0
         self._max_forward_distance = 0.0
+        self._max_yaw = 0.0
 
     ######################################################################################
     # Render, record videos, bookkeping, and misc pybullet helpers.
@@ -1104,9 +1175,10 @@ def test_env():
         enable_springs=True,
         add_noise=False,
         enable_action_interpolation=True,
-        enable_action_filter=True,
-        enable_action_clipping=True,
-        task_env="JUMPING_TASK",
+        enable_action_filter=False,
+        enable_action_clipping=False,
+        task_env="JUMPING_ON_PLACE_TASK",
+        observation_space_mode="JUMPING_ON_PLACE_OBS"
     )
     sim_steps = 1000
 
