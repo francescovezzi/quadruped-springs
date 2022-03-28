@@ -568,7 +568,7 @@ class QuadrupedGymEnv(gym.Env):
         if self._TASK_ENV == "JUMPING_TASK":
             return self._reward_end_jumping(reward)
         elif self._TASK_ENV == "JUMPING_ON_PLACE_TASK":
-            return self._reward_end_jumping_on_placr(reward)
+            return self._reward_end_jumping_on_place(reward)
         else:
             # do nothing
             return reward
@@ -1171,9 +1171,9 @@ def test_env():
         on_rack=False,
         motor_control_mode="PD",
         action_repeat=10,
-        enable_springs=True,
+        enable_springs=False,
         add_noise=False,
-        enable_action_interpolation=True,
+        enable_action_interpolation=False,
         enable_action_filter=False,
         enable_action_clipping=False,
         task_env="JUMPING_ON_PLACE_TASK",
