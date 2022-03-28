@@ -14,23 +14,20 @@ random.seed(10)
 
 # gym
 import gym
-from gym import spaces
-from gym.utils import seeding
-
 import numpy as np
 
 # pybullet
 import pybullet
 import pybullet_data
 import pybullet_utils.bullet_client as bc
-
 import quadruped
+from gym import spaces
+from gym.utils import seeding
+from scipy.spatial.transform import Rotation as R
+
 import quadruped_spring.robots.a1.configs_a1 as a1_config
 import quadruped_spring.robots.go1.configs_go1 as go1_config
 from quadruped_spring.utils import action_filter
-
-from scipy.spatial.transform import Rotation as R
-
 
 ACTION_EPS = 0.01
 OBSERVATION_EPS = 0.01
@@ -473,7 +470,7 @@ class QuadrupedGymEnv(gym.Env):
         the current action repeat substep.
         """
         if self._enable_action_interpolation and self._last_action is not None:
-            interp_fraction = float(substep_count + 1) / self._action_repeat  
+            interp_fraction = float(substep_count + 1) / self._action_repeat
             interpolated_action = self._last_action + interp_fraction * (action - self._last_action)
         else:
             interpolated_action = action
@@ -544,10 +541,10 @@ class QuadrupedGymEnv(gym.Env):
         return action
 
     def _map_command_to_action(self, command):
-        '''
+        """
         Given the desired motor commmand returns the action that produces
         that motor command
-        '''
+        """
         if self._motor_control_mode == "PD":
             max_angles = self._robot_config.RL_UPPER_ANGLE_JOINT
             min_angles = self._robot_config.RL_LOWER_ANGLE_JOINT
@@ -730,7 +727,7 @@ class QuadrupedGymEnv(gym.Env):
             if self._is_render:
                 time.sleep(0.001)
             self._pybullet_client.stepSimulation()
-        
+
     def _settle_robot_by_PD(self):
         """Settle robot and add noise to init configuration."""
         # change to PD control mode to set initial position, then set back..
@@ -759,7 +756,7 @@ class QuadrupedGymEnv(gym.Env):
             self.robot._motor_model._motor_control_mode = tmp_save_motor_control_mode_MOT
         except:
             pass
-    
+
     def _settle_robot(self):
         if self._isRLGymInterface:
             self._settle_robot_by_action()
@@ -1008,15 +1005,15 @@ def test_env():
         on_rack=False,
         motor_control_mode="PD",
         action_repeat=10,
-        enable_springs=False,
+        enable_springs=True,
         add_noise=False,
-        enable_action_interpolation=False,
-        enable_action_filter=False,
-        enable_action_clipping=False,
+        enable_action_interpolation=True,
+        enable_action_filter=True,
+        enable_action_clipping=True,
         task_env="JUMPING_TASK",
     )
     sim_steps = 1000
-   
+
     obs = env.reset()
     for i in range(sim_steps):
         action = np.random.rand(12) * 2 - 1
