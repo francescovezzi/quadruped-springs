@@ -543,6 +543,10 @@ class QuadrupedGymEnv(gym.Env):
         return action
 
     def _map_command_to_action(self, command):
+        '''
+        Given the desired motor commmand returns the action that produces
+        that motor command
+        '''
         if self._motor_control_mode == "PD":
             max_angles = self._robot_config.RL_UPPER_ANGLE_JOINT
             min_angles = self._robot_config.RL_LOWER_ANGLE_JOINT
