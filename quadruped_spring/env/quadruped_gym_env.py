@@ -342,7 +342,6 @@ class QuadrupedGymEnv(gym.Env):
         )
         return self._observation
 
-<<<<<<< HEAD
     def _get_obs_jump_on_place(self):
         q = self.robot.GetMotorAngles()
         vel = self.robot.GetBaseLinearVelocity()
@@ -355,8 +354,6 @@ class QuadrupedGymEnv(gym.Env):
         self._observation = np.concatenate((vel, rpy, drpy, foot_pos, foot_vel, feetInContactBool))
 
             
-=======
->>>>>>> integrate_environments
     def _get_obs_default(self):
         self._observation = np.concatenate(
             (self.robot.GetMotorAngles(), self.robot.GetMotorVelocities(), self.robot.GetBaseOrientation())
