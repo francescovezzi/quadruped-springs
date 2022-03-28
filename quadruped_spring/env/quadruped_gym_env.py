@@ -707,7 +707,7 @@ class QuadrupedGymEnv(gym.Env):
             self._ResetActionFilter()
             self._initFilter()
 
-        self._settle_robot_by_action()
+        self._settle_robot()  # Settle robot after being spawned
 
         self._last_action = np.zeros(self._action_dim)
         if self._is_record_video:
@@ -715,7 +715,7 @@ class QuadrupedGymEnv(gym.Env):
         return self._noisy_observation()
 
     def _settle_robot_by_action(self):
-        """Settle robot in according to the used motor control mode"""
+        """Settle robot in according to the used motor control mode in RL interface"""
         init_action = self._compute_first_actions()
         if self._is_render:
             time.sleep(0.2)
@@ -726,14 +726,40 @@ class QuadrupedGymEnv(gym.Env):
                 time.sleep(0.001)
             self._pybullet_client.stepSimulation()
         
-    # def _settle_robot_by_PD(self):
+    def _settle_robot_by_PD(self):
+        """Settle robot and add noise to init configuration."""
+        # change to PD control mode to set initial position, then set back..
+        tmp_save_motor_control_mode_ENV = self._motor_control_mode
+        tmp_save_motor_control_mode_ROB = self.robot._motor_control_mode
+        self._motor_control_mode = "PD"
+        self.robot._motor_control_mode = "PD"
+        try:
+            tmp_save_motor_control_mode_MOT = self.robot._motor_model._motor_control_mode
+            self.robot._motor_model._motor_control_mode = "PD"
+        except:
+            pass
+        init_motor_angles = self._robot_config.INIT_MOTOR_ANGLES + self._robot_config.JOINT_OFFSETS
+        if self._is_render:
+            time.sleep(0.2)
+        for _ in range(800):
+            self.robot.ApplyAction(init_motor_angles)
+            if self._is_render:
+                time.sleep(0.001)
+            self._pybullet_client.stepSimulation()
 
+        # set control mode back
+        self._motor_control_mode = tmp_save_motor_control_mode_ENV
+        self.robot._motor_control_mode = tmp_save_motor_control_mode_ROB
+        try:
+            self.robot._motor_model._motor_control_mode = tmp_save_motor_control_mode_MOT
+        except:
+            pass
     
-    # def _settle_robot(self):
-    #     if self._isRLGymInterface:
-    #         self._settle_robot_by_action()
-    #     else:
-    #         self._settle_robot_by_PD()
+    def _settle_robot(self):
+        if self._isRLGymInterface:
+            self._settle_robot_by_action()
+        else:
+            self._settle_robot_by_PD()
 
     def _init_task_variables(self):
         if self._TASK_ENV == "JUMPING_TASK":
