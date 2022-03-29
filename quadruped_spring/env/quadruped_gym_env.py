@@ -26,6 +26,9 @@ import quadruped_spring.robots.a1.configs_a1 as a1_config
 import quadruped_spring.robots.go1.configs_go1 as go1_config
 from quadruped_spring.utils import action_filter
 
+# from quadruped_spring.utils.video_recording import VecVideoRec
+# from stable_baselines3.common.env_util import make_vec_env
+
 ACTION_EPS = 0.01
 OBSERVATION_EPS = 0.01
 VIDEO_LOG_DIRECTORY = "videos/" + datetime.datetime.now().strftime("vid-%Y-%m-%d-%H-%M-%S-%f")
@@ -1165,21 +1168,32 @@ class QuadrupedGymEnv(gym.Env):
 
 
 def test_env():
-    env = QuadrupedGymEnv(
-        robot_model="GO1",
-        render=True,
-        on_rack=False,
-        motor_control_mode="PD",
-        action_repeat=10,
-        enable_springs=False,
-        add_noise=False,
-        enable_action_interpolation=False,
-        enable_action_filter=False,
-        enable_action_clipping=False,
-        task_env="JUMPING_ON_PLACE_TASK",
-        observation_space_mode="JUMPING_ON_PLACE_OBS",
-    )
+    
+    env_config = {}
+    env_config['robot_model'] = 'GO1'
+    env_config['render'] = False
+    env_config['on_rack'] = False
+    env_config['motor_control_mode'] = 'PD'
+    env_config['action_repeat'] = 10
+    env_config['enable_springs'] = 10
+    env_config['add_noise'] = False
+    env_config['enable_action_interpolation'] = False
+    env_config['enable_action_clipping'] = False
+    env_config['enable_action_filter'] = False
+    env_config['task_env'] = "JUMPING_ON_PLACE_TASK"
+    env_config['observation_space_mode'] = "JUMPING_ON_PLACE_OBS"
+
+    env = QuadrupedGymEnv(**env_config)
     sim_steps = 1000
+    
+    # def env_callable(**kwargs):
+    #     def env_aux():
+    #         env = QuadrupedGymEnv(**kwargs)
+    #         return env
+    #     return env_aux
+    # env = env_callable(**env_config)
+    # env = make_vec_env(env, n_envs=1)
+    # env = VecVideoRec(env, video_length=30)
 
     obs = env.reset()
     for i in range(sim_steps):
