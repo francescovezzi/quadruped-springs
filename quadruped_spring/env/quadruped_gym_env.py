@@ -597,7 +597,7 @@ class QuadrupedGymEnv(gym.Env):
             reward -= 0.08
         reward += self._max_flight_time
         reward += 0.05 * np.exp(-self._max_yaw**2 / 0.01)  # orientation
-        reward += 0.1 * np.exp(-self._max_forward_distance**2 / 0.05)
+        reward += 0.1 * np.exp(-self._max_forward_distance**2 / 0.05)  # be on place
 
         if self._max_flight_time > 0 and not self._termination():
             # Alive bonus proportional to the risk taken
