@@ -37,7 +37,7 @@ VIDEO_LOG_DIRECTORY = "videos/" + datetime.datetime.now().strftime("vid-%Y-%m-%d
 #   "DEFAULT":    motor angles and velocities, body orientation
 #   "LR_COURSE_OBS":  [TODO: what should you include? what is reasonable to measure on the real system?]
 #   "JUMPING_ON_PLACE_OBS": IMU(base linear and angular velocity) +
-#                           Feet positions and velocities (required knoweledge of joint configuration and velocity)
+#                           Feet positions and velocities (required knowledge of joint configuration and velocity)
 #                           Boolean feet contact
 
 # Tasks to be learned with reinforcement learning
@@ -1171,7 +1171,7 @@ class QuadrupedGymEnv(gym.Env):
 
 
 def test_env():
-    
+
     env_config = {}
     env_config['robot_model'] = 'GO1'
     env_config['render'] = False
@@ -1188,7 +1188,7 @@ def test_env():
 
     env = QuadrupedGymEnv(**env_config)
     sim_steps = 1000
-    
+
     # def env_callable(**kwargs):
     #     def env_aux():
     #         env = QuadrupedGymEnv(**kwargs)
