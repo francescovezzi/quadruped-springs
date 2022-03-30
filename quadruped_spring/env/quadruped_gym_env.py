@@ -7,7 +7,6 @@ currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentfram
 os.sys.path.insert(0, currentdir)
 
 import datetime
-import random
 import time
 
 # gym
@@ -18,15 +17,14 @@ import numpy as np
 import pybullet
 import pybullet_data
 import pybullet_utils.bullet_client as bc
+import quadruped
 from gym import spaces
 from gym.utils import seeding
-
-random.seed(10)
-import configs_a1 as robot_config
-
-# quadruped and configs
-import quadruped
 from scipy.spatial.transform import Rotation as R
+
+import quadruped_spring.robots.a1.configs_a1 as a1_config
+import quadruped_spring.robots.go1.configs_go1 as go1_config
+from quadruped_spring.utils import action_filter
 
 ACTION_EPS = 0.01
 OBSERVATION_EPS = 0.01
@@ -35,13 +33,16 @@ VIDEO_LOG_DIRECTORY = "videos/" + datetime.datetime.now().strftime("vid-%Y-%m-%d
 # Implemented observation spaces for deep reinforcement learning:
 #   "DEFAULT":    motor angles and velocities, body orientation
 #   "LR_COURSE_OBS":  [TODO: what should you include? what is reasonable to measure on the real system?]
+#   "JUMPING_ON_PLACE_OBS": IMU(base linear and angular velocity and base orientation) +
+#                           Feet position and velocities (they required joint configuration and velocities knoweldge) +
+#                           Boolean feet contact
 
 # Tasks to be learned with reinforcement learning
 #     - "FWD_LOCOMOTION"
 #         reward forward progress only
 #     - "LR_COURSE_TASK"
 #         [TODO: what should you train for?]
-#         Ideally we want to command A1 to run in any direction while expending minimal energy
+#         Ideally we want to command GO1 to run in any direction while expending minimal energy
 #         It is suggested to first train to run at 3 sample velocities (0.5 m/s, 1 m/s, 1.5 m/s)
 #         How will you construct your reward function?
 #     - "JUMPING_TASK"
@@ -61,9 +62,11 @@ VIDEO_LOG_DIRECTORY = "videos/" + datetime.datetime.now().strftime("vid-%Y-%m-%d
 EPISODE_LENGTH = 10  # how long before we reset the environment (max episode length for RL)
 MAX_FWD_VELOCITY = 5  # to avoid exploiting simulator dynamics, cap max reward for body velocity
 
+ROBOT_CLASS_MAP = {"A1": a1_config, "GO1": go1_config}
+
 
 class QuadrupedGymEnv(gym.Env):
-    """The gym environment for a quadruped {Unitree A1}.
+    """The gym environment for a quadruped {Unitree GO1}.
 
     It simulates the locomotion of a quadrupedal robot.
     The state space, action space, and reward functions can be chosen with:
@@ -74,7 +77,7 @@ class QuadrupedGymEnv(gym.Env):
 
     def __init__(
         self,
-        robot_config=robot_config,
+        robot_model="GO1",
         isRLGymInterface=True,
         time_step=0.001,
         action_repeat=10,
@@ -88,12 +91,15 @@ class QuadrupedGymEnv(gym.Env):
         record_video=False,
         add_noise=True,
         enable_springs=False,
+        enable_action_interpolation=False,
+        enable_action_filter=False,
+        enable_action_clipping=False,
         test_env=False,  # NOT ALLOWED FOR TRAINING!
     ):
         """Initialize the quadruped gym environment.
 
         Args:
-          robot_config: The robot config file, contains A1 parameters.
+          robot_model: String representing the robot model. Select between "A1" or "GO1".
           isRLGymInterface: If the gym environment is being run as RL or not. Affects
             if the actions should be scaled.
           time_step: Simulation time step.
@@ -110,7 +116,19 @@ class QuadrupedGymEnv(gym.Env):
           record_video: Whether to record a video of each trial.
           add_noise: vary coefficient of friction
           test_env: add random terrain
+          enable_springs: Whether to enable springs or not
+          enable_action_interpolation: Whether to interpolate the current action
+            with the previous action in order to produce smoother motions
+          enable_action_filter: Boolean specifying if a lowpass filter should be
+            used to smooth actions.
+          enable_action_clipping: Boolean specifying if motor commands should be
+            clipped or not. It's not implemented for pure torque control.
         """
+        self.seed()
+        try:
+            robot_config = ROBOT_CLASS_MAP[robot_model]
+        except KeyError:
+            raise KeyError('Robot model should be "A1 or "GO1"')
         self._robot_config = robot_config
         self._isRLGymInterface = isRLGymInterface
         self._time_step = time_step
@@ -126,16 +144,15 @@ class QuadrupedGymEnv(gym.Env):
         self._is_record_video = record_video
         self._add_noise = add_noise
         self._enable_springs = enable_springs
+        self._enable_action_interpolation = enable_action_interpolation
+        self._enable_action_filter = enable_action_filter
+        self._enable_action_clipping = enable_action_clipping
         self._using_test_env = test_env
         if test_env:
             self._add_noise = True
             self._observation_noise_stdev = 0.01  # TODO: check if increasing makes sense
         else:
             self._observation_noise_stdev = 0.01
-
-        if self._enable_springs:
-            self._robot_config.INIT_JOINT_ANGLES = self._robot_config.INIT_SPRING_ANGLES
-            self._robot_config.INIT_MOTOR_ANGLES = self._robot_config.INIT_JOINT_ANGLES
 
         # other bookkeeping
         self._num_bullet_solver_iterations = int(300 / action_repeat)
@@ -154,82 +171,92 @@ class QuadrupedGymEnv(gym.Env):
             self._pybullet_client = bc.BulletClient()
         self._configure_visualizer()
 
+        if self._enable_action_filter:
+            self._action_filter = self._build_action_filter()
+
         self.videoLogID = None
-        self.seed()
         self.reset()
 
     ######################################################################################
     # RL Observation and Action spaces
     ######################################################################################
     def setupObservationSpace(self):
-        """Set up observation space for RL."""
         if self._observation_space_mode == "DEFAULT":
-            observation_high = (
-                np.concatenate((self._robot_config.UPPER_ANGLE_JOINT, self._robot_config.VELOCITY_LIMITS, np.array([1.0] * 4)))
-                + OBSERVATION_EPS
-            )
-            observation_low = (
-                np.concatenate(
-                    (self._robot_config.LOWER_ANGLE_JOINT, -self._robot_config.VELOCITY_LIMITS, np.array([-1.0] * 4))
-                )
-                - OBSERVATION_EPS
-            )
+            obs_high, obs_low = self._set_obs_space_default()
         elif self._observation_space_mode == "LR_COURSE_OBS":
-            q_high = self._robot_config.UPPER_ANGLE_JOINT
-            q_low = self._robot_config.LOWER_ANGLE_JOINT
-            dq_high = self._robot_config.VELOCITY_LIMITS
-            dq_low = -self._robot_config.VELOCITY_LIMITS
-            vel_high = np.array([MAX_FWD_VELOCITY] * 3)
-            vel_low = np.array([-MAX_FWD_VELOCITY] * 3)
-            rpy_high = np.array([np.pi] * 3)
-            rpy_low = np.array([-np.pi] * 3)
-            drpy_high = np.array([5.0] * 3)
-            drpy_low = np.array([-5.0] * 3)
-            foot_pos_high = np.array([0.1, 0.05, 0.1])
-            foot_pos_low = -foot_pos_high
-            foot_vel_high = np.array([10.0] * 12)
-            foot_vel_low = np.array([-10.0] * 12)
-            contact_high = np.array([1.0] * 4)
-            contact_low = np.array([0.0] * 4)
-
-            observation_high = (
-                np.concatenate(
-                    (
-                        vel_high,
-                        vel_high[:2],
-                        rpy_high,
-                        drpy_high,
-                        foot_pos_high,
-                        foot_pos_high,
-                        foot_pos_high,
-                        foot_pos_high,
-                        foot_vel_high,
-                        contact_high,
-                    )
-                )
-                + OBSERVATION_EPS
-            )
-            observation_low = (
-                np.concatenate(
-                    (
-                        vel_low,
-                        vel_low[:2],
-                        rpy_low,
-                        drpy_low,
-                        foot_pos_low,
-                        foot_pos_low,
-                        foot_pos_low,
-                        foot_pos_low,
-                        foot_vel_low,
-                        contact_low,
-                    )
-                )
-                - OBSERVATION_EPS
-            )
+            obs_high, obs_low = self._set_obs_space_lr_course()
         else:
-            raise ValueError("observation space not defined or not intended")
+            raise ValueError(f"observation space {self._observation_space_mode} not defined or not intended")
 
-        self.observation_space = spaces.Box(observation_low, observation_high, dtype=np.float32)
+        self.observation_space = spaces.Box(obs_low, obs_high, dtype=np.float32)
+
+    def _set_obs_space_default(self):
+        observation_high = (
+            np.concatenate((self._robot_config.RL_UPPER_ANGLE_JOINT, self._robot_config.VELOCITY_LIMITS, np.array([1.0] * 4)))
+            + OBSERVATION_EPS
+        )
+        observation_low = (
+            np.concatenate(
+                (self._robot_config.RL_LOWER_ANGLE_JOINT, -self._robot_config.VELOCITY_LIMITS, np.array([-1.0] * 4))
+            )
+            - OBSERVATION_EPS
+        )
+        return observation_high, observation_low
+
+    def _set_obs_space_lr_course(self):
+        q_high = self._robot_config.RL_UPPER_ANGLE_JOINT
+        q_low = self._robot_config.RL_LOWER_ANGLE_JOINT
+        dq_high = self._robot_config.VELOCITY_LIMITS
+        dq_low = -self._robot_config.VELOCITY_LIMITS
+        vel_high = np.array([MAX_FWD_VELOCITY] * 3)
+        vel_low = np.array([-MAX_FWD_VELOCITY] * 3)
+        rpy_high = np.array([np.pi] * 3)
+        rpy_low = np.array([-np.pi] * 3)
+        drpy_high = np.array([5.0] * 3)
+        drpy_low = np.array([-5.0] * 3)
+        foot_pos_high = np.array([0.1, 0.05, 0.1])
+        foot_pos_low = -foot_pos_high
+        foot_vel_high = np.array([10.0] * 12)
+        foot_vel_low = np.array([-10.0] * 12)
+        contact_high = np.array([1.0] * 4)
+        contact_low = np.array([0.0] * 4)
+
+        observation_high = (
+            np.concatenate(
+                (
+                    vel_high,
+                    vel_high[:2],
+                    rpy_high,
+                    drpy_high,
+                    foot_pos_high,
+                    foot_pos_high,
+                    foot_pos_high,
+                    foot_pos_high,
+                    foot_vel_high,
+                    contact_high,
+                )
+            )
+            + OBSERVATION_EPS
+        )
+        observation_low = (
+            np.concatenate(
+                (
+                    vel_low,
+                    vel_low[:2],
+                    rpy_low,
+                    drpy_low,
+                    foot_pos_low,
+                    foot_pos_low,
+                    foot_pos_low,
+                    foot_pos_low,
+                    foot_vel_low,
+                    contact_low,
+                )
+            )
+            - OBSERVATION_EPS
+        )
+
+        return observation_high, observation_low
 
     def setupActionSpace(self):
         """Set up action space for RL."""
@@ -244,27 +271,9 @@ class QuadrupedGymEnv(gym.Env):
     def _get_observation(self):
         """Get observation, depending on obs space selected."""
         if self._observation_space_mode == "DEFAULT":
-            self._observation = np.concatenate(
-                (self.robot.GetMotorAngles(), self.robot.GetMotorVelocities(), self.robot.GetBaseOrientation())
-            )
+            self._get_obs_default()
         elif self._observation_space_mode == "LR_COURSE_OBS":
-            # q = self.robot.GetMotorAngles()
-            dq = self.robot.GetMotorVelocities()
-            vel = self.robot.GetBaseLinearVelocity()
-            rpy = self.robot.GetBaseOrientationRollPitchYaw()
-            drpy = self.robot.GetTrueBaseRollPitchYawRate()
-            foot_pos = np.zeros(12)
-            foot_vel = np.zeros(12)
-            for i in range(4):
-                dq_i = dq[3 * i : 3 * (i + 1)]
-                J, xyz = self.robot.ComputeJacobianAndPosition(i)
-                foot_pos[3 * i : 3 * (i + 1)] = xyz
-                foot_vel[3 * i : 3 * (i + 1)] = J @ dq_i
-
-            numValidContacts, numInvalidContacts, feetNormalForces, feetInContactBool = self.robot.GetContactInfo()
-
-            self._observation = np.concatenate((vel, self._v_des, rpy, drpy, foot_pos, foot_vel, feetInContactBool))
-
+            self._get_obs_lr_course()
         else:
             raise ValueError("observation space not defined or not intended")
 
@@ -272,6 +281,29 @@ class QuadrupedGymEnv(gym.Env):
             np.random.normal(scale=self._observation_noise_stdev, size=self._observation.shape) * self.observation_space.high
         )
         return self._observation
+
+    def _get_obs_default(self):
+        self._observation = np.concatenate(
+            (self.robot.GetMotorAngles(), self.robot.GetMotorVelocities(), self.robot.GetBaseOrientation())
+        )
+
+    def _get_obs_lr_course(self):
+        # q = self.robot.GetMotorAngles()
+        dq = self.robot.GetMotorVelocities()
+        vel = self.robot.GetBaseLinearVelocity()
+        rpy = self.robot.GetBaseOrientationRollPitchYaw()
+        drpy = self.robot.GetTrueBaseRollPitchYawRate()
+        foot_pos = np.zeros(12)
+        foot_vel = np.zeros(12)
+        for i in range(4):
+            dq_i = dq[3 * i : 3 * (i + 1)]
+            J, xyz = self.robot.ComputeJacobianAndPosition(i)
+            foot_pos[3 * i : 3 * (i + 1)] = xyz
+            foot_vel[3 * i : 3 * (i + 1)] = J @ dq_i
+
+        numValidContacts, numInvalidContacts, feetNormalForces, feetInContactBool = self.robot.GetContactInfo()
+
+        self._observation = np.concatenate((vel, self._v_des, rpy, drpy, foot_pos, foot_vel, feetInContactBool))
 
     def _noisy_observation(self):
         self._get_observation()
@@ -304,7 +336,10 @@ class QuadrupedGymEnv(gym.Env):
 
     def _termination(self):
         """Decide whether we should stop the episode and reset the environment."""
-        return self.is_fallen()
+        if self._TASK_ENV in ["JUMPING_TASK", "LR_COURSE_TASK", "FWD_LOCOMOTION"]:
+            return self.is_fallen()
+        else:
+            raise ValueError("This task mode is not implemented yet.")
 
     def _reward_jumping(self):
         # Change is fallen height
@@ -405,20 +440,68 @@ class QuadrupedGymEnv(gym.Env):
         elif self._TASK_ENV == "JUMPING_TASK":
             return self._reward_jumping()
         else:
-            raise ValueError("This task mode not implemented yet.")
+            raise ValueError("This task mode is not implemented yet.")
+
+    def _reward_end_episode(self, reward):
+        """add bonus and malus at the end of the episode"""
+        if self._TASK_ENV == "JUMPING_TASK":
+            return self._reward_end_jumping(reward)
+        else:
+            # do nothing
+            return reward
+
+    def _reward_end_jumping(self, reward):
+        """Add bonus and malus at the end of the episode for jumping task"""
+        if self._termination():
+            # Malus for crashing
+            # Optionally: no reward in case of crash
+            reward -= 0.08
+        reward += self._max_flight_time
+        max_distance = 0.2
+        # Normalize forward distance reward
+        reward += 0.1 * self._max_forward_distance / max_distance
+        if self._max_flight_time > 0 and not self._termination():
+            # Alive bonus proportional to the risk taken
+            reward += 0.1 * self._max_flight_time
+        # print(f"Forward dist: {self._max_forward_distance}")
+        return reward
 
     ######################################################################################
     # Step simulation, map policy network actions to joint commands, etc.
     ######################################################################################
+    def _interpolate_actions(self, action, substep_count):
+        """If enabled, interpolates between the current and previous actions.
+
+        Args:
+        action: current action.
+        substep_count: the step count should be between [0, self.__action_repeat).
+
+        Returns:
+        If interpolation is enabled, returns interpolated action depending on
+        the current action repeat substep.
+        """
+        if self._enable_action_interpolation and self._last_action is not None:
+            interp_fraction = float(substep_count + 1) / self._action_repeat
+            interpolated_action = self._last_action + interp_fraction * (action - self._last_action)
+        else:
+            interpolated_action = action
+
+        return interpolated_action
+
     def _transform_action_to_motor_command(self, action):
         """Map actions from RL (i.e. in [-1,1]) to joint commands based on motor_control_mode."""
         # clip actions to action bounds
         action = np.clip(action, -self._action_bound - ACTION_EPS, self._action_bound + ACTION_EPS)
         if self._motor_control_mode == "PD":
-            action = self._scale_helper(action, self._robot_config.LOWER_ANGLE_JOINT, self._robot_config.UPPER_ANGLE_JOINT)
-            action = np.clip(action, self._robot_config.LOWER_ANGLE_JOINT, self._robot_config.UPPER_ANGLE_JOINT)
+            action = self._scale_helper(
+                action, self._robot_config.RL_LOWER_ANGLE_JOINT, self._robot_config.RL_UPPER_ANGLE_JOINT
+            )
+            action = np.clip(action, self._robot_config.RL_LOWER_ANGLE_JOINT, self._robot_config.RL_UPPER_ANGLE_JOINT)
+            if self._enable_action_clipping:
+                action = self._clip_motor_commands(action)
         elif self._motor_control_mode == "CARTESIAN_PD":
             action = self.ScaleActionToCartesianPos(action)
+            # Here the clipping happens inside ScaleActionToCartesianPos
         else:
             raise ValueError("RL motor control mode" + self._motor_control_mode + "not implemented yet.")
         return action
@@ -440,7 +523,6 @@ class QuadrupedGymEnv(gym.Env):
         scale_array = np.array([0.2, 0.05, 0.15] * 4)  # [0.1, 0.05, 0.08]*4)
         # add to nominal foot position in leg frame (what are the final ranges?)
         des_foot_pos = self._robot_config.NOMINAL_FOOT_POS_LEG_FRAME + scale_array * u
-
         # get Cartesian kp and kd gains (can be modified)
         kpCartesian = self._robot_config.kpCartesian
         kdCartesian = self._robot_config.kdCartesian
@@ -453,22 +535,76 @@ class QuadrupedGymEnv(gym.Env):
             J, xyz = self.robot.ComputeJacobianAndPosition(i)
             # Get current foot velocity in leg frame (Equation 2)
             dxyz = J @ dq[3 * i : 3 * (i + 1)]
+            delta_foot_pos = xyz - des_foot_pos[3 * i : 3 * (i + 1)]
 
-            F_foot = -kpCartesian @ (xyz - des_foot_pos[3 * i : 3 * (i + 1)]) - kdCartesian @ dxyz
+            # clamp the motor command by the joint limit, in case weired things happens
+            if self._enable_action_clipping:
+                delta_foot_pos = np.clip(
+                    delta_foot_pos,
+                    -self._robot_config.MAX_CARTESIAN_FOOT_POS_CHANGE_PER_STEP,
+                    self._robot_config.MAX_CARTESIAN_FOOT_POS_CHANGE_PER_STEP,
+                )
+
+            F_foot = -kpCartesian @ delta_foot_pos - kdCartesian @ dxyz
             # Calculate torque contribution from Cartesian PD (Equation 5) [Make sure you are using matrix multiplications]
             tau = J.T @ F_foot
             action[3 * i : 3 * (i + 1)] = tau  # TODO: add white noise
         return action
 
+    def _map_command_to_action(self, command):
+        """
+        Given the desired motor commmand returns the action that produces
+        that motor command
+        """
+        if self._motor_control_mode == "PD":
+            max_angles = self._robot_config.RL_UPPER_ANGLE_JOINT
+            min_angles = self._robot_config.RL_LOWER_ANGLE_JOINT
+            command = np.clip(command, min_angles, max_angles)
+            action = 2 * (command - min_angles) / (max_angles - min_angles) - 1
+        elif self._motor_control_mode == "CARTESIAN_PD":
+            raise ValueError(
+                f"for the motor control mode {self._motor_control_mode} the mapping from foot cartesian position to action not implemented yet."
+            )
+        else:
+            raise ValueError(f"The motor control mode {self._motor_control_mode} is not implemented for RL")
+
+        action = np.clip(action, -1, 1)
+        command = self._transform_action_to_motor_command(action)
+        return action
+
+    def _clip_motor_commands(self, des_angles):
+        """Clips motor commands.
+
+        Args:
+        des_angles: np.array. They are the desired motor angles (for PD control only)
+
+        Returns:
+        Clipped motor commands.
+        """
+
+        # clamp the motor command by the joint limit, in case weired things happens
+        if self._motor_control_mode == "PD":
+            max_angle_change = self._robot_config.MAX_MOTOR_ANGLE_CHANGE_PER_STEP
+            current_motor_angles = self.robot.GetMotorAngles()
+            motor_commands = np.clip(
+                des_angles, current_motor_angles - max_angle_change, current_motor_angles + max_angle_change
+            )
+            return motor_commands
+        else:
+            raise ValueError(f"Clipping angles available for PD control only, not in {self._motor_control_mode}")
+
     def step(self, action):
         """Step forward the simulation, given the action."""
         curr_act = action.copy()
+        if self._enable_action_filter:
+            curr_act = self._filter_action(curr_act)
         # save motor torques and velocities to compute power in reward function
         self._dt_motor_torques = []
         self._dt_motor_velocities = []
-
-        for _ in range(self._action_repeat):
+        for sub_step in range(self._action_repeat):
             if self._isRLGymInterface:
+                if self._enable_action_interpolation:
+                    curr_act = self._interpolate_actions(action, sub_step)
                 proc_action = self._transform_action_to_motor_command(curr_act)
             else:
                 proc_action = curr_act
@@ -486,40 +622,57 @@ class QuadrupedGymEnv(gym.Env):
         reward = self._reward()
         done = False
         infos = {"base_pos": self.robot.GetBasePosition()}
-        # if self._termination() or self.get_sim_time() > self._MAX_EP_LEN:
-        #     infos["TimeLimit.truncated"] = not self._termination()
-        #     done = True
 
-        if self._termination():
-            done = True
-            # Malus for crashing
-            # Optionally: no reward in case of crash
-            if self._TASK_ENV == "JUMPING_TASK":
-                reward -= 0.08
-
-        if self.get_sim_time() > self._MAX_EP_LEN:
-            infos["TimeLimit.truncated"] = not done
+        if self._termination() or self.get_sim_time() > self._MAX_EP_LEN:
+            infos["TimeLimit.truncated"] = not self._termination()
             done = True
 
+        # Update the actual reward at the end of the episode with bonus or malus
         if done:
-            if self._TASK_ENV == "JUMPING_TASK":
-                reward += self._max_flight_time
-                max_distance = 0.2
-                # Normalize forward distance reward
-                reward += 0.1 * self._max_forward_distance / max_distance
-                if self._max_flight_time > 0 and not self._termination():
-                    # Alive bonus proportional to the risk taken
-                    reward += 0.1 * self._max_flight_time
-                # print(f"Forward dist: {self._max_forward_distance}")
+            reward = self._reward_end_episode(reward)
 
         return np.array(self._noisy_observation()), reward, done, infos
+
+    ###################################################
+    # Filtering to smooth actions
+    ###################################################
+    def _build_action_filter(self):
+        sampling_rate = 1 / (self._time_step * self._action_repeat)
+        num_joints = self._action_dim
+        a_filter = action_filter.ActionFilterButter(sampling_rate=sampling_rate, num_joints=num_joints)
+        return a_filter
+
+    def _reset_action_filter(self):
+        self._action_filter.reset()
+
+    def _filter_action(self, action):
+        filtered_action = self._action_filter.filter(action)
+        return filtered_action
+
+    def _init_filter(self):
+        # initialize the filter history, since resetting the filter will fill
+        # the history with zeros and this can cause sudden movements at the start
+        # of each episode
+        default_action = self._compute_first_actions()
+        self._action_filter.init_history(default_action)
+
+    def _compute_first_actions(self):
+        if self._motor_control_mode == "PD":
+            init_angles = self._robot_config.INIT_MOTOR_ANGLES + self._robot_config.JOINT_OFFSETS
+            default_action = self._map_command_to_action(init_angles)
+        elif self._motor_control_mode == "CARTESIAN_PD":
+            # go toward NOMINAL_FOOT_POS_LEG_FRAME
+            default_action = np.array([0, 0, 0] * self._robot_config.NUM_LEGS)
+        else:
+            raise ValueError(f"The motor control mode {self._motor_control_mode} is not implemented for RL")
+
+        return np.clip(default_action, -1, 1)
 
     ######################################################################################
     # Reset
     ######################################################################################
     def reset(self):
         """Set up simulation environment."""
-        self._v_des = np.array([2.0, 0.0])  # (np.random.uniform(), 2.*np.random.uniform()-1.)
         mu_min = 0.5
         if self._hard_reset:
             # set up pybullet simulation
@@ -558,31 +711,35 @@ class QuadrupedGymEnv(gym.Env):
         self._env_step_counter = 0
         self._sim_step_counter = 0
         self._last_base_position = [0, 0, 0]
+        self._init_task_variables()
 
         if self._is_render:
             self._pybullet_client.resetDebugVisualizerCamera(self._cam_dist, self._cam_yaw, self._cam_pitch, [0, 0, 0])
 
-        if self._enable_springs:
-            self._turn_off_temporaneously_motors()
-        else:
-            self._settle_robot()
+        if self._enable_action_filter:
+            self._reset_action_filter()
+            self._init_filter()
 
-        if self._TASK_ENV == "JUMPING_TASK":
-            # For the jumping task
-            self._init_height = self.robot.GetBasePosition()[2]
-            self._all_feet_in_the_air = False
-            self._time_take_off = self.get_sim_time()
-            self._robot_pose_take_off = self.robot.GetBasePosition()
-            self._robot_orientation_take_off = self.robot.GetBaseOrientationRollPitchYaw()
-            self._max_flight_time = 0.0
-            self._max_forward_distance = 0.0
+        self._settle_robot()  # Settle robot after being spawned
 
         self._last_action = np.zeros(self._action_dim)
         if self._is_record_video:
             self.recordVideoHelper()
         return self._noisy_observation()
 
-    def _settle_robot(self):
+    def _settle_robot_by_action(self):
+        """Settle robot in according to the used motor control mode in RL interface"""
+        init_action = self._compute_first_actions()
+        if self._is_render:
+            time.sleep(0.2)
+        for _ in range(1000):
+            proc_action = self._transform_action_to_motor_command(init_action)
+            self.robot.ApplyAction(proc_action)
+            if self._is_render:
+                time.sleep(0.001)
+            self._pybullet_client.stepSimulation()
+
+    def _settle_robot_by_PD(self):
         """Settle robot and add noise to init configuration."""
         # change to PD control mode to set initial position, then set back..
         tmp_save_motor_control_mode_ENV = self._motor_control_mode
@@ -611,36 +768,28 @@ class QuadrupedGymEnv(gym.Env):
         except:
             pass
 
-    def _turn_off_temporaneously_motors(self):
-        """Switch off motors temporaneously."""
-        # change to PD control mode to set initial position, then set back..
-        tmp_save_motor_control_mode_ENV = self._motor_control_mode
-        tmp_save_motor_control_mode_ROB = self.robot._motor_control_mode
-        self._motor_control_mode = "TORQUE"
-        self.robot._motor_control_mode = "TORQUE"
-        try:
-            tmp_save_motor_control_mode_MOT = self.robot._motor_model._motor_control_mode
-            self.robot._motor_model._motor_control_mode = "TORQUE"
-        except:
-            pass
-        torques = np.full(robot_config.NUM_MOTORS, 0)
-        if self._is_render:
-            time.sleep(0.2)
-        for _ in range(2000):
-            self.robot.ApplyAction(torques)
-            if self._is_render:
-                time.sleep(0.001)
-                self._render_step_helper()
+    def _settle_robot(self):
+        if self._isRLGymInterface:
+            self._settle_robot_by_action()
+        else:
+            self._settle_robot_by_PD()
 
-            self._pybullet_client.stepSimulation()
+    def _init_task_variables(self):
+        if self._TASK_ENV == "JUMPING_TASK":
+            self._init_variables_jumping()
+        elif self._TASK_ENV == "LR_COURSE_TASK" or self._TASK_ENV == "FWD_LOCOMOTION":
+            self._v_des = np.array([2.0, 0.0])  # (np.random.uniform(), 2.*np.random.uniform()-1.)
 
-        # set control mode back
-        self._motor_control_mode = tmp_save_motor_control_mode_ENV
-        self.robot._motor_control_mode = tmp_save_motor_control_mode_ROB
-        try:
-            self.robot._motor_model._motor_control_mode = tmp_save_motor_control_mode_MOT
-        except:
-            pass
+    def _init_variables_jumping(self):
+        # For the jumping task
+        self._v_des = np.array([2.0, 0.0])  # (np.random.uniform(), 2.*np.random.uniform()-1.)
+        self._init_height = self.robot.GetBasePosition()[2]
+        self._all_feet_in_the_air = False
+        self._time_take_off = self.get_sim_time()
+        self._robot_pose_take_off = self.robot.GetBasePosition()
+        self._robot_orientation_take_off = self.robot.GetBaseOrientationRollPitchYaw()
+        self._max_flight_time = 0.0
+        self._max_forward_distance = 0.0
 
     ######################################################################################
     # Render, record videos, bookkeping, and misc pybullet helpers.
@@ -862,12 +1011,24 @@ class QuadrupedGymEnv(gym.Env):
 
 def test_env():
     env = QuadrupedGymEnv(
-        render=True, on_rack=False, motor_control_mode="PD", action_repeat=100, enable_springs=True, add_noise=False
+        robot_model="GO1",
+        render=True,
+        on_rack=False,
+        motor_control_mode="PD",
+        action_repeat=10,
+        enable_springs=True,
+        add_noise=False,
+        enable_action_interpolation=True,
+        enable_action_filter=True,
+        enable_action_clipping=True,
+        task_env="JUMPING_TASK",
     )
     sim_steps = 1000
+
     obs = env.reset()
     for i in range(sim_steps):
         action = np.random.rand(12) * 2 - 1
+        # action = np.full(12,0)
         obs, reward, done, info = env.step(action)
     print("end")
 

@@ -11,7 +11,7 @@ CONTROL_MODES = ["TORQUE", "PD"]
 
 
 class QuadrupedMotorModel(object):
-    """A simple motor model for A1.
+    """A simple motor model for GO1.
 
     When in POSITION mode, the torque is calculated according to the difference
     between current and desired joint angle, as well as the joint velocity.

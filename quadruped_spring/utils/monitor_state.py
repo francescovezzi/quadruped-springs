@@ -2,19 +2,11 @@ import gym
 import matplotlib
 import numpy as np
 
-from quadruped_spring.env.configs_a1 import VELOCITY_LIMITS
-
 matplotlib.use("tkagg")
 import os
 import time
 
 import matplotlib.pyplot as plt
-
-NUM_MOTORS = 12
-UPPER_ANGLE_JOINT = np.array([0.802851455917, 4.18879020479, -0.916297857297])
-LOWER_ANGLE_JOINT = np.array([-0.802851455917, -1.0471975512, -2.69653369433])
-JOINT_LIMITS = np.transpose([UPPER_ANGLE_JOINT, LOWER_ANGLE_JOINT])
-VELOCITY_LIMITS = [21.0, -21.0]
 
 
 class MonitorState(gym.Wrapper):
@@ -34,9 +26,9 @@ class MonitorState(gym.Wrapper):
         self._release = release
         self._plot_done = False
         self._h_min = 0.15
-        self._tau_max = 33.5
 
     def _init_storage(self):
+        NUM_MOTORS = self.env._robot_config.NUM_MOTORS
         self._length = self._rec_length // self._paddle
         self._time = np.zeros(self._length)
         self._energy_spring = np.zeros((self._length, NUM_MOTORS))
@@ -111,11 +103,21 @@ class MonitorState(gym.Wrapper):
         return fig, axs
 
     def _create_plots(self):
-        tau_lim_aux = [self._tau_max, -self._tau_max]
-        tau_limits = ([True] * 3, [tau_lim_aux, tau_lim_aux, tau_lim_aux])
+        tau_lim = self.env._robot_config.TORQUE_LIMITS[0:3]
+        print(tau_lim)
+        tau_lim_aux = np.stack([tau_lim, -tau_lim], axis=1)
+        tau_limits = ([True] * 3, tau_lim_aux)
+
         pos_limits = ([False, False, True], [None, None, self._h_min])
-        joint_limits = ([True] * 3, JOINT_LIMITS)
-        velocity_limits = ([True] * 3, [VELOCITY_LIMITS, VELOCITY_LIMITS, VELOCITY_LIMITS])
+
+        joint_lim_up = self.env._robot_config.RL_UPPER_ANGLE_JOINT[0:3]
+        joint_lim_down = self.env._robot_config.RL_LOWER_ANGLE_JOINT[0:3]
+        joint_lim_aux = np.stack([joint_lim_up, joint_lim_down], axis=1)
+        joint_limits = ([True] * 3, joint_lim_aux)
+
+        velocity_lim = self.env._robot_config.VELOCITY_LIMITS[0:3]
+        velocity_lim_aux = np.stack([velocity_lim, -velocity_lim], axis=1)
+        velocity_limits = ([True] * 3, velocity_lim_aux)
         fig_config, _ = self._plot12(self._config, "configuration", "$q$", joint_limits)
         fig_rpy, _ = self._plot3(self._base_or, "Base Orientation", ["roll", "pitch", "yaw"])
         fig_pos, _ = self._plot3(self._base_pos, "Base Position", ["x", "y", "z"], pos_limits)
