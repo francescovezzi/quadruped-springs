@@ -36,6 +36,9 @@ VIDEO_LOG_DIRECTORY = "videos/" + datetime.datetime.now().strftime("vid-%Y-%m-%d
 # Implemented observation spaces for deep reinforcement learning:
 #   "DEFAULT":    motor angles and velocities, body orientation
 #   "LR_COURSE_OBS":  [TODO: what should you include? what is reasonable to measure on the real system?]
+#   "JUMPING_ON_PLACE_OBS": IMU(base linear and angular velocity) +
+#                           Feet positions and velocities (required knoweledge of joint configuration and velocity)
+#                           Boolean feet contact
 
 # Tasks to be learned with reinforcement learning
 #     - "FWD_LOCOMOTION"
