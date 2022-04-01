@@ -37,7 +37,7 @@ VIDEO_LOG_DIRECTORY = "videos/" + datetime.datetime.now().strftime("vid-%Y-%m-%d
 #   "JUMPING_ON_PLACE_OBS": IMU(base linear and angular velocity) +
 #                           Feet positions and velocities (required knowledge of joint configuration and velocity)
 #                           Boolean feet contact
-#   "REAL_OBS":  Feet positions and velocities (using dirty derivatives)
+#   "REAL_OBS":  Feet positions and velocities (using joint velocity estimate)
 #                Boolean feet contact
 
 # Tasks to be learned with reinforcement learning
@@ -100,6 +100,7 @@ class QuadrupedGymEnv(gym.Env):
         enable_action_interpolation=False,
         enable_action_filter=False,
         enable_action_clipping=False,
+        enable_joint_velocity_estimate=False,
         test_env=False,  # NOT ALLOWED FOR TRAINING!
     ):
         """Initialize the quadruped gym environment.
@@ -153,6 +154,7 @@ class QuadrupedGymEnv(gym.Env):
         self._enable_action_interpolation = enable_action_interpolation
         self._enable_action_filter = enable_action_filter
         self._enable_action_clipping = enable_action_clipping
+        self._enable_joint_velocity_estimate = enable_joint_velocity_estimate
         self._using_test_env = test_env
         if test_env:
             self._add_noise = True
@@ -381,11 +383,13 @@ class QuadrupedGymEnv(gym.Env):
         self._add_obs_noise = (
             np.random.normal(scale=self._observation_noise_stdev, size=self._observation.shape) * self.observation_space.high
         )
+        if self._enable_joint_velocity_estimate:
+            self._last_joint_config = self.robot.GetMotorAngles()
         return self._observation
 
     def _get_obs_real(self):
         q = self.robot.GetMotorAngles()
-        foot_pos, foot_vel = self.robot.ComputeFeetPosAndVel()
+        foot_pos, foot_vel = self._compute_feet_position_vel()
         numValidContacts, numInvalidContacts, feetNormalForces, feetInContactBool = self.robot.GetContactInfo()
         
         self._observation = np.concatenate((foot_pos, foot_vel, feetInContactBool))
@@ -423,6 +427,26 @@ class QuadrupedGymEnv(gym.Env):
         numValidContacts, numInvalidContacts, feetNormalForces, feetInContactBool = self.robot.GetContactInfo()
 
         self._observation = np.concatenate((vel, self._v_des, rpy, drpy, foot_pos, foot_vel, feetInContactBool))
+
+    def _get_motor_velocities(self):
+        if self._enable_joint_velocity_estimate:
+            q_actual = self.robot.GetMotorAngles()
+            q_previous = self._last_joint_config
+            dt = self._time_step #  * self._action_repeat
+            return (q_actual - q_previous) / dt
+        else:
+            return self.robot.GetMotorVelocities()
+        
+    def _compute_feet_position_vel(self):
+        dq = self._get_motor_velocities()
+        foot_pos = np.zeros(12)
+        foot_vel = np.zeros(12)
+        for i in range(4):
+            dq_i = dq[3 * i : 3 * (i + 1)]
+            J, xyz = self.robot.ComputeJacobianAndPosition(i)
+            foot_pos[3 * i : 3 * (i + 1)] = xyz
+            foot_vel[3 * i : 3 * (i + 1)] = J @ dq_i
+        return foot_pos, foot_vel
 
     def _noisy_observation(self):
         self._get_observation()
@@ -908,10 +932,13 @@ class QuadrupedGymEnv(gym.Env):
             self._init_filter()
 
         self._settle_robot()  # Settle robot after being spawned
+        if self._enable_joint_velocity_estimate:
+            self._last_joint_config = self.robot.GetMotorAngles()
 
         self._last_action = np.zeros(self._action_dim)
         if self._is_record_video:
             self.recordVideoHelper()
+
         return self._noisy_observation()
 
     def _settle_robot_by_action(self):
@@ -1216,7 +1243,7 @@ def test_env():
 
     env_config = {}
     env_config['robot_model'] = 'GO1'
-    env_config['render'] = False
+    env_config['render'] = True
     env_config['on_rack'] = False
     env_config['motor_control_mode'] = 'PD'
     env_config['action_repeat'] = 10
@@ -1227,9 +1254,10 @@ def test_env():
     env_config['enable_action_filter'] = False
     env_config['task_env'] = "JUMPING_ON_PLACE_TASK"
     env_config['observation_space_mode'] = "REAL_OBS"
+    env_config['enable_joint_velocity_estimate'] = True
 
     env = QuadrupedGymEnv(**env_config)
-    
+
     sim_steps = 1000
     obs = env.reset()
     for i in range(sim_steps):
