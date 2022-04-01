@@ -4,8 +4,8 @@ import time
 import cv2
 import gym
 import numpy as np
+from stable_baselines3.common.vec_env.base_vec_env import VecEnv, VecEnvWrapper
 
-from stable_baselines3.common.vec_env.base_vec_env import VecEnvWrapper, VecEnv
 
 class VideoRec(gym.Wrapper):
     def __init__(self, env: gym.Env, video_length, path="logs/videos/", name="rl_video", release=True):
@@ -80,7 +80,7 @@ class VideoRec(gym.Wrapper):
 
     def render(self, mode="rgb_array", **kwargs):
         return self.env.render(mode, **kwargs)
-    
+
 
 class VecVideoRec(VecEnvWrapper):
     def __init__(self, venv: VecEnv, video_length, path="logs/videos/", name="rl_video", release=True):
@@ -106,7 +106,7 @@ class VecVideoRec(VecEnvWrapper):
 
     def _init_video(self):
         os.makedirs(self._path, exist_ok=True)
-        img = self.venv.render(mode='rgb_array')
+        img = self.venv.render(mode="rgb_array")
         img_height, img_width, _ = np.shape(img)
         self._time_step = 100
         self._freq = int(1 / self._time_step)
@@ -117,7 +117,7 @@ class VecVideoRec(VecEnvWrapper):
         self._step_counter += 1
 
     def _increase_video(self):
-        img = self.env.render(mode='rgb_array')
+        img = self.env.render(mode="rgb_array")
         open_cv_image = cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)
         self._movie.write(open_cv_image)
 
@@ -131,7 +131,7 @@ class VecVideoRec(VecEnvWrapper):
     def _release_video(self):
         self._movie.release()
         self._video_done = True
-        print('video released')
+        print("video released")
         time.sleep(0.5)
 
     def step_wait(self):

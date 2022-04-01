@@ -26,7 +26,6 @@ import quadruped_spring.robots.a1.configs_a1 as a1_config
 import quadruped_spring.robots.go1.configs_go1 as go1_config
 from quadruped_spring.utils import action_filter
 
-
 ACTION_EPS = 0.01
 OBSERVATION_EPS = 0.01
 VIDEO_LOG_DIRECTORY = "videos/" + datetime.datetime.now().strftime("vid-%Y-%m-%d-%H-%M-%S-%f")
@@ -219,7 +218,7 @@ class QuadrupedGymEnv(gym.Env):
         foot_vel_low = np.array([-10.0] * 12)
         contact_high = np.array([1.0] * 4)
         contact_low = np.array([0.0] * 4)
-        
+
         observation_high = (
             np.concatenate(
                 (
@@ -252,7 +251,7 @@ class QuadrupedGymEnv(gym.Env):
         foot_vel_low = np.array([-10.0] * 12)
         contact_high = np.array([1.0] * 4)
         contact_low = np.array([0.0] * 4)
-        
+
         observation_high = (
             np.concatenate(
                 (
@@ -433,14 +432,14 @@ class QuadrupedGymEnv(gym.Env):
         q = self.robot.GetMotorAngles()
         foot_pos, foot_vel = self._compute_feet_position_vel()
         numValidContacts, numInvalidContacts, feetNormalForces, feetInContactBool = self.robot.GetContactInfo()
-        
+
         self._observation = np.concatenate((q, foot_pos, foot_vel, feetInContactBool))
 
     def _get_obs_real_1(self):
         q = self.robot.GetMotorAngles()
         foot_pos, foot_vel = self._compute_feet_position_vel()
         numValidContacts, numInvalidContacts, feetNormalForces, feetInContactBool = self.robot.GetContactInfo()
-        
+
         self._observation = np.concatenate((foot_pos, foot_vel, feetInContactBool))
 
     def _get_obs_jump_on_place(self):
@@ -485,7 +484,7 @@ class QuadrupedGymEnv(gym.Env):
             return (q_actual - q_previous) / dt
         else:
             return self.robot.GetMotorVelocities()
-        
+
     def _compute_feet_position_vel(self):
         dq = self._get_motor_velocities()
         foot_pos = np.zeros(12)
@@ -1291,19 +1290,19 @@ class QuadrupedGymEnv(gym.Env):
 def test_env():
 
     env_config = {}
-    env_config['robot_model'] = 'GO1'
-    env_config['render'] = True
-    env_config['on_rack'] = False
-    env_config['motor_control_mode'] = 'PD'
-    env_config['action_repeat'] = 10
-    env_config['enable_springs'] = True
-    env_config['add_noise'] = False
-    env_config['enable_action_interpolation'] = False
-    env_config['enable_action_clipping'] = False
-    env_config['enable_action_filter'] = False
-    env_config['task_env'] = "JUMPING_ON_PLACE_TASK"
-    env_config['observation_space_mode'] = "REAL_OBS_2"
-    env_config['enable_joint_velocity_estimate'] = True
+    env_config["robot_model"] = "GO1"
+    env_config["render"] = True
+    env_config["on_rack"] = False
+    env_config["motor_control_mode"] = "PD"
+    env_config["action_repeat"] = 10
+    env_config["enable_springs"] = True
+    env_config["add_noise"] = False
+    env_config["enable_action_interpolation"] = False
+    env_config["enable_action_clipping"] = False
+    env_config["enable_action_filter"] = False
+    env_config["task_env"] = "JUMPING_ON_PLACE_TASK"
+    env_config["observation_space_mode"] = "REAL_OBS_2"
+    env_config["enable_joint_velocity_estimate"] = True
 
     env = QuadrupedGymEnv(**env_config)
 
