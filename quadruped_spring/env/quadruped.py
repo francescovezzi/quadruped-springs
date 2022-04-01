@@ -67,9 +67,10 @@ class Quadruped(object):
                 kd=self._kd,
                 torque_limits=self._robot_config.TORQUE_LIMITS,
             )
-            self._motor_model._setSpringStiffness(self._robot_config.SPRINGS_STIFFNESS)
-            self._motor_model._setSpringRestAngle(self._robot_config.SPRINGS_REST_ANGLE)
-            self._motor_model._setSpringDumping(self._robot_config.SPRINGS_DAMPING)
+            if self._enable_springs:
+                self._motor_model._setSpringStiffness(self._robot_config.SPRINGS_STIFFNESS)
+                self._motor_model._setSpringRestAngle(self._robot_config.SPRINGS_REST_ANGLE)
+                self._motor_model._setSpringDumping(self._robot_config.SPRINGS_DAMPING)
         else:
             raise ValueError("Must use accurate motor model")
 
