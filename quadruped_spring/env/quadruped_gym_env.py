@@ -132,6 +132,9 @@ class QuadrupedGymEnv(gym.Env):
             used to smooth actions.
           enable_action_clipping: Boolean specifying if motor commands should be
             clipped or not. It's not implemented for pure torque control.
+          enable_joint_velocity_estimate: Boolean specifying if it's used the
+            estimated or the true joint velocity. Actually it affects only real
+            observations space modes.
         """
         self.seed()
         try:
@@ -425,7 +428,9 @@ class QuadrupedGymEnv(gym.Env):
             np.random.normal(scale=self._observation_noise_stdev, size=self._observation.shape) * self.observation_space.high
         )
         if self._enable_joint_velocity_estimate:
-            self._last_joint_config = self.robot.GetMotorAngles()
+            # Update stored configs
+            self._last_joint_config = self._actual_joint_config
+            self._actual_joint_config = self.robot.GetMotorAngles()
         return self._observation
 
     def _get_obs_real_2(self):
@@ -478,10 +483,8 @@ class QuadrupedGymEnv(gym.Env):
 
     def _get_motor_velocities(self):
         if self._enable_joint_velocity_estimate:
-            q_actual = self.robot.GetMotorAngles()
-            q_previous = self._last_joint_config
             dt = self._time_step * self._action_repeat
-            return (q_actual - q_previous) / dt
+            return (self._actual_joint_config - self._last_joint_config) / dt
         else:
             return self.robot.GetMotorVelocities()
 
@@ -982,6 +985,7 @@ class QuadrupedGymEnv(gym.Env):
         self._settle_robot()  # Settle robot after being spawned
         if self._enable_joint_velocity_estimate:
             self._last_joint_config = self.robot.GetMotorAngles()
+            self._actual_joint_config = self.robot.GetMotorAngles()
 
         self._last_action = np.zeros(self._action_dim)
         if self._is_record_video:
@@ -1301,7 +1305,7 @@ def test_env():
     env_config["enable_action_clipping"] = False
     env_config["enable_action_filter"] = False
     env_config["task_env"] = "JUMPING_ON_PLACE_TASK"
-    env_config["observation_space_mode"] = "REAL_OBS_2"
+    env_config["observation_space_mode"] = "REAL_OBS_1"
     env_config["enable_joint_velocity_estimate"] = True
 
     env = QuadrupedGymEnv(**env_config)
