@@ -37,6 +37,8 @@ VIDEO_LOG_DIRECTORY = "videos/" + datetime.datetime.now().strftime("vid-%Y-%m-%d
 #   "JUMPING_ON_PLACE_OBS": IMU(base linear and angular velocity) +
 #                           Feet positions and velocities (required knowledge of joint configuration and velocity)
 #                           Boolean feet contact
+#   "REAL_OBS":  Feet positions and velocities (using dirty derivatives)
+#                Boolean feet contact
 
 # Tasks to be learned with reinforcement learning
 #     - "FWD_LOCOMOTION"
@@ -194,10 +196,43 @@ class QuadrupedGymEnv(gym.Env):
             obs_high, obs_low = self._set_obs_space_lr_course()
         elif self._observation_space_mode == "JUMPING_ON_PLACE_OBS":
             obs_high, obs_low = self._set_obs_space_jump_on_place()
+        elif self._observation_space_mode == "REAL_OBS":
+            obs_high, obs_low = self._set_obs_space_real_obs()
         else:
             raise ValueError(f"observation space {self._observation_space_mode} not defined or not intended")
 
         self.observation_space = spaces.Box(obs_low, obs_high, dtype=np.float32)
+
+    def _set_obs_space_real_obs(self):
+        foot_pos_high = np.array([0.1, 0.05, 0.1] * 4)
+        foot_pos_low = -foot_pos_high
+        foot_vel_high = np.array([10.0] * 12)
+        foot_vel_low = np.array([-10.0] * 12)
+        contact_high = np.array([1.0] * 4)
+        contact_low = np.array([0.0] * 4)
+        
+        observation_high = (
+            np.concatenate(
+                (
+                    foot_pos_high,
+                    foot_vel_high,
+                    contact_high,
+                )
+            )
+            + OBSERVATION_EPS
+        )
+        observation_low = (
+            np.concatenate(
+                (
+                    foot_pos_low,
+                    foot_vel_low,
+                    contact_low,
+                )
+            )
+            - OBSERVATION_EPS
+        )
+
+        return observation_high, observation_low
 
     def _set_obs_space_jump_on_place(self):
         q_high = self._robot_config.RL_UPPER_ANGLE_JOINT
@@ -338,6 +373,8 @@ class QuadrupedGymEnv(gym.Env):
             self._get_obs_lr_course()
         elif self._observation_space_mode == "JUMPING_ON_PLACE_OBS":
             self._get_obs_jump_on_place()
+        elif self._observation_space_mode == "REAL_OBS":
+            self._get_obs_real()
         else:
             raise ValueError("observation space not defined or not intended")
 
@@ -345,6 +382,13 @@ class QuadrupedGymEnv(gym.Env):
             np.random.normal(scale=self._observation_noise_stdev, size=self._observation.shape) * self.observation_space.high
         )
         return self._observation
+
+    def _get_obs_real(self):
+        q = self.robot.GetMotorAngles()
+        foot_pos, foot_vel = self.robot.ComputeFeetPosAndVel()
+        numValidContacts, numInvalidContacts, feetNormalForces, feetInContactBool = self.robot.GetContactInfo()
+        
+        self._observation = np.concatenate((foot_pos, foot_vel, feetInContactBool))
 
     def _get_obs_jump_on_place(self):
         q = self.robot.GetMotorAngles()
@@ -1182,7 +1226,7 @@ def test_env():
     env_config['enable_action_clipping'] = False
     env_config['enable_action_filter'] = False
     env_config['task_env'] = "JUMPING_ON_PLACE_TASK"
-    env_config['observation_space_mode'] = "JUMPING_ON_PLACE_OBS"
+    env_config['observation_space_mode'] = "REAL_OBS"
 
     env = QuadrupedGymEnv(**env_config)
     
