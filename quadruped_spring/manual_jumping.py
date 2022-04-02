@@ -49,6 +49,16 @@ class StateMachine(QuadrupedGymEnv):
             self._pybullet_client.stepSimulation()
             if self._is_render:
                 self._render_step_helper()
+                
+    @temporary_switch_motor_control_mode(mode="TORQUE")
+    def settle_init_config2(self):
+        action_ref = np.full(12,0)
+        action_ref[2] = 1
+        for _ in range(8000):
+            command = self.ScaleActionToCartesianPos(action_ref)
+            self.robot.ApplyAction(command)
+            self._pybullet_client.stepSimulation()
+
 
     def cartesian_(self, F_foot):
         taus = np.full(12, 0)
@@ -103,8 +113,8 @@ class StateMachine(QuadrupedGymEnv):
 def build_env():
     env_config = {}
     env_config["enable_springs"] = True
-    env_config["render"] = False
-    env_config["on_rack"] = False
+    env_config["render"] = True
+    env_config["on_rack"] = True
     env_config["enable_joint_velocity_estimate"] = False
 
     return StateMachine(**env_config)
@@ -115,8 +125,8 @@ if __name__ == "__main__":
     env = build_env()
     sim_steps = 1000
 
-    env.settle_init_config()
-    env.couch()
+    env.settle_init_config2()
+    # env.couch()
 
     # obs = env.reset()
     # for i in range(sim_steps):
