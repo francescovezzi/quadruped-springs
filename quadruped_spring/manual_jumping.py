@@ -3,7 +3,7 @@ import time
 import numpy as np
 
 from env.quadruped_gym_env import QuadrupedGymEnv
-from utils.monitor_state import MonitorState
+from utils.monitor_state2 import MonitorState
 
 
 class StateMachine(QuadrupedGymEnv):
@@ -39,39 +39,39 @@ class StateMachine(QuadrupedGymEnv):
                     pass
 
             return wrapper
-
         return _decorator
+    
 
-    @temporary_switch_motor_control_mode(mode="PD")
-    def settle_init_config(self):
-        init_motor_angles = self._robot_config.INIT_MOTOR_ANGLES + self._robot_config.JOINT_OFFSETS
-        for _ in range(800):
-            self.robot.ApplyAction(init_motor_angles)
-            self._pybullet_client.stepSimulation()
-            if self._is_render:
-                self._render_step_helper()
-            print(self.robot.GetBasePosition()[2])
+    # @temporary_switch_motor_control_mode(mode="PD")
+    # def settle_init_config(self):
+    #     init_motor_angles = self._robot_config.INIT_MOTOR_ANGLES + self._robot_config.JOINT_OFFSETS
+    #     for _ in range(800):
+    #         self.robot.ApplyAction(init_motor_angles)
+    #         self._pybullet_client.stepSimulation()
+    #         if self._is_render:
+    #             self._render_step_helper()
+    #         print(self.robot.GetBasePosition()[2])
                 
-    @temporary_switch_motor_control_mode(mode="TORQUE")
-    def settle_init_config2(self):
-        action_ref = np.full(12,0)
-        action_ref[2] = 1
-        for _ in range(8000):
-            command = self.ScaleActionToCartesianPos(action_ref)
-            self.robot.ApplyAction(command)
-            self._pybullet_client.stepSimulation()
+    # @temporary_switch_motor_control_mode(mode="TORQUE")
+    # def settle_init_config2(self):
+    #     action_ref = np.full(12,0)
+    #     action_ref[2] = 1
+    #     for _ in range(8000):
+    #         command = self.ScaleActionToCartesianPos(action_ref)
+    #         self.robot.ApplyAction(command)
+    #         self._pybullet_client.stepSimulation()
             
     @temporary_switch_motor_control_mode(mode="TORQUE")
-    def settle_init_config3(self):
+    def settle_init_config(self, sim_steps):
         config_des = self._robot_config.INIT_MOTOR_ANGLES
         # config_des = self.height_to_theta_des(0.16)
-        for _ in range(1000):
+        for _ in range(sim_steps):
             command = self.angle_ref_to_command(config_des)
             self.robot.ApplyAction(command)
             self._pybullet_client.stepSimulation()
             if self._is_render:
                 self._render_step_helper()
-            print(self.robot.GetBasePosition()[2])
+            # print(self.robot.GetBasePosition()[2])
 
     @temporary_switch_motor_control_mode(mode='TORQUE')
     def jump(self):
@@ -125,12 +125,13 @@ class StateMachine(QuadrupedGymEnv):
         return torque
 
     @temporary_switch_motor_control_mode(mode="TORQUE")
-    def couch(self):
+    def couch(self, sim_steps):
+        assert sim_steps > 1000, 'simulation time > 1000 for this phase'
         i_min = 0
-        i_max = 4000
+        i_max = sim_steps - 500
         config_init = self.robot.GetMotorAngles()
         config_des = self.height_to_theta_des(0.16)
-        for i in range(i_max + 1000):
+        for i in range(sim_steps):
             config_ref = [self.generate_ramp(i, i_min, i_max, config_init[j], config_des[j]) for j in range(12)]
             command = self.angle_ref_to_command(config_ref)
             self.robot.ApplyAction(command)
@@ -142,7 +143,7 @@ class StateMachine(QuadrupedGymEnv):
 def build_env():
     env_config = {}
     env_config["enable_springs"] = True
-    env_config["render"] = True
+    env_config["render"] = False
     env_config["on_rack"] = False
     env_config["enable_joint_velocity_estimate"] = False
 
@@ -152,13 +153,15 @@ def build_env():
 if __name__ == "__main__":
 
     env = build_env()
-    # env = MonitorState(env, rec_length=1500)
-    sim_steps = 1000
+    sim_steps_settle = 1000
+    sim_steps_couch = 2500
+    
+    total_sim_steps = sim_steps_settle + sim_steps_couch
 
-    env.settle_init_config3()
-    env.couch()
-    env.jump()
-
+    # env.settle_init_config(sim_steps=sim_steps_settle)
+    # env.couch(sim_steps=sim_steps_couch)
+    # env.jump()
+    
     # obs = env.reset()
     # for i in range(sim_steps):
     #     action = np.random.rand(12) * 2 - 1
