@@ -3,6 +3,7 @@ import time
 import numpy as np
 
 from env.quadruped_gym_env import QuadrupedGymEnv
+from utils.monitor_state import MonitorState
 
 
 class StateMachine(QuadrupedGymEnv):
@@ -49,6 +50,7 @@ class StateMachine(QuadrupedGymEnv):
             self._pybullet_client.stepSimulation()
             if self._is_render:
                 self._render_step_helper()
+            print(self.robot.GetBasePosition()[2])
                 
     @temporary_switch_motor_control_mode(mode="TORQUE")
     def settle_init_config2(self):
@@ -58,16 +60,43 @@ class StateMachine(QuadrupedGymEnv):
             command = self.ScaleActionToCartesianPos(action_ref)
             self.robot.ApplyAction(command)
             self._pybullet_client.stepSimulation()
+            
+    @temporary_switch_motor_control_mode(mode="TORQUE")
+    def settle_init_config3(self):
+        config_des = self._robot_config.INIT_MOTOR_ANGLES
+        # config_des = self.height_to_theta_des(0.16)
+        for _ in range(1000):
+            command = self.angle_ref_to_command(config_des)
+            self.robot.ApplyAction(command)
+            self._pybullet_client.stepSimulation()
+            if self._is_render:
+                self._render_step_helper()
+            print(self.robot.GetBasePosition()[2])
 
-
-    def cartesian_(self, F_foot):
-        taus = np.full(12, 0)
+    @temporary_switch_motor_control_mode(mode='TORQUE')
+    def jump(self):
+        coeff = 0.35
+        f_rear = 180
+        f_front = coeff * f_rear
+        jump_command = np.full(12, 0)
         for i in range(4):
-            J, xyz = self.robot.ComputeJacobianAndPosition(i)
-            # Calculate torque contribution from Cartesian PD (Equation 5) [Make sure you are using matrix multiplications]
-            tau = J.T @ F_foot
-            taus[3 * i : 3 * (i + 1)] = tau  # TODO: add white noise
-        return taus
+            if i < 2:
+                f = f_front
+            else:
+                f = f_rear
+            jump_command[3 * i : 3 * (i + 1)] = self.map_force_to_tau([0, 0, -f], i)
+            jump_command[3*i] = 0
+        print(jump_command)
+        for _ in range(1500):
+            self.robot.ApplyAction(jump_command)
+            self._pybullet_client.stepSimulation()
+            if self._is_render:
+                self._render_step_helper()
+
+    def map_force_to_tau(self, F_foot, i):
+        J, _ = self.robot.ComputeJacobianAndPosition(i)
+        tau = J.T @ F_foot
+        return tau
 
     def generate_ramp(self, i, i_min, i_max, u_min, u_max) -> float:
         if i < i_min:
@@ -87,20 +116,20 @@ class StateMachine(QuadrupedGymEnv):
         q = self.robot.GetMotorAngles()
         dq = self.robot.GetMotorVelocities()
         if self._enable_springs:
-            kp = 200
-            kd = 1.5
+            kp = 300
+            kd = 2
         else:
             kp = 100
             kd = 1
         torque = -kp * (q - angles_ref) - kd * dq
-        return np.clip(torque, -20, 20)
+        return torque
 
     @temporary_switch_motor_control_mode(mode="TORQUE")
     def couch(self):
         i_min = 0
         i_max = 4000
-        config_init = self._robot_config.INIT_MOTOR_ANGLES
-        config_des = self.height_to_theta_des(0.06)
+        config_init = self.robot.GetMotorAngles()
+        config_des = self.height_to_theta_des(0.16)
         for i in range(i_max + 1000):
             config_ref = [self.generate_ramp(i, i_min, i_max, config_init[j], config_des[j]) for j in range(12)]
             command = self.angle_ref_to_command(config_ref)
@@ -114,7 +143,7 @@ def build_env():
     env_config = {}
     env_config["enable_springs"] = True
     env_config["render"] = True
-    env_config["on_rack"] = True
+    env_config["on_rack"] = False
     env_config["enable_joint_velocity_estimate"] = False
 
     return StateMachine(**env_config)
@@ -123,10 +152,12 @@ def build_env():
 if __name__ == "__main__":
 
     env = build_env()
+    # env = MonitorState(env, rec_length=1500)
     sim_steps = 1000
 
-    env.settle_init_config2()
-    # env.couch()
+    env.settle_init_config3()
+    env.couch()
+    env.jump()
 
     # obs = env.reset()
     # for i in range(sim_steps):
