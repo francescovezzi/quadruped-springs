@@ -140,7 +140,7 @@ class QuadrupedGymEnv(gym.Env):
         try:
             robot_config = ROBOT_CLASS_MAP[robot_model]
         except KeyError:
-            raise KeyError('Robot model should be "A1 or "GO1"')
+            raise KeyError('Robot model should be "A1" or "GO1"')
         self._robot_config = robot_config
         self._isRLGymInterface = isRLGymInterface
         self._time_step = time_step
