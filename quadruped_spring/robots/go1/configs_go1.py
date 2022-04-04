@@ -20,7 +20,7 @@ NUM_LEGS = 4
 MOTORS_PER_LEG = 3
 
 INIT_RACK_POSITION = [0, 0, 1]  # when hung up in air (for debugging)
-INIT_POSITION = [0, 0, 0.33]  # normal initial height
+INIT_POSITION = [0, 0, 0.36]  # normal initial height
 IS_FALLEN_HEIGHT = 0.18  # height at which robot is considered fallen
 
 INIT_ORIENTATION = (0, 0, 0, 1)
@@ -125,7 +125,7 @@ D_HIP = 0.4
 D_TIHGH = 0.4
 D_CALF = 0.4
 
-SPRINGS_STIFFNESS = [K_HIP, K_CALF, K_THIGH]
+SPRINGS_STIFFNESS = [K_HIP, K_THIGH, K_CALF]
 SPRINGS_DAMPING = [D_HIP, D_TIHGH, D_CALF]
 SPRINGS_REST_ANGLE = [DEFAULT_HIP_ANGLE, DEFAULT_THIGH_ANGLE, DEFAULT_CALF_ANGLE + 0.3]
 
