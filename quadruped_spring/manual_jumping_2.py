@@ -20,37 +20,41 @@ class JumpingStateMachine(gym.Wrapper):
         self._states = {'settling': 0, 'couching': 1, 'jumping_ground': 2, 'jumping_air': 3, 'landing': 4}
         self._state = self._states['settling']
         self._flying_up_counter = 0
-        self._actions = {0: self._settling_action, 1: self._couching_action, 2: self._jumping_explosive_action, 3: self._jumping_flying_action, 4: self._jumping_landing_action}
+        self._actions = {0: self.settling_action, 1: self.couching_action, 2: self.jumping_explosive_action, 3: self.jumping_flying_action, 4: self.jumping_landing_action}
         self._total_sim_steps = 9000
-        self._max_height = 0.0
+        self.max_height = 0.0
         self._step_counter = 0
+        
+        self._time_step = self.env._time_step
+        self._robot_config = self.env._robot_config
+        self._enable_springs = self.env._enable_springs
 
 
-    def _compute_action(self):
+    def compute_action(self):
         return self._actions[self._state]()
     
-    def _compensate_spring(self):
+    def compensate_spring(self):
         spring_action = self.env.robot._spring_torque
         return -np.array(spring_action)
 
-    def _update_state(self):
+    def update_state(self):
         if self._step_counter <= self._settling_duration_steps:
             actual_state = self._states['settling']
         elif self._step_counter <= self._settling_duration_steps + self._couching_duration_steps:
             actual_state = self._states['couching']
             # print(self.env.robot.GetBasePosition()[2])
         else:
-            if self._all_feet_in_contact():
+            if self.all_feet_in_contact():
                 actual_state = self._states['jumping_ground']
             else:
-                if self._is_landing():
+                if self.is_landing():
                     actual_state = self._states['landing']
                 else:
                     actual_state = self._states['jumping_air']
-        self._max_height = max(self._max_height, self.env.robot.GetBasePosition()[2])
+        self.max_height = max(self.max_height, self.env.robot.GetBasePosition()[2])
         self._state = actual_state
         
-    def _settling_action(self):
+    def settling_action(self):
         if self.env._enable_springs:
             config_des = np.array(self.env._robot_config.SPRINGS_REST_ANGLE * 4)
             config_init = self.env._robot_config.INIT_MOTOR_ANGLES
@@ -60,30 +64,21 @@ class JumpingStateMachine(gym.Wrapper):
             config_des = self.env._robot_config.INIT_MOTOR_ANGLES
             action = self.angle_ref_to_command(config_des)
         return action
-        
-    # def _couching_action(self):
-    #     i_min = self._settling_duration_steps
-    #     i_max = self._couching_duration_steps - 150 + i_min
-    #     config_init = self.env._robot_config.INIT_MOTOR_ANGLES
-    #     config_des = self.height_to_theta_des(0.14)
-    #     config_ref = [self.generate_ramp(self._step_counter, i_min, i_max, config_init[j], config_des[j]) for j in range(12)]
-    #     command = self.angle_ref_to_command(config_ref)
-    #     return command
 
-    def _couching_action(self):
+    def couching_action(self):
         max_torque = 35.55*0.9
         min_torque = 0
         i = self._step_counter
         i_min = self._settling_duration_steps
         i_max = i_min + self._couching_duration_steps - 500
-        torque_thigh = self.generate_ramp(i, i_min, i_max, 0, 20)
+        torque_thigh = self.generate_ramp(i, i_min, i_max, 0, 16)
         torque_calf = self.generate_ramp(i, i_min, i_max, min_torque, max_torque)
         torques = np.array([0,torque_thigh,-torque_calf]*4)
         return torques
     
-    def _jumping_explosive_action(self):
-        coeff = 1.5
-        f_rear = 150
+    def jumping_explosive_action(self):
+        coeff = 1.0
+        f_rear = 190
         f_front = coeff * f_rear
         jump_command = np.full(12, 0)
         for i in range(4):
@@ -93,41 +88,43 @@ class JumpingStateMachine(gym.Wrapper):
                 f = f_rear
             jump_command[3 * i : 3 * (i + 1)] = self.map_force_to_tau([0, 0, -f], i)
             jump_command[3*i] = 0
-        print(jump_command)
+        # print(jump_command)
         return jump_command
     
-    def _jumping_flying_action(self):
+    def jumping_flying_action(self):
         action = np.full(12,0)
         return action
     
-    def _jumping_landing_action(self):
+    def jumping_landing_action(self):
         config_des = np.array(self.env._robot_config.SPRINGS_REST_ANGLE * 4)
         config_des = np.array(self.env._robot_config.INIT_MOTOR_ANGLES)
+        config_des += np.array([0, -0.2, -0.2]*2 + [0, 0, 0]*2)
         q = self.robot.GetMotorAngles()
         dq = self.robot.GetMotorVelocities()
+        compensate_springs = np.full(12,0)
         if self.env._enable_springs:
-            kp = 70
-            kd = 1.0
+            kp = 20
+            kd = 10.0
+            compensate_springs = self.compensate_spring()
         else:
             kp = 55
             kd = 0.8
         torque = -kp * (q - config_des) - kd * dq
-        config_des = self.env._robot_config.INIT_MOTOR_ANGLES
         # action = self.angle_ref_to_command(config_des)
-        action = torque
+        action = torque #+ compensate_springs
         return action
         
-    def _all_feet_in_contact(self):
+    def all_feet_in_contact(self):
         _, _, _, feetInContactBool = self.env.robot.GetContactInfo()
         return np.all(feetInContactBool)
     
-    def _is_landing(self):
+    def is_landing(self):
         if self._flying_up_counter >= 20:
             return True
         else:
             self._flying_up_counter += 1
             return False
-        
+    
     def generate_ramp(self, i, i_min, i_max, u_min, u_max) -> float:
         if i < i_min:
             return u_min
@@ -146,7 +143,6 @@ class JumpingStateMachine(gym.Wrapper):
             kp = 55
             kd = 0.8
         torque = -kp * (q - angles_ref) - kd * dq
-        # print(q-angles_ref)
         return torque
     
     def height_to_theta_des(self, h):
@@ -166,7 +162,7 @@ class JumpingStateMachine(gym.Wrapper):
         obs, reward, done, infos = self.env.step(action)
         self._step_counter += 1
         
-        self._update_state()
+        self.update_state()
 
         return obs, reward, done, infos
     
@@ -183,7 +179,7 @@ class JumpingStateMachine(gym.Wrapper):
 def build_env():
     env_config = {}
     env_config["enable_springs"] = True
-    env_config["render"] = True
+    env_config["render"] = False
     env_config["on_rack"] = False
     env_config["enable_joint_velocity_estimate"] = False
     env_config["isRLGymInterface"] = False
@@ -193,19 +189,20 @@ def build_env():
     
     env = QuadrupedGymEnv(**env_config)
     env = JumpingStateMachine(env)
-
+    env = MonitorState(env=env, path='logs/plots', rec_length=env._total_sim_steps)
     return env
     
 if __name__ == '__main__':
     
     env = build_env()
-    sim_steps = env._total_sim_steps
-    
+    sim_steps = env.env._total_sim_steps
+    sim_steps = 200
     for _ in range(sim_steps):
-        action = env._compute_action()
+        action = env.compute_action()
         obs, reward, done, info = env.step(action)
+    env.release_plots()
     
     env.close()
+    print(env.max_height)
     print("end")
-    print(env._max_height)
         
