@@ -427,10 +427,6 @@ class QuadrupedGymEnv(gym.Env):
         self._add_obs_noise = (
             np.random.normal(scale=self._observation_noise_stdev, size=self._observation.shape) * self.observation_space.high
         )
-        if self._enable_joint_velocity_estimate:
-            # Update stored configs
-            self._last_joint_config = self._actual_joint_config
-            self._actual_joint_config = self.robot.GetMotorAngles()
         return self._observation
 
     def _get_obs_real_2(self):
@@ -483,10 +479,13 @@ class QuadrupedGymEnv(gym.Env):
 
     def _get_motor_velocities(self):
         if self._enable_joint_velocity_estimate:
-            dt = self._time_step * self._action_repeat
-            return (self._actual_joint_config - self._last_joint_config) / dt
+            return self.get_joint_velocity_estimation()
         else:
             return self.robot.GetMotorVelocities()
+
+    def get_joint_velocity_estimation(self):
+        dt = self._time_step
+        return (self._actual_joint_config - self._last_joint_config) / dt
 
     def _compute_feet_position_vel(self):
         dq = self._get_motor_velocities()
@@ -872,6 +871,9 @@ class QuadrupedGymEnv(gym.Env):
                 proc_action = curr_act
             self.robot.ApplyAction(proc_action)
             self._pybullet_client.stepSimulation()
+            #for joint velocity estimation
+            self._last_joint_config = self._actual_joint_config
+            self._actual_joint_config = self.robot.GetMotorAngles()
             self._sim_step_counter += 1
             self._dt_motor_torques.append(self.robot.GetMotorTorques())
             self._dt_motor_velocities.append(self.robot.GetMotorVelocities())
@@ -983,9 +985,10 @@ class QuadrupedGymEnv(gym.Env):
             self._init_filter()
 
         self._settle_robot()  # Settle robot after being spawned
-        if self._enable_joint_velocity_estimate:
-            self._last_joint_config = self.robot.GetMotorAngles()
-            self._actual_joint_config = self.robot.GetMotorAngles()
+        
+        #for joint velocity estimation
+        self._last_joint_config = self.robot.GetMotorAngles()
+        self._actual_joint_config = self.robot.GetMotorAngles()
 
         self._last_action = np.zeros(self._action_dim)
         if self._is_record_video:
