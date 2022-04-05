@@ -40,6 +40,7 @@ class MonitorState(gym.Wrapper):
         self._motor_tau = np.zeros((self._length, NUM_MOTORS))
         self._base_pos = np.zeros((self._length, 3))
         self._base_or = np.zeros((self._length, 3))
+        self._feet_normal_forces = np.zeros((self._length, 4))
 
     def _compute_energy_spring(self, q):
         if self.env._enable_springs:
@@ -60,7 +61,21 @@ class MonitorState(gym.Wrapper):
         self._energy_spring[i, :] = self._compute_energy_spring(self._config[i, :])
         self._base_pos[i, :] = self.quadruped.GetBasePosition()
         self._base_or[i, :] = self.quadruped.GetBaseOrientationRollPitchYaw()
-        
+        self._feet_normal_forces[i, :] = self.quadruped.GetContactInfo()[2]
+
+    def _plot_normal_forces(self):
+        fig, ax = plt.subplots()
+        labels = ["RR", "RL", "FR", "FL"]
+        fig.suptitle('feet normal forces')
+        ax.plot(self._time, self._feet_normal_forces)
+        ax.set_xlabel("t")
+        ax.set_ylabel('F', rotation=0)
+        box = ax.get_position()
+        ax.set_position([box.x0, box.y0, box.width * 0.8, box.height])
+        ax.legend(labels, loc="center left", bbox_to_anchor=(1, 0.5))
+        plt.tight_layout(rect=[0, 0, 0.75, 1])
+        return fig, ax
+            
     def _plot_height(self):
         fig, ax = plt.subplots(nrows=1, ncols=1)
         height = self._base_pos[:, 2]
@@ -146,9 +161,10 @@ class MonitorState(gym.Wrapper):
         fig_motor_torque, _ = self._plot_motor_torques()
         fig_motor_true_velocity, _ = self._plot_true_motor_velocities()
         fig_motor_hat_velocity, _ = self._plot_estimate_motor_velocities()
+        fig_feet_normal_forces, _ = self._plot_normal_forces()
 
-        figs = [fig_height, fig_motor_torque, fig_motor_true_velocity, fig_motor_hat_velocity]
-        names = ["height", "motor_torque", "motor_true_velocity", "motor_hat_velocity"]
+        figs = [fig_height, fig_motor_torque, fig_motor_true_velocity, fig_motor_hat_velocity, fig_feet_normal_forces]
+        names = ["height", "motor_torque", "motor_true_velocity", "motor_hat_velocity", "feer_normal_forces"]
         return dict(zip(figs, names))
 
     def release_plots(self):
