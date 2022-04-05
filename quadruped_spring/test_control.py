@@ -3,7 +3,7 @@ import time
 import numpy as np
 
 from env.quadruped_gym_env import QuadrupedGymEnv
-from utils.monitor_state2 import MonitorState
+from utils.monitor_state import MonitorState
 
 
 class StateMachine(QuadrupedGymEnv):
