@@ -186,28 +186,26 @@ def build_env():
     env_config["motor_control_mode"] = "TORQUE"
     env_config["action_repeat"] = 1
     env_config["record_video"] = False
+    env_config["action_space_mode"] = "DEFAULT"
+    env_config["task_env"] = "JUMPING_ON_PLACE_ABS_HEIGHT_TASK"
     
     env = QuadrupedGymEnv(**env_config)
-    env = JumpingStateMachine(env)
-    env = MonitorState(env=env, path='logs/plots/manual_jumping', rec_length=env._total_sim_steps)
     return env
     
 if __name__ == '__main__':
     
     env = build_env()
     env = JumpingStateMachine(env)
-    
-    sim_steps = env.env._total_sim_steps
+    sim_steps = env._total_sim_steps +3000
 
     env = MonitorState(env=env, path='logs/plots/manual_jumping', rec_length=sim_steps)
-
-    for _ in range(sim_steps):
+    done = False
+    while not done:
         action = env.compute_action()
         obs, reward, done, info = env.step(action)
         # print(env.robot.GetMotorVelocities()-env.get_joint_velocity_estimation())
-    env.release_plots()
+    # env.release_plots()
     
     env.close()
-    # print(env.max_height)
     print("end")
         
