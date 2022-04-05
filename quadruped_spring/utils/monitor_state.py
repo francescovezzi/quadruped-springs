@@ -10,6 +10,7 @@ import matplotlib.pyplot as plt
 
 H_MIN = 0.15
 
+
 class MonitorState(gym.Wrapper):
     def __init__(self, env, path="logs/plots/", rec_length=1000, paddle=10):
         super().__init__(env)
@@ -66,46 +67,46 @@ class MonitorState(gym.Wrapper):
     def _plot_normal_forces(self):
         fig, ax = plt.subplots()
         labels = ["RR", "RL", "FR", "FL"]
-        fig.suptitle('feet normal forces')
+        fig.suptitle("feet normal forces")
         ax.plot(self._time, self._feet_normal_forces)
         ax.set_xlabel("t")
-        ax.set_ylabel('F', rotation=0)
+        ax.set_ylabel("F", rotation=0)
         box = ax.get_position()
         ax.set_position([box.x0, box.y0, box.width * 0.8, box.height])
         ax.legend(labels, loc="center left", bbox_to_anchor=(1, 0.5))
         plt.tight_layout(rect=[0, 0, 0.75, 1])
         return fig, ax
-            
+
     def _plot_height(self):
         fig, ax = plt.subplots(nrows=1, ncols=1)
         height = self._base_pos[:, 2]
         ax.plot(self._time, height)
-        ax.set_title('height(t)')
+        ax.set_title("height(t)")
         ax.set_xlabel("t")
         ax.set_ylabel("h", rotation=0)
-        length =  np.shape(self._time)[0]
+        length = np.shape(self._time)[0]
         limit = np.full(length, H_MIN)
         ax.plot(self._time, limit, "--")
         box = ax.get_position()
         ax.set_position([box.x0, box.y0, box.width * 0.8, box.height])
-        ax.legend(['h', 'h_min'], loc="center left", bbox_to_anchor=(1, 0.5))
+        ax.legend(["h", "h_min"], loc="center left", bbox_to_anchor=(1, 0.5))
         plt.tight_layout(rect=[0, 0, 0.75, 1])
         return fig, ax
-    
+
     def _plot_motor_torques(self):
         fig, axs = plt.subplots(nrows=3, sharex=True)
         titles = ["HIP", "THIGH", "CALF"]
         labels = ("FR", "FL", "RR", "RL", "up_limit", "low_limit")
-        fig.suptitle('motor torques')
+        fig.suptitle("motor torques")
         for i, (ax, title) in enumerate(zip(axs, titles)):
             data = self._motor_tau[:, i + np.array([0, 3, 6, 9])]
             ax.plot(self._time, data)
             ax.set_title(title)
             ax.set_xlabel("t")
-            ax.set_ylabel('tau', rotation=0)
+            ax.set_ylabel("tau", rotation=0)
             length = np.shape(self._time)[0]
             limit_up = self._torque_limits[i]
-            limit_low = - limit_up
+            limit_low = -limit_up
             ax.plot(self._time, np.full(length, limit_up), "--")
             ax.plot(self._time, np.full(length, limit_low), "--")
             box = ax.get_position()
@@ -114,18 +115,18 @@ class MonitorState(gym.Wrapper):
         plt.tight_layout(rect=[0, 0, 0.75, 1])
         # plt.show()
         return fig, axs
-    
+
     def _plot_true_motor_velocities(self):
         fig, axs = plt.subplots(nrows=3, sharex=True)
         titles = ["HIP", "THIGH", "CALF"]
-        labels = ("FR", "FL", "RR", "RL") #  , "up_limit", "low_limit")
-        fig.suptitle('motor true velocities')
+        labels = ("FR", "FL", "RR", "RL")  #  , "up_limit", "low_limit")
+        fig.suptitle("motor true velocities")
         for i, (ax, title) in enumerate(zip(axs, titles)):
             data = self._motor_true_vel[:, i + np.array([0, 3, 6, 9])]
             ax.plot(self._time, data)
             ax.set_title(title)
             ax.set_xlabel("t")
-            ax.set_ylabel('w', rotation=0)
+            ax.set_ylabel("w", rotation=0)
             # length = np.shape(self._time)[0]
             # limit_up = self._velocity_limits[i]
             # limit_low = - limit_up
@@ -137,18 +138,18 @@ class MonitorState(gym.Wrapper):
         plt.tight_layout(rect=[0, 0, 0.75, 1])
         # plt.show()
         return fig, axs
-    
+
     def _plot_estimate_motor_velocities(self):
         fig, axs = plt.subplots(nrows=3, sharex=True)
         titles = ["HIP", "THIGH", "CALF"]
         labels = ("FR", "FL", "RR", "RL")
-        fig.suptitle('motor  velocities estimation')
+        fig.suptitle("motor  velocities estimation")
         for i, (ax, title) in enumerate(zip(axs, titles)):
             data = self._motor_estimate_vel[:, i + np.array([0, 3, 6, 9])]
             ax.plot(self._time, data)
             ax.set_title(title)
             ax.set_xlabel("t")
-            ax.set_ylabel('w hat', rotation=0)
+            ax.set_ylabel("w hat", rotation=0)
             box = ax.get_position()
             ax.set_position([box.x0, box.y0, box.width * 0.8, box.height])
             ax.legend(labels, loc="center left", bbox_to_anchor=(1, 0.5))
@@ -184,7 +185,6 @@ class MonitorState(gym.Wrapper):
             self._plot_counter += 1
 
         return obs, reward, done, infos
-    
 
     def render(self, mode="rgb_array", **kwargs):
         return self.env.render(mode, **kwargs)

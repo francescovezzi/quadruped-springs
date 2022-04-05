@@ -39,8 +39,8 @@ class StateMachine(QuadrupedGymEnv):
                     pass
 
             return wrapper
+
         return _decorator
-    
 
     # @temporary_switch_motor_control_mode(mode="PD")
     # def settle_init_config(self):
@@ -51,7 +51,7 @@ class StateMachine(QuadrupedGymEnv):
     #         if self._is_render:
     #             self._render_step_helper()
     #         print(self.robot.GetBasePosition()[2])
-                
+
     # @temporary_switch_motor_control_mode(mode="TORQUE")
     # def settle_init_config2(self):
     #     action_ref = np.full(12,0)
@@ -60,7 +60,7 @@ class StateMachine(QuadrupedGymEnv):
     #         command = self.ScaleActionToCartesianPos(action_ref)
     #         self.robot.ApplyAction(command)
     #         self._pybullet_client.stepSimulation()
-            
+
     @temporary_switch_motor_control_mode(mode="TORQUE")
     def settle_init_config(self, sim_steps):
         config_des = self._robot_config.INIT_MOTOR_ANGLES
@@ -73,7 +73,7 @@ class StateMachine(QuadrupedGymEnv):
                 self._render_step_helper()
             # print(self.robot.GetBasePosition()[2])
 
-    @temporary_switch_motor_control_mode(mode='TORQUE')
+    @temporary_switch_motor_control_mode(mode="TORQUE")
     def jump(self):
         coeff = 0.35
         f_rear = 180
@@ -85,7 +85,7 @@ class StateMachine(QuadrupedGymEnv):
             else:
                 f = f_rear
             jump_command[3 * i : 3 * (i + 1)] = self.map_force_to_tau([0, 0, -f], i)
-            jump_command[3*i] = 0
+            jump_command[3 * i] = 0
         print(jump_command)
         for _ in range(1500):
             self.robot.ApplyAction(jump_command)
@@ -126,7 +126,7 @@ class StateMachine(QuadrupedGymEnv):
 
     @temporary_switch_motor_control_mode(mode="TORQUE")
     def couch(self, sim_steps):
-        assert sim_steps > 1000, 'simulation time > 1000 for this phase'
+        assert sim_steps > 1000, "simulation time > 1000 for this phase"
         i_min = 0
         i_max = sim_steps - 500
         config_init = self.robot.GetMotorAngles()
@@ -155,13 +155,13 @@ if __name__ == "__main__":
     env = build_env()
     sim_steps_settle = 1000
     sim_steps_couch = 2500
-    
+
     total_sim_steps = sim_steps_settle + sim_steps_couch
 
     # env.settle_init_config(sim_steps=sim_steps_settle)
     # env.couch(sim_steps=sim_steps_couch)
     # env.jump()
-    
+
     # obs = env.reset()
     # for i in range(sim_steps):
     #     action = np.random.rand(12) * 2 - 1

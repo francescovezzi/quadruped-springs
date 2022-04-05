@@ -273,8 +273,8 @@ class QuadrupedGymEnv(gym.Env):
             - OBSERVATION_EPS
         )
 
-        return observation_high, observation_low   
-    
+        return observation_high, observation_low
+
     def _set_obs_space_real_obs_3(self):
         q_high = self._robot_config.RL_UPPER_ANGLE_JOINT
         q_low = self._robot_config.RL_LOWER_ANGLE_JOINT
@@ -312,7 +312,7 @@ class QuadrupedGymEnv(gym.Env):
             - OBSERVATION_EPS
         )
 
-        return observation_high, observation_low    
+        return observation_high, observation_low
 
     def _set_obs_space_real_obs_2(self):
         q_high = self._robot_config.RL_UPPER_ANGLE_JOINT
@@ -500,12 +500,12 @@ class QuadrupedGymEnv(gym.Env):
         )
 
         return observation_high, observation_low
-    
+
     def setupActionSpace(self):
         """Set up action space for RL."""
         if self._motor_control_mode not in ["PD", "TORQUE", "CARTESIAN_PD"]:
             raise ValueError("motor control mode " + self._motor_control_mode + " not implemented yet.")
-        
+
         if self._action_space_mode == "DEFAULT":
             action_dim = 12
         elif self._action_space_mode == "SYMMETRIC":
@@ -513,8 +513,8 @@ class QuadrupedGymEnv(gym.Env):
         elif self._action_space_mode == "SYMMETRIC_ONLY_HEIGHT":
             action_dim = 2
         else:
-            raise ValueError(f'action space mode {self._action_space_mode} not implemented yet')
-        
+            raise ValueError(f"action space mode {self._action_space_mode} not implemented yet")
+
         action_high = np.array([1] * action_dim)
         self.action_space = spaces.Box(-action_high, action_high, dtype=np.float32)
         self._action_dim = action_dim
@@ -549,7 +549,6 @@ class QuadrupedGymEnv(gym.Env):
         _, _, feetNormalForces, _ = self.robot.GetContactInfo()
 
         self._observation = np.concatenate((q, foot_pos, foot_vel, feetNormalForces))
-
 
     def _get_obs_real_3(self):
         q = self.robot.GetMotorAngles()
@@ -749,7 +748,7 @@ class QuadrupedGymEnv(gym.Env):
         self._max_pitch = max(np.abs(pitch), self._max_pitch)
 
         return flight_time_reward
-    
+
     def _reward_jumping_on_place_height(self):
         """Reward maximum flight time"""
         # Change is fallen height
@@ -783,7 +782,7 @@ class QuadrupedGymEnv(gym.Env):
                 pos_relative = pos_abs + translation
                 pos_relative = pos_relative @ rotation_matrix
                 self._max_forward_distance = max(pos_relative[0], self._max_forward_distance)
-            
+
             self._all_feet_in_the_air = False
 
         _, pitch, yaw = self.robot.GetBaseOrientationRollPitchYaw()
@@ -791,7 +790,7 @@ class QuadrupedGymEnv(gym.Env):
         self._max_pitch = max(np.abs(pitch), self._max_pitch)
 
         return flight_time_reward
-    
+
     def _reward_jumping_on_place_abs_height(self):
         """Reward maximum flight time"""
         # Change is fallen height
@@ -822,7 +821,7 @@ class QuadrupedGymEnv(gym.Env):
                 pos_relative = pos_abs + translation
                 pos_relative = pos_relative @ rotation_matrix
                 self._max_forward_distance = max(pos_relative[0], self._max_forward_distance)
-            
+
             self._all_feet_in_the_air = False
 
         _, pitch, yaw = self.robot.GetBaseOrientationRollPitchYaw()
@@ -949,7 +948,7 @@ class QuadrupedGymEnv(gym.Env):
             reward += 0.1 * self._max_flight_time
         # print(f"Forward dist: {self._max_forward_distance}")
         return reward
-    
+
     def _reward_end_jumping_on_place_height(self, reward):
         """Add bonus and malus at the end of the episode for jumping on place task"""
         if self._termination():
@@ -1097,37 +1096,41 @@ class QuadrupedGymEnv(gym.Env):
             raise ValueError(f"Clipping angles available for PD control only, not in {self._motor_control_mode}")
 
     def adapt_action_dim_for_robot(self, action):
-        assert len(action) == self._action_dim, f"action dimension is {len(action)}, action space has dimension {self._action_dim} "
+        assert (
+            len(action) == self._action_dim
+        ), f"action dimension is {len(action)}, action space has dimension {self._action_dim} "
         if self._action_space_mode == "DEFAULT":
             return action
         elif self._action_space_mode == "SYMMETRIC":
             if self._motor_control_mode in ["TORQUE", "PD"]:
-                symm_idx = 0 #  hip angle
+                symm_idx = 0  #  hip angle
             elif self._motor_control_mode == "CARTESIAN_PD":
-                symm_idx = 1 #  y cartesian pos
+                symm_idx = 1  #  y cartesian pos
             else:
-                raise ValueError(f'motor control mode {self._motor_control_mode} not implemented yet')
+                raise ValueError(f"motor control mode {self._motor_control_mode} not implemented yet")
             leg_FR = action[0:3]
             leg_RR = action[3:6]
-            
+
             leg_FL = np.copy(leg_FR)
-            leg_FL[symm_idx] = - leg_FR[symm_idx]
-            
+            leg_FL[symm_idx] = -leg_FR[symm_idx]
+
             leg_RL = np.copy(leg_RR)
-            leg_RL[symm_idx] = - leg_RR[symm_idx]
-            
+            leg_RL[symm_idx] = -leg_RR[symm_idx]
+
             leg = np.concatenate((leg_FR, leg_FL, leg_RR, leg_RL))
             return leg
 
         elif self._action_space_mode == "SYMMETRIC_ONLY_HEIGHT":
             if self._motor_control_mode != "CARTESIAN_PD":
-                raise ValueError(f'action space mode {self._action_space_mode} for {self._motor_control_mode} not implemented yet')
+                raise ValueError(
+                    f"action space mode {self._action_space_mode} for {self._motor_control_mode} not implemented yet"
+                )
             leg_FR = leg_FL = [0, 0, action[0]]
             leg_RR = leg_RL = [0, 0, action[1]]
             leg = np.concatenate((leg_FR, leg_FL, leg_RR, leg_RL))
             return leg
         else:
-            raise ValueError(f'action space mode {self._action_space_mode} not implemented yet')
+            raise ValueError(f"action space mode {self._action_space_mode} not implemented yet")
 
     def step(self, action):
         """Step forward the simulation, given the action."""
@@ -1147,7 +1150,7 @@ class QuadrupedGymEnv(gym.Env):
                 proc_action = curr_act
             self.robot.ApplyAction(proc_action)
             self._pybullet_client.stepSimulation()
-            #for joint velocity estimation
+            # for joint velocity estimation
             self._last_joint_config = self._actual_joint_config
             self._actual_joint_config = self.robot.GetMotorAngles()
             self._sim_step_counter += 1
@@ -1261,10 +1264,10 @@ class QuadrupedGymEnv(gym.Env):
             self._init_filter()
 
         self._settle_robot()  # Settle robot after being spawned
-        
+
         self._init_task_variables()
 
-        #for joint velocity estimation
+        # for joint velocity estimation
         self._last_joint_config = self.robot.GetMotorAngles()
         self._actual_joint_config = self.robot.GetMotorAngles()
 
@@ -1331,7 +1334,7 @@ class QuadrupedGymEnv(gym.Env):
         elif self._TASK_ENV in ["JUMPING_ON_PLACE_HEIGHT_TASK", "JUMPING_ON_PLACE_ABS_HEIGHT_TASK"]:
             self._init_variables_jumping_on_place_height()
         else:
-            raise ValueError(f'the task {self._TASK_ENV} is not implemented yet')
+            raise ValueError(f"the task {self._TASK_ENV} is not implemented yet")
 
     def _init_variables_jumping(self):
         # For the jumping task
@@ -1356,7 +1359,7 @@ class QuadrupedGymEnv(gym.Env):
         self._max_forward_distance = 0.0
         self._max_yaw = 0.0
         self._max_pitch = 0.0
-        
+
     def _init_variables_jumping_on_place_height(self):
         self._v_des = np.array([0.0, 0.0])
         self._init_height = self.robot.GetBasePosition()[2]
