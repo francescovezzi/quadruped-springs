@@ -68,6 +68,7 @@ RL_LOWER_ANGLE_JOINT = np.array([-0.2, DEFAULT_THIGH_ANGLE - 0.4, DEFAULT_CALF_A
 # Set to 0.4 * ... to limit max torque
 TORQUE_LIMITS = 1.0 * np.asarray([23.7, 23.7, 1.0 * 33.55] * NUM_LEGS)
 VELOCITY_LIMITS = 1.0 * np.asarray([30.1, 30.1, 30.1] * NUM_LEGS)
+RL_VELOCITY_LIMITS = 1.0 * np.asarray([10, 10, 10] * NUM_LEGS) #  Used for noise observation calculation
 
 # Sample Joint Gains
 MOTOR_KP = [100.0, 100.0, 100.0] * NUM_LEGS
