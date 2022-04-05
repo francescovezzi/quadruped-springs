@@ -52,9 +52,10 @@ VIDEO_LOG_DIRECTORY = "videos/" + datetime.datetime.now().strftime("vid-%Y-%m-%d
 #                  Joint configuration
 
 # Implemented action spaces for deep reinforcement learning:
-#   - "DEFAULT"
-#   - "SYMMETRIC"
-#   - "SYMMETRIC_ONLY_HEIGHT"
+#   - "DEFAULT": classic
+#   - "SYMMETRIC" legs right side and left side move symmetrically
+#   - "SYMMETRIC_ONLY_HEIGHT" as the previous one but only feet height
+#      change (actually only CARTESIAN_PD control is supported)
 
 # Tasks to be learned with reinforcement learning
 #     - "FWD_LOCOMOTION"
