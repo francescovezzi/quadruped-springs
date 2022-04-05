@@ -51,6 +51,10 @@ VIDEO_LOG_DIRECTORY = "videos/" + datetime.datetime.now().strftime("vid-%Y-%m-%d
 #                  Feet contact normal forces
 #                  Joint configuration
 
+# Implemented action spaces for deep reinforcement learning:
+#   - "DEFAULT"
+#   - "SYMMETRIC"
+#   - "SYMM_ONLY_HEIGHT"
 
 # Tasks to be learned with reinforcement learning
 #     - "FWD_LOCOMOTION"
@@ -104,6 +108,7 @@ class QuadrupedGymEnv(gym.Env):
         motor_control_mode="PD",
         task_env="FWD_LOCOMOTION",
         observation_space_mode="DEFAULT",
+        action_space_mode="DEFAULT",
         on_rack=False,
         render=False,
         record_video=False,
@@ -160,6 +165,7 @@ class QuadrupedGymEnv(gym.Env):
         self._motor_control_mode = motor_control_mode
         self._TASK_ENV = task_env
         self._observation_space_mode = observation_space_mode
+        self._action_space_mode = action_space_mode
         self._hard_reset = True  # must fully reset simulation at init
         self._on_rack = on_rack
         self._is_render = render
@@ -307,7 +313,8 @@ class QuadrupedGymEnv(gym.Env):
         foot_pos_low = -foot_pos_high
         foot_vel_high = np.array([10.0] * 12)
         foot_vel_low = np.array([-10.0] * 12)
-        contact_high = np.array([1.0] * 4)
+        contact_high = np.array([1.0] * 4)        dq = self._get_motor_velocities()
+
         contact_low = np.array([0.0] * 4)
 
         observation_high = (
@@ -493,6 +500,24 @@ class QuadrupedGymEnv(gym.Env):
             action_dim = 12
         else:
             raise ValueError("motor control mode " + self._motor_control_mode + " not implemented yet.")
+        action_high = np.array([1] * action_dim)
+        self.action_space = spaces.Box(-action_high, action_high, dtype=np.float32)
+        self._action_dim = action_dim
+    
+    def setupActionSpace(self):
+        """Set up action space for RL."""
+        if self._motor_control_mode not in ["PD", "TORQUE", "CARTESIAN_PD"]:
+            raise ValueError("motor control mode " + self._motor_control_mode + " not implemented yet.")
+        
+        if self._action_space_mode == "DEFAULT":
+            action_dim = 12
+        elif self._action_space_mode == "SYMMETRIC":
+            action_dim = 6
+        elif self._action_space_mode == "SYMM_ONLY_HEIGHT":
+            action_dim = 4
+        else:
+            raise ValueError(f'action space mode {self._action_space_mode} not implemented yet')
+        
         action_high = np.array([1] * action_dim)
         self.action_space = spaces.Box(-action_high, action_high, dtype=np.float32)
         self._action_dim = action_dim
