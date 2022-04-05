@@ -1135,9 +1135,9 @@ class QuadrupedGymEnv(gym.Env):
     def step(self, action):
         """Step forward the simulation, given the action."""
         curr_act = action.copy()
-        curr_act = self.adapt_action_dim_for_robot(curr_act)
         if self._enable_action_filter:
             curr_act = self._filter_action(curr_act)
+        curr_act = self.adapt_action_dim_for_robot(curr_act)
         # save motor torques and velocities to compute power in reward function
         self._dt_motor_torques = []
         self._dt_motor_velocities = []
@@ -1173,7 +1173,7 @@ class QuadrupedGymEnv(gym.Env):
         # Update the actual reward at the end of the episode with bonus or malus
         if done:
             reward = self._reward_end_episode(reward)
-            print(reward)
+            # print(reward)
 
         return np.array(self._noisy_observation()), reward, done, infos
 
@@ -1206,7 +1206,7 @@ class QuadrupedGymEnv(gym.Env):
             default_action = self._map_command_to_action(init_angles)
         elif self._motor_control_mode == "CARTESIAN_PD":
             # go toward NOMINAL_FOOT_POS_LEG_FRAME
-            default_action = np.array([0, 0, 0] * self._robot_config.NUM_LEGS)
+            default_action = np.array([0] * self._action_dim)
         else:
             raise ValueError(f"The motor control mode {self._motor_control_mode} is not implemented for RL")
 
@@ -1280,6 +1280,7 @@ class QuadrupedGymEnv(gym.Env):
     def _settle_robot_by_action(self):
         """Settle robot in according to the used motor control mode in RL interface"""
         init_action = self._compute_first_actions()
+        init_action = self.adapt_action_dim_for_robot(init_action)
         if self._is_render:
             time.sleep(0.2)
         for _ in range(1000):
@@ -1605,7 +1606,7 @@ def test_env():
     env_config["add_noise"] = False
     env_config["enable_action_interpolation"] = False
     env_config["enable_action_clipping"] = False
-    env_config["enable_action_filter"] = False
+    env_config["enable_action_filter"] = True
     env_config["task_env"] = "JUMPING_ON_PLACE_TASK"
     env_config["observation_space_mode"] = "REAL_OBS_3"
     env_config["action_space_mode"] = "SYMMETRIC"
