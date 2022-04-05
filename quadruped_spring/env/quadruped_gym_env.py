@@ -313,8 +313,7 @@ class QuadrupedGymEnv(gym.Env):
         foot_pos_low = -foot_pos_high
         foot_vel_high = np.array([10.0] * 12)
         foot_vel_low = np.array([-10.0] * 12)
-        contact_high = np.array([1.0] * 4)        dq = self._get_motor_velocities()
-
+        contact_high = np.array([1.0] * 4)
         contact_low = np.array([0.0] * 4)
 
         observation_high = (
@@ -493,16 +492,6 @@ class QuadrupedGymEnv(gym.Env):
         )
 
         return observation_high, observation_low
-
-    def setupActionSpace(self):
-        """Set up action space for RL."""
-        if self._motor_control_mode in ["PD", "TORQUE", "CARTESIAN_PD"]:
-            action_dim = 12
-        else:
-            raise ValueError("motor control mode " + self._motor_control_mode + " not implemented yet.")
-        action_high = np.array([1] * action_dim)
-        self.action_space = spaces.Box(-action_high, action_high, dtype=np.float32)
-        self._action_dim = action_dim
     
     def setupActionSpace(self):
         """Set up action space for RL."""
@@ -513,8 +502,8 @@ class QuadrupedGymEnv(gym.Env):
             action_dim = 12
         elif self._action_space_mode == "SYMMETRIC":
             action_dim = 6
-        elif self._action_space_mode == "SYMM_ONLY_HEIGHT":
-            action_dim = 4
+        elif self._action_space_mode == "SYMMETRIC_ONLY_HEIGHT":
+            action_dim = 2
         else:
             raise ValueError(f'action space mode {self._action_space_mode} not implemented yet')
         
@@ -987,9 +976,43 @@ class QuadrupedGymEnv(gym.Env):
         else:
             raise ValueError(f"Clipping angles available for PD control only, not in {self._motor_control_mode}")
 
+    def adapt_action_dim_for_robot(self, action):
+        assert len(action) == self._action_dim, f"action dimension is {len(action)}, action space has dimension {self._action_dim} "
+        if self._action_space_mode == "DEFAULT":
+            return action
+        elif self._action_space_mode == "SYMMETRIC":
+            if self._motor_control_mode in ["TORQUE", "PD"]:
+                symm_idx = 0 #  hip angle
+            elif self._motor_control_mode == "CARTESIAN_PD":
+                symm_idx = 1 #  y cartesian pos
+            else:
+                raise ValueError(f'motor control mode {self._motor_control_mode} not implemented yet')
+            leg_FR = action[0:3]
+            leg_RR = action[3:6]
+            
+            leg_FL = np.copy(leg_FR)
+            leg_FL[symm_idx] = - leg_FR[symm_idx]
+            
+            leg_RL = np.copy(leg_RR)
+            leg_RL[symm_idx] = - leg_RR[symm_idx]
+            
+            leg = np.concatenate((leg_FR, leg_FL, leg_RR, leg_RL))
+            return leg
+
+        elif self._action_space_mode == "SYMMETRIC_ONLY_HEIGHT":
+            if self._motor_control_mode != "CARTESIAN_PD":
+                raise ValueError(f'action space mode {self._action_space_mode} for {self._motor_control_mode} not implemented yet')
+            leg_FR = leg_FL = [0, 0, action[0]]
+            leg_RR = leg_RL = [0, 0, action[1]]
+            leg = np.concatenate((leg_FR, leg_FL, leg_RR, leg_RL))
+            return leg
+        else:
+            raise ValueError(f'action space mode {self._action_space_mode} not implemented yet')
+
     def step(self, action):
         """Step forward the simulation, given the action."""
         curr_act = action.copy()
+        curr_act = self.adapt_action_dim_for_robot(curr_act)
         if self._enable_action_filter:
             curr_act = self._filter_action(curr_act)
         # save motor torques and velocities to compute power in reward function
@@ -1432,25 +1455,25 @@ def test_env():
     env_config = {}
     env_config["robot_model"] = "GO1"
     env_config["render"] = True
-    env_config["on_rack"] = False
-    env_config["motor_control_mode"] = "PD"
+    env_config["on_rack"] = True
+    env_config["motor_control_mode"] = "CARTESIAN_PD"
     env_config["action_repeat"] = 10
-    env_config["enable_springs"] = True
+    env_config["enable_springs"] = False
     env_config["add_noise"] = False
     env_config["enable_action_interpolation"] = False
     env_config["enable_action_clipping"] = False
     env_config["enable_action_filter"] = False
     env_config["task_env"] = "JUMPING_ON_PLACE_TASK"
     env_config["observation_space_mode"] = "REAL_OBS_3"
+    env_config["action_space_mode"] = "SYMMETRIC"
     env_config["enable_joint_velocity_estimate"] = True
 
     env = QuadrupedGymEnv(**env_config)
 
     sim_steps = 1000
     obs = env.reset()
-    print(obs)
     for i in range(sim_steps):
-        action = np.random.rand(12) * 2 - 1
+        action = np.random.rand(env._action_dim) * 2 - 1
         # action = np.full(12,0)
         obs, reward, done, info = env.step(action)
     print("end")
