@@ -155,7 +155,6 @@ class JumpingStateMachine(gym.Wrapper):
         J, _ = self.env.robot.ComputeJacobianAndPosition(i)
         tau = J.T @ F_foot
         return tau
-
         
     def step(self, action):
 
@@ -186,23 +185,25 @@ def build_env():
     env_config["robot_model"] = "GO1"
     env_config["motor_control_mode"] = "TORQUE"
     env_config["action_repeat"] = 1
+    env_config["record_video"] = False
     
     env = QuadrupedGymEnv(**env_config)
     env = JumpingStateMachine(env)
-    env = MonitorState(env=env, path='logs/plots', rec_length=env._total_sim_steps)
+    env = MonitorState(env=env, path='logs/plots/manual_jumping', rec_length=env._total_sim_steps)
     return env
     
 if __name__ == '__main__':
     
     env = build_env()
     sim_steps = env.env._total_sim_steps
-    sim_steps = 200
+
     for _ in range(sim_steps):
         action = env.compute_action()
         obs, reward, done, info = env.step(action)
+        # print(env.robot.GetMotorVelocities()-env.get_joint_velocity_estimation())
     env.release_plots()
     
     env.close()
-    print(env.max_height)
+    # print(env.max_height)
     print("end")
         
