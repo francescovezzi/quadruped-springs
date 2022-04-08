@@ -7,12 +7,13 @@ from utils.monitor_state import MonitorState
 
 
 class StateMachine(QuadrupedGymEnv):
-    def __init__(self, on_rack=False, render=True, enable_springs=True, enable_joint_velocity_estimate=False):
+    def __init__(self, on_rack=False, render=True, enable_springs=True, enable_joint_velocity_estimate=False, motor_control_mode = 'CARTESIAN_PD'):
         super().__init__(
             on_rack=on_rack,
             render=render,
             enable_springs=enable_springs,
             enable_joint_velocity_estimate=enable_joint_velocity_estimate,
+            motor_control_mode=motor_control_mode,
         )
 
     def temporary_switch_motor_control_mode(mode):
@@ -60,6 +61,39 @@ class StateMachine(QuadrupedGymEnv):
     #         command = self.ScaleActionToCartesianPos(action_ref)
     #         self.robot.ApplyAction(command)
     #         self._pybullet_client.stepSimulation()
+
+    def _print_err_config(self, config_des):
+        q = self.robot.GetMotorAngles()
+        err = q - config_des
+        print(f'configuration error: {err}')
+        
+    def _print_height(self):
+        print(f'robot base height = {self.robot.GetBasePosition()[2]}')
+
+    # @temporary_switch_motor_control_mode(mode="TORQUE")
+    def test_joint_control_cartesian_mode(self, sim_steps):
+        # self.robot._motor_model._kp = np.array([600, 600, 600] * 4)
+        # self.robot._motor_model._kd = np.array([1.2, 1.2, 1.2] * 4)
+        config_des = self.height_to_theta_des(0.15)
+        action = np.array([0,0,1]*4)
+        for _ in range(sim_steps):
+            env.step(action)
+            self._print_err_config(config_des)
+            self._print_height()
+            if self._is_render:
+                self._render_step_helper()
+
+    @temporary_switch_motor_control_mode(mode="PD")
+    def test_joint_control_torque_mode(self, sim_steps):
+        # self.robot._motor_model._kp = np.array([600, 600, 600] * 4)
+        # self.robot._motor_model._kd = np.array([1.2, 1.2, 1.2] * 4)
+        config_des = self.height_to_theta_des(0.15)
+        action = self._map_command_to_action(config_des)
+        for _ in range(sim_steps):
+            env.step(action)
+            self._print_err_config(config_des)
+            if self._is_render:
+                self._render_step_helper()
 
     @temporary_switch_motor_control_mode(mode="TORQUE")
     def settle_init_config(self, sim_steps):
@@ -116,12 +150,13 @@ class StateMachine(QuadrupedGymEnv):
         q = self.robot.GetMotorAngles()
         dq = self.robot.GetMotorVelocities()
         if self._enable_springs:
-            kp = 300
-            kd = 2
+            kp = 200
+            kd = 1.0
         else:
-            kp = 100
-            kd = 1
+            kp = 55
+            kd = 0.8
         torque = -kp * (q - angles_ref) - kd * dq
+        print(f'angle error: {q - angles_ref}')
         return torque
 
     @temporary_switch_motor_control_mode(mode="TORQUE")
@@ -143,9 +178,10 @@ class StateMachine(QuadrupedGymEnv):
 def build_env():
     env_config = {}
     env_config["enable_springs"] = True
-    env_config["render"] = False
+    env_config["render"] = True
     env_config["on_rack"] = False
     env_config["enable_joint_velocity_estimate"] = False
+    env_config["motor_control_mode"] = "CARTESIAN_PD"
 
     return StateMachine(**env_config)
 
@@ -153,19 +189,11 @@ def build_env():
 if __name__ == "__main__":
 
     env = build_env()
-    sim_steps_settle = 1000
-    sim_steps_couch = 2500
+    sim_steps = 1000
+    env = MonitorState(env, path="logs/plots/test_control", rec_length=sim_steps)
 
-    total_sim_steps = sim_steps_settle + sim_steps_couch
-
-    # env.settle_init_config(sim_steps=sim_steps_settle)
-    # env.couch(sim_steps=sim_steps_couch)
-    # env.jump()
-
-    # obs = env.reset()
-    # for i in range(sim_steps):
-    #     action = np.random.rand(12) * 2 - 1
-    #     # action = np.full(12,0)
-    #     obs, reward, done, info = env.step(action)
+    env.test_joint_control_cartesian_mode(sim_steps)
+    # env.test_joint_control_torque_mode(sim_steps)
+    
     env.close()
     print("end")
