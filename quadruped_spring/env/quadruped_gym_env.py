@@ -50,6 +50,16 @@ VIDEO_LOG_DIRECTORY = "videos/" + datetime.datetime.now().strftime("vid-%Y-%m-%d
 #   "REAL_OBS_4":  Feet positions and velocities
 #                  Feet contact normal forces
 #                  Joint configuration
+#   "REAL_OBS_5":  Feet positions and velocities
+#                  Feet contact normal forces
+#                  IMU (base veolcity, orientation,
+#                  orientation rate)
+#   "REAL_OBS_6":  REAL_OBS_5 +
+#                  Joint configuration +
+#                  Joint velocity
+#  "REAL_OBS_7":   IMU + joint position and velocity +
+#                  feet contact normal forces
+
 
 # Implemented action spaces for deep reinforcement learning:
 #   - "DEFAULT": classic
@@ -71,11 +81,14 @@ VIDEO_LOG_DIRECTORY = "videos/" + datetime.datetime.now().strftime("vid-%Y-%m-%d
 #         Sparse reward, maximizing flight time + bonus maintin base position +
 #         malus on crashing + malus on not allowed contacts
 #     - "JUMPING_ON_PLACE_HEIGHT_TASK"
-#         Sparse reward, maximizing maximum height + bonus maintin base position +
-#         malus on crashing + malus on not allowed contacts
+#         Sparse reward, maximizing maximum height relative to one jump +
+#         bonus maintin base position + malus on crashing + malus on not allowed contacts
 #     - "JUMPING_ON_PLACE_ABS_HEIGHT_TASK"
-#         Sparse reward, maximizing maximum height + bonus maintin base position +
+#         Sparse reward, maximizing absolute maximum height + bonus maintin base position +
 #         malus on crashing + malus on not allowed contacts
+#     - "LANDING_TASK"
+#         Sparse reward, bonus mantain desired position + malus on crushing +
+#         malus on not allowed contact + malus on feet not in contact
 
 # Motor control modes:
 #   - "TORQUE":
@@ -671,6 +684,8 @@ class QuadrupedGymEnv(gym.Env):
             return self.is_fallen()
         elif self._TASK_ENV in ["JUMPING_ON_PLACE_TASK", "JUMPING_ON_PLACE_HEIGHT_TASK", "JUMPING_ON_PLACE_ABS_HEIGHT_TASK"]:
             return self.is_fallen() or self._not_allowed_contact()
+        elif self._TASK_ENV == "LANDING_TASK":
+            pass
         else:
             raise ValueError("This task mode {self._TASK_ENV} is not implemented yet.")
 
@@ -900,6 +915,8 @@ class QuadrupedGymEnv(gym.Env):
             return self._reward_jumping_on_place_height()
         elif self._TASK_ENV == "JUMPING_ON_PLACE_ABS_HEIGHT_TASK":
             return self._reward_jumping_on_place_abs_height()
+        elif self._TASK_ENV == "LANDING_TASK":
+            pass
         else:
             raise ValueError("This task mode is not implemented yet.")
 
@@ -911,6 +928,8 @@ class QuadrupedGymEnv(gym.Env):
             return self._reward_end_jumping_on_place(reward)
         elif self._TASK_ENV in ["JUMPING_ON_PLACE_HEIGHT_TASK", "JUMPING_ON_PLACE_ABS_HEIGHT_TASK"]:
             return self._reward_end_jumping_on_place_height(reward)
+        elif self._TASK_ENV == "LANDING_TASK":
+            pass
         else:
             # do nothing
             return reward
@@ -1334,8 +1353,13 @@ class QuadrupedGymEnv(gym.Env):
             self._init_variables_jumping_on_place()
         elif self._TASK_ENV in ["JUMPING_ON_PLACE_HEIGHT_TASK", "JUMPING_ON_PLACE_ABS_HEIGHT_TASK"]:
             self._init_variables_jumping_on_place_height()
+        elif self._TASK_ENV == "LANDING_TASK":
+            self._init_variables_landing()
         else:
             raise ValueError(f"the task {self._TASK_ENV} is not implemented yet")
+
+    def _init_variables_landing(self):
+        pass
 
     def _init_variables_jumping(self):
         # For the jumping task
