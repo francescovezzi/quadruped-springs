@@ -80,7 +80,7 @@ VIDEO_LOG_DIRECTORY = "videos/" + datetime.datetime.now().strftime("vid-%Y-%m-%d
 #     - "JUMPING_ON_PLACE_TASK"
 #         Sparse reward, maximizing flight time + bonus maintin base position +
 #         malus on crashing + malus on not allowed contacts
-#     - "JUMPING_ON_PLACE_HEIGHT_TASK"
+#     - "JUMPING_ON_PLACE_HEIGHT_TASK" (not working actually)
 #         Sparse reward, maximizing maximum height relative to one jump +
 #         bonus maintin base position + malus on crashing + malus on not allowed contacts
 #     - "JUMPING_ON_PLACE_ABS_HEIGHT_TASK"
@@ -248,10 +248,157 @@ class QuadrupedGymEnv(gym.Env):
             obs_high, obs_low = self._set_obs_space_real_obs_3()
         elif self._observation_space_mode == "REAL_OBS_4":
             obs_high, obs_low = self._set_obs_space_real_obs_4()
+        elif self._observation_space_mode == "REAL_OBS_5":
+            obs_high, obs_low = self._set_obs_space_real_obs_5()
+        elif self._observation_space_mode == "REAL_OBS_6":
+            obs_high, obs_low = self._set_obs_space_real_obs_6()
+        elif self._observation_space_mode == "REAL_OBS_7":
+            obs_high, obs_low = self._set_obs_space_real_obs_7()
         else:
             raise ValueError(f"observation space {self._observation_space_mode} not defined or not intended")
 
         self.observation_space = spaces.Box(obs_low, obs_high, dtype=np.float32)
+
+    def _set_obs_space_real_obs_7(self):
+        q_high = self._robot_config.RL_UPPER_ANGLE_JOINT
+        q_low = self._robot_config.RL_LOWER_ANGLE_JOINT
+        dq_high = self._robot_config.VELOCITY_LIMITS
+        dq_low = -self._robot_config.VELOCITY_LIMITS
+        vel_high = np.array([MAX_FWD_VELOCITY] * 3)
+        vel_low = np.array([-MAX_FWD_VELOCITY] * 3)
+        rpy_high = np.array([np.pi] * 3)
+        rpy_low = np.array([-np.pi] * 3)
+        drpy_high = np.array([5.0] * 3)
+        drpy_low = np.array([-5.0] * 3)
+        foot_pos_high = np.array([0.1, 0.05, 0.1] * 4)
+        foot_pos_low = -foot_pos_high
+        foot_vel_high = np.array([10.0] * 12)
+        foot_vel_low = np.array([-10.0] * 12)
+        contact_high = np.array([5.0] * 4)
+        contact_low = np.array([-5.0] * 4)
+
+        observation_high = (
+            np.concatenate(
+                (
+                    q_high,
+                    dq_high,
+                    vel_high,
+                    rpy_high,
+                    drpy_high,
+                    contact_high,
+                )
+            )
+            + OBSERVATION_EPS
+        )
+        observation_low = (
+            np.concatenate(
+                (
+                    q_low,
+                    dq_low,
+                    vel_low,
+                    rpy_low,
+                    drpy_low,
+                    contact_low,
+                )
+            )
+            - OBSERVATION_EPS
+        )
+
+        return observation_high, observation_low
+
+    def _set_obs_space_real_obs_6(self):
+        q_high = self._robot_config.RL_UPPER_ANGLE_JOINT
+        q_low = self._robot_config.RL_LOWER_ANGLE_JOINT
+        dq_high = self._robot_config.VELOCITY_LIMITS
+        dq_low = -self._robot_config.VELOCITY_LIMITS
+        vel_high = np.array([MAX_FWD_VELOCITY] * 3)
+        vel_low = np.array([-MAX_FWD_VELOCITY] * 3)
+        rpy_high = np.array([np.pi] * 3)
+        rpy_low = np.array([-np.pi] * 3)
+        drpy_high = np.array([5.0] * 3)
+        drpy_low = np.array([-5.0] * 3)
+        foot_pos_high = np.array([0.1, 0.05, 0.1] * 4)
+        foot_pos_low = -foot_pos_high
+        foot_vel_high = np.array([10.0] * 12)
+        foot_vel_low = np.array([-10.0] * 12)
+        contact_high = np.array([5.0] * 4)
+        contact_low = np.array([-5.0] * 4)
+
+        observation_high = (
+            np.concatenate(
+                (
+                    q_high,
+                    dq_high,
+                    vel_high,
+                    rpy_high,
+                    drpy_high,
+                    foot_pos_high,
+                    foot_vel_high,
+                    contact_high,
+                )
+            )
+            + OBSERVATION_EPS
+        )
+        observation_low = (
+            np.concatenate(
+                (
+                    q_low,
+                    dq_low,
+                    vel_low,
+                    rpy_low,
+                    drpy_low,
+                    foot_pos_low,
+                    foot_vel_low,
+                    contact_low,
+                )
+            )
+            - OBSERVATION_EPS
+        )
+
+        return observation_high, observation_low
+
+    def _set_obs_space_real_obs_5(self):
+        vel_high = np.array([MAX_FWD_VELOCITY] * 3)
+        vel_low = np.array([-MAX_FWD_VELOCITY] * 3)
+        rpy_high = np.array([np.pi] * 3)
+        rpy_low = np.array([-np.pi] * 3)
+        drpy_high = np.array([5.0] * 3)
+        drpy_low = np.array([-5.0] * 3)
+        foot_pos_high = np.array([0.1, 0.05, 0.1] * 4)
+        foot_pos_low = -foot_pos_high
+        foot_vel_high = np.array([10.0] * 12)
+        foot_vel_low = np.array([-10.0] * 12)
+        contact_high = np.array([5.0] * 4)
+        contact_low = np.array([-5.0] * 4)
+
+        observation_high = (
+            np.concatenate(
+                (
+                    vel_high,
+                    rpy_high,
+                    drpy_high,
+                    foot_pos_high,
+                    foot_vel_high,
+                    contact_high,
+                )
+            )
+            + OBSERVATION_EPS
+        )
+        observation_low = (
+            np.concatenate(
+                (
+                    vel_low,
+                    rpy_low,
+                    drpy_low,
+                    foot_pos_low,
+                    foot_vel_low,
+                    contact_low,
+                )
+            )
+            - OBSERVATION_EPS
+        )
+
+        return observation_high, observation_low
 
     def _set_obs_space_real_obs_4(self):
         q_high = self._robot_config.RL_UPPER_ANGLE_JOINT
@@ -548,6 +695,12 @@ class QuadrupedGymEnv(gym.Env):
             self._get_obs_real_3()
         elif self._observation_space_mode == "REAL_OBS_4":
             self._get_obs_real_4()
+        elif self._observation_space_mode == "REAL_OBS_5":
+            self._get_obs_real_5()
+        elif self._observation_space_mode == "REAL_OBS_6":
+            self._get_obs_real_6()
+        elif self._observation_space_mode == "REAL_OBS_7":
+            self._get_obs_real_7()
         else:
             raise ValueError("observation space not defined or not intended")
 
@@ -555,6 +708,36 @@ class QuadrupedGymEnv(gym.Env):
             np.random.normal(scale=self._observation_noise_stdev, size=self._observation.shape) * self.observation_space.high
         )
         return self._observation
+
+    def _get_obs_real_7(self):
+        q = self.robot.GetMotorAngles()
+        dq = self._get_motor_velocities()
+        base_vel = self.robot.GetBaseLinearVelocity()
+        base_rpy = self.robot.GetBaseOrientationRollPitchYaw()
+        base_drpy = self.robot.GetTrueBaseRollPitchYawRate()
+        _, _, feetNormalForces, _ = self.robot.GetContactInfo()
+
+        self._observation = np.concatenate((q, dq, base_vel, base_rpy, base_drpy, feetNormalForces))
+
+    def _get_obs_real_6(self):
+        q = self.robot.GetMotorAngles()
+        dq = self._get_motor_velocities()
+        base_vel = self.robot.GetBaseLinearVelocity()
+        base_rpy = self.robot.GetBaseOrientationRollPitchYaw()
+        base_drpy = self.robot.GetTrueBaseRollPitchYawRate()
+        foot_pos, foot_vel = self._compute_feet_position_vel()
+        _, _, feetNormalForces, _ = self.robot.GetContactInfo()
+
+        self._observation = np.concatenate((q, dq, base_vel, base_rpy, base_drpy, foot_pos, foot_vel, feetNormalForces))
+
+    def _get_obs_real_5(self):
+        base_vel = self.robot.GetBaseLinearVelocity()
+        base_rpy = self.robot.GetBaseOrientationRollPitchYaw()
+        base_drpy = self.robot.GetTrueBaseRollPitchYawRate()
+        foot_pos, foot_vel = self._compute_feet_position_vel()
+        _, _, feetNormalForces, _ = self.robot.GetContactInfo()
+
+        self._observation = np.concatenate((base_vel, base_rpy, base_drpy, foot_pos, foot_vel, feetNormalForces))
 
     def _get_obs_real_4(self):
         q = self.robot.GetMotorAngles()
@@ -1622,7 +1805,7 @@ def test_env():
 
     env_config = {}
     env_config["robot_model"] = "GO1"
-    env_config["render"] = True
+    env_config["render"] = False
     env_config["on_rack"] = True
     env_config["motor_control_mode"] = "CARTESIAN_PD"
     env_config["action_repeat"] = 10
@@ -1638,7 +1821,7 @@ def test_env():
 
     env = QuadrupedGymEnv(**env_config)
 
-    sim_steps = 1000
+    sim_steps = 100
     obs = env.reset()
     for i in range(sim_steps):
         action = np.random.rand(env._action_dim) * 2 - 1
