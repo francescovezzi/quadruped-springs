@@ -66,6 +66,7 @@ VIDEO_LOG_DIRECTORY = "videos/" + datetime.datetime.now().strftime("vid-%Y-%m-%d
 #   - "SYMMETRIC" legs right side and left side move symmetrically
 #   - "SYMMETRIC_ONLY_HEIGHT" as the previous one but only feet height
 #      change (actually only CARTESIAN_PD control is supported)
+#   - "SYMMETRIC_NO_HIP" as symmetric but hips receive action = 0
 
 # Tasks to be learned with reinforcement learning
 #     - "FWD_LOCOMOTION"
@@ -675,6 +676,8 @@ class QuadrupedGymEnv(gym.Env):
             action_dim = 6
         elif self._action_space_mode == "SYMMETRIC_ONLY_HEIGHT":
             action_dim = 2
+        elif self._action_space_mode == "SYMMETRIC_NO_HIP":
+            action_dim = 4
         else:
             raise ValueError(f"action space mode {self._action_space_mode} not implemented yet")
 
@@ -1276,7 +1279,7 @@ class QuadrupedGymEnv(gym.Env):
             raise ValueError(f"The motor control mode {self._motor_control_mode} is not implemented for RL")
 
         action = np.clip(action, -1, 1)
-        command = self._transform_action_to_motor_command(action)
+        # command = self._transform_action_to_motor_command(action)
         return action
 
     def _clip_motor_commands(self, des_angles):
@@ -1323,7 +1326,6 @@ class QuadrupedGymEnv(gym.Env):
             leg_RL[symm_idx] = -leg_RR[symm_idx]
 
             leg = np.concatenate((leg_FR, leg_FL, leg_RR, leg_RL))
-            return leg
 
         elif self._action_space_mode == "SYMMETRIC_ONLY_HEIGHT":
             if self._motor_control_mode != "CARTESIAN_PD":
@@ -1333,9 +1335,20 @@ class QuadrupedGymEnv(gym.Env):
             leg_FR = leg_FL = [0, 0, action[0]]
             leg_RR = leg_RL = [0, 0, action[1]]
             leg = np.concatenate((leg_FR, leg_FL, leg_RR, leg_RL))
-            return leg
+            
+        elif self._action_space_mode == "SYMMETRIC_NO_HIP":
+            leg_FR = action[0:2]
+            leg_RR = action[2:4]
+
+            leg_FL = leg_FR = np.reshape([0, leg_FR], (3,))
+            leg_RL = leg_RR = np.reshape([0, leg_RR], (3,))
+
+            leg = np.concatenate((leg_FR, leg_FL, leg_RR, leg_RL))
+            
         else:
             raise ValueError(f"action space mode {self._action_space_mode} not implemented yet")
+
+        return leg
 
     def step(self, action):
         """Step forward the simulation, given the action."""
@@ -1407,8 +1420,9 @@ class QuadrupedGymEnv(gym.Env):
 
     def _compute_first_actions(self):
         if self._motor_control_mode == "PD":
-            init_angles = self._robot_config.INIT_MOTOR_ANGLES + self._robot_config.JOINT_OFFSETS
-            default_action = self._map_command_to_action(init_angles)
+            # init_angles = self._robot_config.INIT_MOTOR_ANGLES + self._robot_config.JOINT_OFFSETS
+            # default_action = self._map_command_to_action(init_angles)
+            default_action = np.array([0] * self._action_dim)
         elif self._motor_control_mode == "CARTESIAN_PD":
             # go toward NOMINAL_FOOT_POS_LEG_FRAME
             default_action = np.array([0] * self._action_dim)
