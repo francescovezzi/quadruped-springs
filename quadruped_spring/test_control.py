@@ -7,13 +7,15 @@ from utils.monitor_state import MonitorState
 
 
 class StateMachine(QuadrupedGymEnv):
-    def __init__(self, on_rack=False, render=True, enable_springs=True, enable_joint_velocity_estimate=False, motor_control_mode = 'CARTESIAN_PD'):
+    def __init__(self, on_rack=False, render=True, enable_springs=True, enable_joint_velocity_estimate=False, motor_control_mode = 'CARTESIAN_PD', enable_action_interpolation = False, enable_action_clipping = False):
         super().__init__(
             on_rack=on_rack,
             render=render,
             enable_springs=enable_springs,
             enable_joint_velocity_estimate=enable_joint_velocity_estimate,
             motor_control_mode=motor_control_mode,
+            enable_action_clipping=enable_action_clipping,
+            enable_action_interpolation=enable_action_interpolation,
         )
 
     def temporary_switch_motor_control_mode(mode):
@@ -89,9 +91,11 @@ class StateMachine(QuadrupedGymEnv):
         # self.robot._motor_model._kd = np.array([1.2, 1.2, 1.2] * 4)
         config_des = self.height_to_theta_des(0.15)
         action = self._map_command_to_action(config_des)
+        print(action)
         for _ in range(sim_steps):
             env.step(action)
             self._print_err_config(config_des)
+            self._print_height()
             if self._is_render:
                 self._render_step_helper()
 
@@ -182,6 +186,8 @@ def build_env():
     env_config["on_rack"] = False
     env_config["enable_joint_velocity_estimate"] = False
     env_config["motor_control_mode"] = "CARTESIAN_PD"
+    env_config["enable_action_interpolation"] = False
+    env_config["enable_action_clipping"] = False
 
     return StateMachine(**env_config)
 
@@ -190,7 +196,7 @@ if __name__ == "__main__":
 
     env = build_env()
     sim_steps = 1000
-    env = MonitorState(env, path="logs/plots/test_control", rec_length=sim_steps)
+    # env = MonitorState(env, path="logs/plots/test_control", rec_length=sim_steps)
 
     env.test_joint_control_cartesian_mode(sim_steps)
     # env.test_joint_control_torque_mode(sim_steps)

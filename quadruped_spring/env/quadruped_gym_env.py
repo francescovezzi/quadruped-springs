@@ -203,6 +203,8 @@ class QuadrupedGymEnv(gym.Env):
             self._observation_noise_stdev = 0.01  # TODO: check if increasing makes sense
         else:
             self._observation_noise_stdev = 0.01
+        if self._enable_springs:
+            self._adjust_configs_springs()
 
         # other bookkeeping
         self._num_bullet_solver_iterations = int(300 / action_repeat)
@@ -1582,6 +1584,19 @@ class QuadrupedGymEnv(gym.Env):
         self._max_pitch = 0.0
         self._jump_init_height = self._robot_pose_take_off[2]
         self._max_height = 0.0
+
+    def _adjust_configs_springs(self):
+        spring_angles = np.array(self._robot_config.SPRINGS_REST_ANGLE * 4)
+        self._robot_config.INIT_JOINT_ANGLES = spring_angles
+        self._robot_config.INIT_MOTOR_ANGLES = spring_angles
+        self._robot_config.kpCartesian = np.diag([1200, 2000, 2000])
+        self._robot_config.kdCartesian = np.diag([13, 15, 15])
+        
+        self._robot_config.RL_LOWER_ANGLE_JOINT = self._robot_config.RL_LOWER_ANGLE_JOINT - np.array([0, 0, 0.45] * 4)
+        self._robot_config.RL_UPPER_ANGLE_JOINT = self._robot_config.RL_UPPER_ANGLE_JOINT + np.array([0, 0, 0] * 4)
+
+        self._robot_config.MOTOR_KP = [100, 100, 100] * 4
+        self._robot_config.MOTOR_KD = [1.0, 1.5, 1.5] * 4
 
     ######################################################################################
     # Render, record videos, bookkeping, and misc pybullet helpers.
