@@ -203,8 +203,6 @@ class QuadrupedGymEnv(gym.Env):
             self._observation_noise_stdev = 0.01  # TODO: check if increasing makes sense
         else:
             self._observation_noise_stdev = 0.01
-        if self._enable_springs:
-            self._adjust_configs_springs()
 
         # other bookkeeping
         self._num_bullet_solver_iterations = int(300 / action_repeat)
@@ -225,6 +223,9 @@ class QuadrupedGymEnv(gym.Env):
 
         if self._enable_action_filter:
             self._action_filter = self._build_action_filter()
+            
+        if self._enable_springs:
+            self._adjust_configs_springs()
 
         self.videoLogID = None
         self.reset()
@@ -1597,6 +1598,8 @@ class QuadrupedGymEnv(gym.Env):
 
         self._robot_config.MOTOR_KP = [100, 100, 100] * 4
         self._robot_config.MOTOR_KD = [1.0, 1.5, 1.5] * 4
+        
+        self._action_filter.highcut = 3
 
     ######################################################################################
     # Render, record videos, bookkeping, and misc pybullet helpers.
