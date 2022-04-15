@@ -7,7 +7,17 @@ from utils.monitor_state import MonitorState
 
 
 class StateMachine(QuadrupedGymEnv):
-    def __init__(self, on_rack=False, render=True, enable_springs=True, enable_joint_velocity_estimate=False, motor_control_mode = 'CARTESIAN_PD', enable_action_interpolation = False, enable_action_clipping = False):
+    def __init__(
+        self,
+        on_rack=False,
+        render=True,
+        enable_springs=True,
+        enable_joint_velocity_estimate=False,
+        motor_control_mode="CARTESIAN_PD",
+        enable_action_interpolation=False,
+        enable_action_clipping=False,
+        enable_action_filter=True,
+    ):
         super().__init__(
             on_rack=on_rack,
             render=render,
@@ -67,17 +77,17 @@ class StateMachine(QuadrupedGymEnv):
     def _print_err_config(self, config_des):
         q = self.robot.GetMotorAngles()
         err = q - config_des
-        print(f'configuration error: {err}')
-        
+        print(f"configuration error: {err}")
+
     def _print_height(self):
-        print(f'robot base height = {self.robot.GetBasePosition()[2]}')
+        print(f"robot base height = {self.robot.GetBasePosition()[2]}")
 
     # @temporary_switch_motor_control_mode(mode="TORQUE")
     def test_joint_control_cartesian_mode(self, sim_steps):
         # self.robot._motor_model._kp = np.array([600, 600, 600] * 4)
         # self.robot._motor_model._kd = np.array([1.2, 1.2, 1.2] * 4)
         config_des = self.height_to_theta_des(0.15)
-        action = np.array([0,0,1]*4)
+        action = np.array([0, 0, 1] * 4)
         for _ in range(sim_steps):
             env.step(action)
             self._print_err_config(config_des)
@@ -160,7 +170,7 @@ class StateMachine(QuadrupedGymEnv):
             kp = 55
             kd = 0.8
         torque = -kp * (q - angles_ref) - kd * dq
-        print(f'angle error: {q - angles_ref}')
+        print(f"angle error: {q - angles_ref}")
         return torque
 
     @temporary_switch_motor_control_mode(mode="TORQUE")
@@ -200,6 +210,6 @@ if __name__ == "__main__":
 
     env.test_joint_control_cartesian_mode(sim_steps)
     # env.test_joint_control_torque_mode(sim_steps)
-    
+
     env.close()
     print("end")
