@@ -3,6 +3,7 @@ import numpy as np
 
 from env.quadruped_gym_env import QuadrupedGymEnv
 from utils.monitor_state import MonitorState
+from utils.evaluate_metric import EvaluateMetricJumpOnPlace
 
 
 class JumpingStateMachine(gym.Wrapper):
@@ -205,13 +206,14 @@ if __name__ == "__main__":
     env = JumpingStateMachine(env)
     sim_steps = env._total_sim_steps + 3000
 
-    env = MonitorState(env=env, path="logs/plots/manual_jumping", rec_length=sim_steps)
+    # env = MonitorState(env=env, path="logs/plots/manual_jumping", rec_length=sim_steps)
+    env = EvaluateMetricJumpOnPlace(env)
     done = False
     while not done:
         action = env.compute_action()
         obs, reward, done, info = env.step(action)
         # print(env.robot.GetMotorVelocities()-env.get_joint_velocity_estimation())
     # env.release_plots()
-
+    env.print_metric()
     env.close()
     print("end")
