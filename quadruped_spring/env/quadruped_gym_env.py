@@ -1337,13 +1337,21 @@ class QuadrupedGymEnv(gym.Env):
             leg = np.concatenate((leg_FR, leg_FL, leg_RR, leg_RL))
             
         elif self._action_space_mode == "SYMMETRIC_NO_HIP":
-            leg_FR = action[0:2]
-            leg_RR = action[2:4]
+            if self._motor_control_mode == "PD":
+                leg_FR = action[0:2]
+                leg_RR = action[2:4]
+                
+                leg_FL = leg_FR = np.concatenate(([0], leg_FR))
+                leg_RL = leg_RR = np.concatenate(([0], leg_RR))
 
-            leg_FL = leg_FR = np.reshape([0, leg_FR], (3,))
-            leg_RL = leg_RR = np.reshape([0, leg_RR], (3,))
+                leg = np.concatenate((leg_FR, leg_FL, leg_RR, leg_RL))
+                
+            elif self._motor_control_mode == "CARTESIAN_PD":
+                # no motion along y
+                leg_FL = leg_FR = np.array([action[0], 0, action[1]])
+                leg_RL = leg_RR = np.array([action[2], 0, action[3]])
 
-            leg = np.concatenate((leg_FR, leg_FL, leg_RR, leg_RL))
+                leg = np.concatenate((leg_FR, leg_FL, leg_RR, leg_RL))
             
         else:
             raise ValueError(f"action space mode {self._action_space_mode} not implemented yet")
@@ -1498,7 +1506,8 @@ class QuadrupedGymEnv(gym.Env):
 
     def _settle_robot_by_action(self):
         """Settle robot in according to the used motor control mode in RL interface"""
-        init_action = self._compute_first_actions()
+        # init_action = self._compute_first_actions()
+        init_action = np.zeros(self._action_dim)
         init_action = self.adapt_action_dim_for_robot(init_action)
         if self._is_render:
             time.sleep(0.2)
@@ -1838,23 +1847,23 @@ def test_env():
 
     env_config = {}
     env_config["robot_model"] = "GO1"
-    env_config["render"] = False
+    env_config["render"] = True
     env_config["on_rack"] = True
-    env_config["motor_control_mode"] = "CARTESIAN_PD"
+    env_config["motor_control_mode"] = "PD"
     env_config["action_repeat"] = 10
-    env_config["enable_springs"] = False
+    env_config["enable_springs"] = True
     env_config["add_noise"] = False
     env_config["enable_action_interpolation"] = False
     env_config["enable_action_clipping"] = False
     env_config["enable_action_filter"] = True
     env_config["task_env"] = "JUMPING_ON_PLACE_TASK"
     env_config["observation_space_mode"] = "REAL_OBS_3"
-    env_config["action_space_mode"] = "SYMMETRIC"
+    env_config["action_space_mode"] = "SYMMETRIC_NO_HIP"
     env_config["enable_joint_velocity_estimate"] = True
 
     env = QuadrupedGymEnv(**env_config)
 
-    sim_steps = 100
+    sim_steps = 1000
     obs = env.reset()
     for i in range(sim_steps):
         action = np.random.rand(env._action_dim) * 2 - 1
