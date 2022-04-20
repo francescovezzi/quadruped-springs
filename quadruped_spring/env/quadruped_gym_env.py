@@ -139,6 +139,7 @@ class QuadrupedGymEnv(gym.Env):
         enable_action_filter=False,
         enable_action_clipping=False,
         enable_joint_velocity_estimate=False,
+        adapt_spring_parameters=True,
         test_env=False,  # NOT ALLOWED FOR TRAINING!
     ):
         """Initialize the quadruped gym environment.
@@ -198,6 +199,7 @@ class QuadrupedGymEnv(gym.Env):
         self._enable_action_filter = enable_action_filter
         self._enable_action_clipping = enable_action_clipping
         self._enable_joint_velocity_estimate = enable_joint_velocity_estimate
+        self._adapt_spring_parameters = adapt_spring_parameters
         self._using_test_env = test_env
         if test_env:
             self._add_noise = True
@@ -225,7 +227,7 @@ class QuadrupedGymEnv(gym.Env):
         if self._enable_action_filter:
             self._action_filter = self._build_action_filter()
 
-        if self._enable_springs:
+        if self._enable_springs and self._adapt_spring_parameters:
             self._adjust_configs_springs()
 
         self.videoLogID = None
