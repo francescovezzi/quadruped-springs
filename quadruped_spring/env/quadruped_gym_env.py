@@ -173,6 +173,8 @@ class QuadrupedGymEnv(gym.Env):
           enable_joint_velocity_estimate: Boolean specifying if it's used the
             estimated or the true joint velocity. Actually it affects only real
             observations space modes.
+          adapt_spring_parameters: Boolean specifying if modify robot configs for taking
+            into account the spring presence. Used for retrocompatibility with previous models.
         """
         self.seed()
         try:
@@ -216,19 +218,20 @@ class QuadrupedGymEnv(gym.Env):
         self._MAX_EP_LEN = EPISODE_LENGTH  # max sim time in seconds, arbitrary
         self._action_bound = 1.0
 
+        if self._enable_springs and self._adapt_spring_parameters:
+            self._adjust_configs_springs()
+
         self.setupActionSpace()
         self.setupObservationSpace()
+        
+        if self._enable_action_filter:
+            self._action_filter = self._build_action_filter()
+        
         if self._is_render:
             self._pybullet_client = bc.BulletClient(connection_mode=pybullet.GUI)
         else:
             self._pybullet_client = bc.BulletClient()
         self._configure_visualizer()
-
-        if self._enable_action_filter:
-            self._action_filter = self._build_action_filter()
-
-        if self._enable_springs and self._adapt_spring_parameters:
-            self._adjust_configs_springs()
 
         self.videoLogID = None
         self.reset()
@@ -264,6 +267,7 @@ class QuadrupedGymEnv(gym.Env):
             raise ValueError(f"observation space {self._observation_space_mode} not defined or not intended")
 
         self.observation_space = spaces.Box(obs_low, obs_high, dtype=np.float32)
+        # print(self.observation_space)
 
     def _set_obs_space_real_obs_7(self):
         q_high = self._robot_config.RL_UPPER_ANGLE_JOINT
@@ -1412,6 +1416,8 @@ class QuadrupedGymEnv(gym.Env):
         sampling_rate = 1 / (self._time_step * self._action_repeat)
         num_joints = self._action_dim
         a_filter = action_filter.ActionFilterButter(sampling_rate=sampling_rate, num_joints=num_joints)
+        if self._enable_springs and self._adjust_configs_springs:
+            a_filter.highcut = 2.5
         return a_filter
 
     def _reset_action_filter(self):
@@ -1618,14 +1624,13 @@ class QuadrupedGymEnv(gym.Env):
         self._robot_config.kpCartesian = np.diag([1200, 2000, 2000])
         self._robot_config.kdCartesian = np.diag([13, 15, 15])
 
-        self._robot_config.RL_LOWER_ANGLE_JOINT = self._robot_config.RL_LOWER_ANGLE_JOINT - np.array([0, 0, 0.45] * 4)
-        self._robot_config.RL_UPPER_ANGLE_JOINT = self._robot_config.RL_UPPER_ANGLE_JOINT + np.array([0, 0, 0] * 4)
+        self._robot_config.RL_LOWER_ANGLE_JOINT =  np.array([-0.2,
+                                                             self._robot_config.DEFAULT_THIGH_ANGLE - 0.4,
+                                                             self._robot_config.DEFAULT_CALF_ANGLE - 0.85] * 4)
+        # self._robot_config.RL_UPPER_ANGLE_JOINT = self._robot_config.RL_UPPER_ANGLE_JOINT 
 
         self._robot_config.MOTOR_KP = [100, 100, 100] * 4
         self._robot_config.MOTOR_KD = [1.0, 1.5, 1.5] * 4
-
-        if self._enable_action_filter:
-            self._action_filter.highcut = 2.5
 
     ######################################################################################
     # Render, record videos, bookkeping, and misc pybullet helpers.
@@ -1849,9 +1854,9 @@ def test_env():
 
     env_config = {}
     env_config["robot_model"] = "GO1"
-    env_config["render"] = True
+    env_config["render"] = False
     env_config["on_rack"] = True
-    env_config["motor_control_mode"] = "PD"
+    env_config["motor_control_mode"] = "CARTESIAN_PD"
     env_config["action_repeat"] = 10
     env_config["enable_springs"] = True
     env_config["add_noise"] = False
@@ -1860,7 +1865,7 @@ def test_env():
     env_config["enable_action_filter"] = True
     env_config["task_env"] = "JUMPING_ON_PLACE_TASK"
     env_config["observation_space_mode"] = "REAL_OBS_3"
-    env_config["action_space_mode"] = "SYMMETRIC_NO_HIP"
+    env_config["action_space_mode"] = "SYMMETRIC"
     env_config["enable_joint_velocity_estimate"] = True
 
     env = QuadrupedGymEnv(**env_config)
