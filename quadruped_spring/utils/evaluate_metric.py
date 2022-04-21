@@ -126,7 +126,8 @@ class EvaluateMetricJumpOnPlace(VecEnvWrapper):
         return max(-1, metric)
     
     def print_metric(self):
-        print(f"the metric amount to {self.get_metric()}")
+        print(f"the jump (on place) metric performance amounts to: {self.get_metric()}")
+        print(f"the maximum reached height amounts to: {self.height}")
 
     def step_wait(self):
 
