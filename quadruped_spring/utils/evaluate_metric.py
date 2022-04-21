@@ -54,8 +54,8 @@ class EvaluateMetricJumpOnPlace(gym.Wrapper):
         return max(-1, metric)
 
     def print_metric(self):
-        print(f"the jump (on place) metric performance amounts to: {self.get_metric()}")
-        print(f"the maximum reached height amounts to: {self.height}")
+        print(f"the jump (on place) metric performance amounts to: {self.get_metric():.3f}")
+        print(f"the maximum reached height amounts to: {self.height:.3f}")
 
     def step(self, action):
 
@@ -134,8 +134,10 @@ class EvaluateMetricJumpOnPlaceVecEnv(VecEnvWrapper):
         return max(-1, metric)
 
     def print_metric(self):
-        print(f"the jump (on place) metric performance amounts to: {self.get_metric()}")
-        print(f"the maximum reached height amounts to: {self.height}")
+        print("*******************************")
+        print(f"the jump (on place) metric performance amounts to: {self.get_metric():.3f}")
+        print(f"the maximum height peak amounts to: {self.height:.3f}")
+        print("*******************************")
 
     def step_wait(self):
 
