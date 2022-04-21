@@ -87,7 +87,7 @@ VIDEO_LOG_DIRECTORY = "videos/" + datetime.datetime.now().strftime("vid-%Y-%m-%d
 #     - "JUMPING_ON_PLACE_ABS_HEIGHT_TASK"
 #         Sparse reward, maximizing absolute maximum height + bonus maintin base position +
 #         malus on crashing + malus on not allowed contacts
-#     - "LANDING_TASK"
+#     - "LANDING_TASK" (not implemented yet)
 #         Sparse reward, bonus mantain desired position + malus on crushing +
 #         malus on not allowed contact + malus on feet not in contact
 
