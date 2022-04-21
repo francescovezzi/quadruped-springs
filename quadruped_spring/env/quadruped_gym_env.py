@@ -1625,7 +1625,12 @@ class QuadrupedGymEnv(gym.Env):
         self._robot_config.kdCartesian = np.diag([13, 15, 15])
 
         self._robot_config.RL_LOWER_ANGLE_JOINT = np.array(
-            [-0.2, self._robot_config.DEFAULT_THIGH_ANGLE - 0.4, self._robot_config.DEFAULT_CALF_ANGLE - 0.85] * 4
+            [
+                self._robot_config.DEFAULT_HIP_ANGLE - 0.2,
+                self._robot_config.DEFAULT_THIGH_ANGLE - 0.4,
+                self._robot_config.DEFAULT_CALF_ANGLE - 0.85,
+            ]
+            * 4
         )
         # self._robot_config.RL_UPPER_ANGLE_JOINT = self._robot_config.RL_UPPER_ANGLE_JOINT
 
