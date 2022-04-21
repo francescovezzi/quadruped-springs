@@ -8,6 +8,7 @@ from stable_baselines3.common.vec_env.base_vec_env import VecEnvWrapper
 class EvaluateMetricJumpOnPlace(gym.Wrapper):
     def __init__(self, env):
         super().__init__(env)
+        self.init_metric()
         self.flag_first = True
         
     def compute_max_power(self):
@@ -46,13 +47,17 @@ class EvaluateMetricJumpOnPlace(gym.Wrapper):
         max_height = self.height
         max_power = self.power
         
-        metric = rew_dist + rew_roll + rew_yaw + max_height * 1000 / (2 * max_power)
+        if abs(max_power) >= 0.01:
+            metric = rew_dist + rew_roll + rew_yaw + max_height * 1000 / (2 * max_power)
+        else:
+            metric = 0
         metric += self.penalization_invalid_contact
 
         return max(-1, metric)
     
     def print_metric(self):
-        print(f"the metric amount to {self.get_metric()}")
+        print(f"the jump (on place) metric performance amounts to: {self.get_metric()}")
+        print(f"the maximum reached height amounts to: {self.height}")
 
     def step(self, action):
 
@@ -78,10 +83,11 @@ class EvaluateMetricJumpOnPlace(gym.Wrapper):
         
 ######################################################################
 
-class EvaluateMetricJumpOnPlace(VecEnvWrapper):
+class EvaluateMetricJumpOnPlaceVecEnv(VecEnvWrapper):
     def __init__(self, venv):
         super().__init__(venv)
         self.env = self.venv
+        self.init_metric()
         self.flag_first = True
         
     def compute_max_power(self):
@@ -120,7 +126,10 @@ class EvaluateMetricJumpOnPlace(VecEnvWrapper):
         max_height = self.height
         max_power = self.power
         
-        metric = rew_dist + rew_roll + rew_yaw + max_height * 1000 / (2 * max_power)
+        if abs(max_power) >= 0.01:
+            metric = rew_dist + rew_roll + rew_yaw + max_height * 1000 / (2 * max_power)
+        else:
+            metric = 0
         metric += self.penalization_invalid_contact
 
         return max(-1, metric)

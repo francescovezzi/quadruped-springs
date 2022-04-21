@@ -9,6 +9,8 @@ from env.quadruped_gym_env import QuadrupedGymEnv
 from stable_baselines3.common.cmd_util import make_vec_env
 from stable_baselines3.common.vec_env import VecNormalize
 
+from quadruped_spring.utils.evaluate_metric import EvaluateMetricJumpOnPlace
+
 from sb3_contrib import ARS
 
 
@@ -37,7 +39,7 @@ if ID == 26:
     env_kwargs['adapt_spring_parameters'] = False
 
 # build env
-env = lambda: QuadrupedGymEnv(**env_kwargs)
+env = lambda: EvaluateMetricJumpOnPlace(QuadrupedGymEnv(**env_kwargs))
 env = make_vec_env(env, n_envs=1)
 env = VecNormalize.load(stats_file, env)
 env.training = False  # do not update stats at test time
@@ -47,7 +49,10 @@ env.norm_reward = False  # reward normalization is not needed at test time
 model = LEARNING_ALGS[LEARNING_ALG].load(model_file, env)
 print(f"\nLoaded model: {model_file}\n")
 
-sim_steps = 2000
+env.env_method('print_metric', indices=0)
+
+
+sim_steps = 1200
 obs = env.reset()
 episode_reward = 0
 for i in range(sim_steps):
@@ -57,6 +62,7 @@ for i in range(sim_steps):
     if dones:
         print(f"episode_reward: {episode_reward}")
         episode_reward = 0
+        # obs = env.reset()
 
 env.close()
 print("end")
