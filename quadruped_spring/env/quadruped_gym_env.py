@@ -223,10 +223,10 @@ class QuadrupedGymEnv(gym.Env):
 
         self.setupActionSpace()
         self.setupObservationSpace()
-        
+
         if self._enable_action_filter:
             self._action_filter = self._build_action_filter()
-        
+
         if self._is_render:
             self._pybullet_client = bc.BulletClient(connection_mode=pybullet.GUI)
         else:
@@ -1341,24 +1341,24 @@ class QuadrupedGymEnv(gym.Env):
             leg_FR = leg_FL = [0, 0, action[0]]
             leg_RR = leg_RL = [0, 0, action[1]]
             leg = np.concatenate((leg_FR, leg_FL, leg_RR, leg_RL))
-            
+
         elif self._action_space_mode == "SYMMETRIC_NO_HIP":
             if self._motor_control_mode == "PD":
                 leg_FR = action[0:2]
                 leg_RR = action[2:4]
-                
+
                 leg_FL = leg_FR = np.concatenate(([0], leg_FR))
                 leg_RL = leg_RR = np.concatenate(([0], leg_RR))
 
                 leg = np.concatenate((leg_FR, leg_FL, leg_RR, leg_RL))
-                
+
             elif self._motor_control_mode == "CARTESIAN_PD":
                 # no motion along y
                 leg_FL = leg_FR = np.array([action[0], 0, action[1]])
                 leg_RL = leg_RR = np.array([action[2], 0, action[3]])
 
                 leg = np.concatenate((leg_FR, leg_FL, leg_RR, leg_RL))
-            
+
         else:
             raise ValueError(f"action space mode {self._action_space_mode} not implemented yet")
 
@@ -1624,10 +1624,10 @@ class QuadrupedGymEnv(gym.Env):
         self._robot_config.kpCartesian = np.diag([1200, 2000, 2000])
         self._robot_config.kdCartesian = np.diag([13, 15, 15])
 
-        self._robot_config.RL_LOWER_ANGLE_JOINT =  np.array([-0.2,
-                                                             self._robot_config.DEFAULT_THIGH_ANGLE - 0.4,
-                                                             self._robot_config.DEFAULT_CALF_ANGLE - 0.85] * 4)
-        # self._robot_config.RL_UPPER_ANGLE_JOINT = self._robot_config.RL_UPPER_ANGLE_JOINT 
+        self._robot_config.RL_LOWER_ANGLE_JOINT = np.array(
+            [-0.2, self._robot_config.DEFAULT_THIGH_ANGLE - 0.4, self._robot_config.DEFAULT_CALF_ANGLE - 0.85] * 4
+        )
+        # self._robot_config.RL_UPPER_ANGLE_JOINT = self._robot_config.RL_UPPER_ANGLE_JOINT
 
         self._robot_config.MOTOR_KP = [100, 100, 100] * 4
         self._robot_config.MOTOR_KD = [1.0, 1.5, 1.5] * 4
