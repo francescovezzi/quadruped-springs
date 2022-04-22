@@ -90,6 +90,9 @@ VIDEO_LOG_DIRECTORY = "videos/" + datetime.datetime.now().strftime("vid-%Y-%m-%d
 #     - "LANDING_TASK" (not implemented yet)
 #         Sparse reward, bonus mantain desired position + malus on crushing +
 #         malus on not allowed contact + malus on feet not in contact
+#     - "JUMPING FORWARD" 
+#         Sparse reward, maximizing jump forward distance + bonus maximum height +
+#         bonus maintain base orientation + malus on crashing + malus on not allowed contacts
 
 # Motor control modes:
 #   - "TORQUE":
