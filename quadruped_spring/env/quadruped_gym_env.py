@@ -30,35 +30,46 @@ ACTION_EPS = 0.01
 OBSERVATION_EPS = 0.01
 VIDEO_LOG_DIRECTORY = "videos/" + datetime.datetime.now().strftime("vid-%Y-%m-%d-%H-%M-%S-%f")
 
+# OBSERVATION SPACE LEGEND:
+# JP -> Joint Position
+# JV -> True Joint Velocity
+# Jv -> Estimated Joint Velocity
+# IMU -> Base linear velocity, Base orientation, Base orientation rate (RPY)
+# FP -> Feet Position
+# FV -> True feet velocity
+# Fv -> Estimated feet velocity
+# BC -> Boolean feet Contact
+# NCF -> feet Normal Contact Forces
+
 # Implemented observation spaces for deep reinforcement learning:
 #   "DEFAULT":    motor angles and velocities, body orientation
 #   "LR_COURSE_OBS":  [TODO: what should you include? what is reasonable to measure on the real system?]
 #   "JUMPING_ON_PLACE_OBS": IMU(base linear and angular velocity) +
 #                           Feet positions and velocities (required knowledge of joint configuration and velocity)
 #                           Boolean feet contact
-#   "REAL_OBS_1":  Feet positions and velocities
-#                  Boolean feet contact
-#                  Joint configuration
-#   "REAL_OBS_2":  Feet positions and velocities
-#                  Boolean feet contact
-#                  Joint configuration
-#                  Joint velocity
-#   "REAL_OBS_3":  Feet positions and velocities
-#                  Feet contact normal forces
-#                  Joint configuration
-#                  Joint velocity
-#   "REAL_OBS_4":  Feet positions and velocities
-#                  Feet contact normal forces
-#                  Joint configuration
-#   "REAL_OBS_5":  Feet positions and velocities
-#                  Feet contact normal forces
-#                  IMU (base veolcity, orientation,
-#                  orientation rate)
-#   "REAL_OBS_6":  REAL_OBS_5 +
-#                  Joint configuration +
-#                  Joint velocity
-#  "REAL_OBS_7":   IMU + joint position and velocity +
-#                  feet contact normal forces
+#   "REAL_OBS_FP_Fv_CB_JP":  Feet positions and velocities
+#                            Boolean feet contact
+#                            Joint configuration
+#   "REAL_OBS_FP_Fv_CB_JP_Jv":  Feet positions and velocities
+#                               Boolean feet contact
+#                               Joint configuration
+#                               Joint velocity
+#   "REAL_OBS_FP_Fv_NCF_JP_Jv":  Feet positions and velocities
+#                                Feet contact normal forces
+#                                Joint configuration
+#                                Joint velocity
+#   "REAL_OBS_FP_Fv_NCF_JP":  Feet positions and velocities
+#                             Feet contact normal forces
+#                             Joint configuration
+#   "REAL_OBS_FP_Fv_NCF_IMU":  Feet positions and velocities
+#                              Feet contact normal forces
+#                              IMU (base veolcity, orientation,
+#                              orientation rate)
+#   "REAL_OBS_FP_Fv_NCF_IMU_JP_Jv":  REAL_OBS_FP_Fv_NCF_IMU +
+#                                    Joint configuration +
+#                                    Joint velocity
+#  "REAL_OBS_IMU_JP_Jv_NCF":   IMU + joint position and velocity +
+#                              feet contact normal forces
 
 
 # Implemented action spaces for deep reinforcement learning:
@@ -249,27 +260,27 @@ class QuadrupedGymEnv(gym.Env):
             obs_high, obs_low = self._set_obs_space_lr_course()
         elif self._observation_space_mode == "JUMPING_ON_PLACE_OBS":
             obs_high, obs_low = self._set_obs_space_jump_on_place()
-        elif self._observation_space_mode == "REAL_OBS_1":
-            obs_high, obs_low = self._set_obs_space_real_obs_1()
-        elif self._observation_space_mode == "REAL_OBS_2":
-            obs_high, obs_low = self._set_obs_space_real_obs_2()
-        elif self._observation_space_mode == "REAL_OBS_3":
-            obs_high, obs_low = self._set_obs_space_real_obs_3()
-        elif self._observation_space_mode == "REAL_OBS_4":
-            obs_high, obs_low = self._set_obs_space_real_obs_4()
-        elif self._observation_space_mode == "REAL_OBS_5":
-            obs_high, obs_low = self._set_obs_space_real_obs_5()
-        elif self._observation_space_mode == "REAL_OBS_6":
-            obs_high, obs_low = self._set_obs_space_real_obs_6()
-        elif self._observation_space_mode == "REAL_OBS_7":
-            obs_high, obs_low = self._set_obs_space_real_obs_7()
+        elif self._observation_space_mode == "REAL_OBS_FP_Fv_CB_JP":
+            obs_high, obs_low = self._set_obs_space_real_obs_FP_Fv_CB_JP()
+        elif self._observation_space_mode == "REAL_OBS_FP_Fv_CB_JP_Jv":
+            obs_high, obs_low = self._set_obs_space_real_obs_FP_Fv_CB_JP_Jv()
+        elif self._observation_space_mode == "REAL_OBS_FP_Fv_NCF_JP_Jv":
+            obs_high, obs_low = self._set_obs_space_real_obs_FP_Fv_NCF_JP_Jv()
+        elif self._observation_space_mode == "REAL_OBS_FP_Fv_NCF_JP":
+            obs_high, obs_low = self._set_obs_space_real_obs_FP_Fv_NCF_JP()
+        elif self._observation_space_mode == "REAL_OBS_FP_Fv_NCF_IMU":
+            obs_high, obs_low = self._set_obs_space_real_obs_FP_Fv_NCF_IMU()
+        elif self._observation_space_mode == "REAL_OBS_FP_Fv_NCF_IMU_JP_Jv":
+            obs_high, obs_low = self._set_obs_space_real_obs_FP_Fv_NCF_IMU_JP_Jv()
+        elif self._observation_space_mode == "REAL_OBS_IMU_JP_Jv_NCF":
+            obs_high, obs_low = self._set_obs_space_real_obs_IMU_JP_Jv_NCF()
         else:
             raise ValueError(f"observation space {self._observation_space_mode} not defined or not intended")
 
         self.observation_space = spaces.Box(obs_low, obs_high, dtype=np.float32)
         # print(self.observation_space)
 
-    def _set_obs_space_real_obs_7(self):
+    def _set_obs_space_real_obs_IMU_JP_Jv_NCF(self):
         q_high = self._robot_config.RL_UPPER_ANGLE_JOINT
         q_low = self._robot_config.RL_LOWER_ANGLE_JOINT
         dq_high = self._robot_config.VELOCITY_LIMITS
@@ -316,7 +327,7 @@ class QuadrupedGymEnv(gym.Env):
 
         return observation_high, observation_low
 
-    def _set_obs_space_real_obs_6(self):
+    def _set_obs_space_real_obs_FP_Fv_NCF_IMU_JP_Jv(self):
         q_high = self._robot_config.RL_UPPER_ANGLE_JOINT
         q_low = self._robot_config.RL_LOWER_ANGLE_JOINT
         dq_high = self._robot_config.VELOCITY_LIMITS
@@ -367,7 +378,7 @@ class QuadrupedGymEnv(gym.Env):
 
         return observation_high, observation_low
 
-    def _set_obs_space_real_obs_5(self):
+    def _set_obs_space_real_obs_FP_Fv_NCF_IMU(self):
         vel_high = np.array([MAX_FWD_VELOCITY] * 3)
         vel_low = np.array([-MAX_FWD_VELOCITY] * 3)
         rpy_high = np.array([np.pi] * 3)
@@ -410,7 +421,7 @@ class QuadrupedGymEnv(gym.Env):
 
         return observation_high, observation_low
 
-    def _set_obs_space_real_obs_4(self):
+    def _set_obs_space_real_obs_FP_Fv_NCF_JP(self):
         q_high = self._robot_config.RL_UPPER_ANGLE_JOINT
         q_low = self._robot_config.RL_LOWER_ANGLE_JOINT
         foot_pos_high = np.array([0.1, 0.05, 0.1] * 4)
@@ -445,7 +456,7 @@ class QuadrupedGymEnv(gym.Env):
 
         return observation_high, observation_low
 
-    def _set_obs_space_real_obs_3(self):
+    def _set_obs_space_real_obs_FP_Fv_NCF_JP_Jv(self):
         q_high = self._robot_config.RL_UPPER_ANGLE_JOINT
         q_low = self._robot_config.RL_LOWER_ANGLE_JOINT
         dq_high = self._robot_config.VELOCITY_LIMITS
@@ -484,7 +495,7 @@ class QuadrupedGymEnv(gym.Env):
 
         return observation_high, observation_low
 
-    def _set_obs_space_real_obs_2(self):
+    def _set_obs_space_real_obs_FP_Fv_CB_JP_Jv(self):
         q_high = self._robot_config.RL_UPPER_ANGLE_JOINT
         q_low = self._robot_config.RL_LOWER_ANGLE_JOINT
         foot_pos_high = np.array([0.1, 0.05, 0.1] * 4)
@@ -519,7 +530,7 @@ class QuadrupedGymEnv(gym.Env):
 
         return observation_high, observation_low
 
-    def _set_obs_space_real_obs_1(self):
+    def _set_obs_space_real_obs_FP_Fv_CB_JP(self):
         foot_pos_high = np.array([0.1, 0.05, 0.1] * 4)
         foot_pos_low = -foot_pos_high
         foot_vel_high = np.array([10.0] * 12)
@@ -699,20 +710,20 @@ class QuadrupedGymEnv(gym.Env):
             self._get_obs_lr_course()
         elif self._observation_space_mode == "JUMPING_ON_PLACE_OBS":
             self._get_obs_jump_on_place()
-        elif self._observation_space_mode == "REAL_OBS_1":
-            self._get_obs_real_1()
-        elif self._observation_space_mode == "REAL_OBS_2":
-            self._get_obs_real_2()
-        elif self._observation_space_mode == "REAL_OBS_3":
-            self._get_obs_real_3()
-        elif self._observation_space_mode == "REAL_OBS_4":
-            self._get_obs_real_4()
-        elif self._observation_space_mode == "REAL_OBS_5":
-            self._get_obs_real_5()
-        elif self._observation_space_mode == "REAL_OBS_6":
-            self._get_obs_real_6()
-        elif self._observation_space_mode == "REAL_OBS_7":
-            self._get_obs_real_7()
+        elif self._observation_space_mode == "REAL_OBS_FP_Fv_CB_JP":
+            self._get_obs_real_FP_Fv_CB_JP()
+        elif self._observation_space_mode == "REAL_OBS_FP_Fv_CB_JP_Jv":
+            self._get_obs_real_FP_Fv_CB_JP_Jv()
+        elif self._observation_space_mode == "REAL_OBS_FP_Fv_NCF_JP_Jv":
+            self._get_obs_real_FP_Fv_NCF_JP_Jv()
+        elif self._observation_space_mode == "REAL_OBS_FP_Fv_NCF_JP":
+            self._get_obs_real_FP_Fv_NCF_JP()
+        elif self._observation_space_mode == "REAL_OBS_FP_Fv_NCF_IMU":
+            self._get_obs_real_FP_Fv_NCF_IMU()
+        elif self._observation_space_mode == "REAL_OBS_FP_Fv_NCF_IMU_JP_Jv":
+            self._get_obs_real_FP_Fv_NCF_IMU_JP_Jv()
+        elif self._observation_space_mode == "REAL_OBS_IMU_JP_Jv_NCF":
+            self._get_obs_real_IMU_JP_Jv_NCF()
         else:
             raise ValueError("observation space not defined or not intended")
 
@@ -721,7 +732,7 @@ class QuadrupedGymEnv(gym.Env):
         )
         return self._observation
 
-    def _get_obs_real_7(self):
+    def _get_obs_real_IMU_JP_Jv_NCF(self):
         q = self.robot.GetMotorAngles()
         dq = self._get_motor_velocities()
         base_vel = self.robot.GetBaseLinearVelocity()
@@ -731,7 +742,7 @@ class QuadrupedGymEnv(gym.Env):
 
         self._observation = np.concatenate((q, dq, base_vel, base_rpy, base_drpy, feetNormalForces))
 
-    def _get_obs_real_6(self):
+    def _get_obs_real_FP_Fv_NCF_IMU_JP_Jv(self):
         q = self.robot.GetMotorAngles()
         dq = self._get_motor_velocities()
         base_vel = self.robot.GetBaseLinearVelocity()
@@ -742,7 +753,7 @@ class QuadrupedGymEnv(gym.Env):
 
         self._observation = np.concatenate((q, dq, base_vel, base_rpy, base_drpy, foot_pos, foot_vel, feetNormalForces))
 
-    def _get_obs_real_5(self):
+    def _get_obs_real_FP_Fv_NCF_IMU(self):
         base_vel = self.robot.GetBaseLinearVelocity()
         base_rpy = self.robot.GetBaseOrientationRollPitchYaw()
         base_drpy = self.robot.GetTrueBaseRollPitchYawRate()
@@ -751,14 +762,14 @@ class QuadrupedGymEnv(gym.Env):
 
         self._observation = np.concatenate((base_vel, base_rpy, base_drpy, foot_pos, foot_vel, feetNormalForces))
 
-    def _get_obs_real_4(self):
+    def _get_obs_real_FP_Fv_NCF_JP(self):
         q = self.robot.GetMotorAngles()
         foot_pos, foot_vel = self._compute_feet_position_vel()
         _, _, feetNormalForces, _ = self.robot.GetContactInfo()
 
         self._observation = np.concatenate((q, foot_pos, foot_vel, feetNormalForces))
 
-    def _get_obs_real_3(self):
+    def _get_obs_real_FP_Fv_NCF_JP_Jv(self):
         q = self.robot.GetMotorAngles()
         dq = self._get_motor_velocities()
         foot_pos, foot_vel = self._compute_feet_position_vel()
@@ -766,14 +777,14 @@ class QuadrupedGymEnv(gym.Env):
 
         self._observation = np.concatenate((q, dq, foot_pos, foot_vel, feetNormalForces))
 
-    def _get_obs_real_2(self):
+    def _get_obs_real_FP_Fv_CB_JP_Jv(self):
         q = self.robot.GetMotorAngles()
         foot_pos, foot_vel = self._compute_feet_position_vel()
         numValidContacts, numInvalidContacts, feetNormalForces, feetInContactBool = self.robot.GetContactInfo()
 
         self._observation = np.concatenate((q, foot_pos, foot_vel, feetInContactBool))
 
-    def _get_obs_real_1(self):
+    def _get_obs_real_FP_Fv_CB_JP(self):
         q = self.robot.GetMotorAngles()
         foot_pos, foot_vel = self._compute_feet_position_vel()
         numValidContacts, numInvalidContacts, feetNormalForces, feetInContactBool = self.robot.GetContactInfo()
@@ -1869,7 +1880,7 @@ def test_env():
     env_config["enable_action_clipping"] = False
     env_config["enable_action_filter"] = True
     env_config["task_env"] = "JUMPING_ON_PLACE_TASK"
-    env_config["observation_space_mode"] = "REAL_OBS_3"
+    env_config["observation_space_mode"] = "REAL_OBS_IMU_JP_Jv_NCF"
     env_config["action_space_mode"] = "SYMMETRIC"
     env_config["enable_joint_velocity_estimate"] = True
 
