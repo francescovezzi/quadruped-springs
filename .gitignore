@@ -3,4 +3,4 @@
 __pycache__/
 logs/
 test_control.py
-quadruped_spring/valuate_all_models.py
+evaluate_all_models.py
