@@ -19,8 +19,12 @@ LEARNING_ALG = "ars"
 ENV_ID = "QuadrupedSpring-v0"
 AUX_DIR = "logs/models"
 
+def get_id(folder):
+    return folder.split('/')[-1].split('_')
+
 for model_dir in sorted(glob.glob(os.path.join(currentdir, AUX_DIR, LEARNING_ALG, f"{ENV_ID}_*"))):
     # define directories
+    id = get_id(model_dir)
     model_file = os.path.join(model_dir, "best_model.zip")
     args_file = os.path.join(model_dir, ENV_ID, "args.yml")
     stats_file = os.path.join(model_dir, ENV_ID, "vecnormalize.pkl")
