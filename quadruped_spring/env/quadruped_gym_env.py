@@ -1205,9 +1205,9 @@ class QuadrupedGymEnv(gym.Env):
         reward += 0.05 * np.exp(-self._max_yaw**2 / 0.1)  # orientation
         reward += 0.05 * np.exp(-self._max_roll**2 / 0.1)  # orientation
 
-        reward += 0.1 * self._max_height / max_height  # bonus max_height
+        reward += 0.1 * (self._max_forward_distance / max_fwd) * self._max_height / max_height  # bonus max_height
 
-        if self._max_height > 0 and not self._termination():
+        if self._max_forward_distance > 0 and not self._termination():
             # Alive bonus proportional to the risk taken
             reward += 0.1 * self._max_forward_distance / max_fwd
         # print(f"Forward dist: {self._max_forward_distance}")
