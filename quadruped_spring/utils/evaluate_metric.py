@@ -21,7 +21,7 @@ class EvaluateMetricJumpOnPlace(gym.Wrapper):
         dx = x - self.x_pos
         dy = y - self.y_pos
         return np.sqrt(dx**2 + dy**2)
-    
+
     def update_metrics(self):
         self.jump_metric_old = max(self.jump_metric_old, self.jump_metric)
         self.init_metric()
@@ -60,9 +60,9 @@ class EvaluateMetricJumpOnPlace(gym.Wrapper):
             self._landed = True
             self._taking_off = False
             self.all_feet_in_contact = True
-        
+
         self.get_metric()
-        
+
     def print_first_line_table(self):
         s1 = "ID"
         s2 = "METRIC"
@@ -71,7 +71,7 @@ class EvaluateMetricJumpOnPlace(gym.Wrapper):
         s5 = "MIN_HEIGHT [m]"
         sep = self._sep
         columns = [s1, s2, s3, s4, s5]
-        first_line = ''
+        first_line = ""
         # print('*' * (sep * len(columns) + 4))
         for c in columns:
             first_line += c + " " * (sep - len(c))
@@ -80,7 +80,7 @@ class EvaluateMetricJumpOnPlace(gym.Wrapper):
 
     def fill_line(self, id):
         columns = [id, f"{self.get_metric():.3f}", f"{self.power:.3f}", f"{self.height:.3f}", f"{self._min_height:.3f}"]
-        line = ''
+        line = ""
         for c in columns:
             line += str(c) + " " * (self._sep - len(str(c)))
         print(line)
@@ -91,10 +91,10 @@ class EvaluateMetricJumpOnPlace(gym.Wrapper):
         max_power = self.power
         if self._landed and abs(max_power) >= 0.01:
             max_height_rel = max(self.height - self._init_height, 0)
-            rew_dist = 1/3 * max_height_rel * np.exp(-self.compute_forward_distance() ** 2 / 0.1)
-            rew_roll = 1/3 * max_height_rel * np.exp(-self.roll**2 / 0.1)
-            rew_yaw = 1/3 * max_height_rel * np.exp(-self.yaw**2 / 0.1)
-            
+            rew_dist = 1 / 3 * max_height_rel * np.exp(-self.compute_forward_distance() ** 2 / 0.1)
+            rew_roll = 1 / 3 * max_height_rel * np.exp(-self.roll**2 / 0.1)
+            rew_yaw = 1 / 3 * max_height_rel * np.exp(-self.yaw**2 / 0.1)
+
             metric = rew_dist + rew_roll + rew_yaw + max_height_rel * 1000 / (2 * max_power)
             metric += self.penalization_invalid_contact
             metric -= max(self.bounce_counter - 1, 0) * 0.2
