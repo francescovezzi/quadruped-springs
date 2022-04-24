@@ -67,12 +67,12 @@ class JumpingStateMachine(gym.Wrapper):
                 actual_state = self._states["landing"]
 
         self.max_height = max(self.max_height, self.env.robot.GetBasePosition()[2])
-        if self._state != actual_state:
-            print('********************')
-            print(f'{self._state} -> {actual_state}')
-            print(f'joint config is: {self.env.robot.GetMotorAngles()}')
-            print(f'sim time is: {self.env.get_sim_time()}')
-            print('********************')
+        # if self._state != actual_state:
+        #     print('********************')
+        #     print(f'{self._state} -> {actual_state}')
+        #     print(f'joint config is: {self.env.robot.GetMotorAngles()}')
+        #     print(f'sim time is: {self.env.get_sim_time()}')
+        #     print('********************')
         self._state = actual_state
 
     def flight_time_gone(self):
@@ -251,7 +251,7 @@ if __name__ == "__main__":
     env = JumpingStateMachine(env)
     sim_steps = env._total_sim_steps + 3000
 
-    # env = MonitorState(env=env, path="logs/plots/manual_jumping", rec_length=sim_steps)
+    # env = MonitorState(env=env, path="logs/plots/manual_jumping_with_springs", rec_length=sim_steps)
     env = EvaluateMetricJumpOnPlace(env)
     done = False
     while not done:
