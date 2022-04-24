@@ -135,7 +135,7 @@ class JumpingStateMachine(gym.Wrapper):
                 f = f_rear
             jump_command[3 * i : 3 * (i + 1)] = self.map_force_to_tau([0, 0, -f], i)
             # jump_command[3 * i + 1] = 0
-        print(jump_command)
+        # print(jump_command)
         return jump_command
 
     def jumping_flying_action(self):
@@ -234,7 +234,7 @@ def build_env():
     env_config["robot_model"] = "GO1"
     env_config["motor_control_mode"] = "TORQUE"
     env_config["action_repeat"] = 1
-    env_config["record_video"] = False
+    env_config["record_video"] = True
     env_config["action_space_mode"] = "DEFAULT"
     env_config["task_env"] = "JUMPING_ON_PLACE_ABS_HEIGHT_TASK"
     env_config["adapt_spring_parameters"] = False
@@ -254,8 +254,8 @@ if __name__ == "__main__":
     env = JumpingStateMachine(env)
     sim_steps = env._total_sim_steps + 3000
 
-    # env = MonitorState(env=env, path="logs/plots/manual_jumping_with_springs", rec_length=sim_steps)
-    env = EvaluateMetricJumpOnPlace(env)
+    env = MonitorState(env=env, path="logs/plots/manual_jumping_without_springs", rec_length=sim_steps)
+    # env = EvaluateMetricJumpOnPlace(env)
     done = False
     while not done:
         action = env.compute_action()
