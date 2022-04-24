@@ -1,16 +1,18 @@
+import inspect
+import os
+
 import gym
 import numpy as np
 
-import os, inspect
-
 current_dir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 os.sys.path.insert(0, current_dir)
+
+import argparse
 
 from env.quadruped_gym_env import QuadrupedGymEnv
 from utils.evaluate_metric import EvaluateMetricJumpOnPlace
 from utils.monitor_state import MonitorState
 
-import argparse
 
 class JumpingStateMachine(gym.Wrapper):
     def __init__(self, env):
@@ -47,7 +49,7 @@ class JumpingStateMachine(gym.Wrapper):
 
     def compensate_spring(self):
         spring_action = self.env.robot._spring_torque
-        return -np.array(spring_action)        
+        return -np.array(spring_action)
 
     def update_state(self):
         if self._step_counter <= self._settling_duration_steps:
@@ -84,7 +86,7 @@ class JumpingStateMachine(gym.Wrapper):
             self._first_take_off = True
         self._flight_timer = self.env.get_sim_time() - self._take_off_time
         return self._flight_timer >= self._flight_time
-    
+
     def base_velocity(self):
         q_dot = self.env.robot.GetMotorVelocities()
         _, _, _, feet_contact = self.env.robot.GetContactInfo()
@@ -93,7 +95,7 @@ class JumpingStateMachine(gym.Wrapper):
         for in_contact, id in zip(feet_contact, list(range(4))):
             if in_contact:
                 Jac, _ = self.env.robot.ComputeJacobianAndPosition(id)
-                vel = - Jac @ q_dot[3 * id : 3 * (id + 1)]
+                vel = -Jac @ q_dot[3 * id : 3 * (id + 1)]
                 base_vel = base_vel + (vel - base_vel) / count
                 count += 1
         return base_vel
@@ -240,8 +242,9 @@ def build_env():
     env = QuadrupedGymEnv(**env_config)
     return env
 
+
 if __name__ == "__main__":
-    
+
     parser = argparse.ArgumentParser()
     parser.add_argument("--fill-line", action="store_true", default=False, help="fill line in report.txt")
     args = parser.parse_args()
@@ -260,10 +263,10 @@ if __name__ == "__main__":
         # print(env.robot.GetMotorVelocities()-env.get_joint_velocity_estimation())
     # env.release_plots()
     if fill_line:
-        report_path = os.path.join(current_dir, 'logs', 'models', 'performance_report.txt')
-        with open(report_path, 'w') as f:
+        report_path = os.path.join(current_dir, "logs", "models", "performance_report.txt")
+        with open(report_path, "w") as f:
             f.write(env.print_first_line_table())
-            f.write(env.fill_line(id = 'ManualWithSprings'))
+            f.write(env.fill_line(id="ManualWithSprings"))
     else:
         env.print_metric()
     env.close()

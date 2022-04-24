@@ -1,25 +1,23 @@
 import gym
 import numpy as np
 
-# TODO:
-# Create Tuple with power, height_min, height_max, metric. Then print that one.
 
-class MetricInfo():
-    def __init__(self, metric = 0.0, power = 0.0, height_max = 0.0, height_min = 0.0):
-        self.metric_value = 0.0
-        self.power_max = 0.0
-        self.height_max = 0.0
-        self.height_min = 0.0
-    
+class MetricInfo:
+    def __init__(self, metric=0.0, power=0.0, height_max=0.0, height_min=0.0):
+        self.metric_value = metric
+        self.power_max = power
+        self.height_max = height_max
+        self.height_min = height_min
+
     def get_values(self):
         return (self.metric_value, self.power_max, self.height_max, self.height_min)
-        
+
     def best_metrics(a, b):
         if a.metric_value >= b.metric_value:
             return a
         else:
             return b
-        
+
 
 class EvaluateMetricJumpOnPlace(gym.Wrapper):
     def __init__(self, env):
@@ -27,8 +25,6 @@ class EvaluateMetricJumpOnPlace(gym.Wrapper):
         self.init_metric()
         self._sep = 20
         self.jump_metric_old = MetricInfo()
-        # self.jump_metric_old = 0.0
-        self.height_max_old = 0.0
         self.flag_first = True
 
     def compute_max_power(self):
@@ -50,7 +46,6 @@ class EvaluateMetricJumpOnPlace(gym.Wrapper):
     def init_metric(self):
         self.x_pos, self.y_pos, self.height = self.env.robot.GetBasePosition()
         self.roll, _, self.yaw = abs(self.env.robot.GetBaseOrientationRollPitchYaw())
-        self.power = 0.0
         self.penalization_invalid_contact = 0
         self._landed = False
         self._taking_off = False
@@ -63,7 +58,7 @@ class EvaluateMetricJumpOnPlace(gym.Wrapper):
         _, numInvalidContacts, _, feet_in_contact = self.env.robot.GetContactInfo()
         if numInvalidContacts > 0:
             self.penalization_invalid_contact = -10
-        self.power = max(self.jump_metric.power_max, self.compute_max_power())
+        self.jump_metric.power_max = max(self.jump_metric.power_max, self.compute_max_power())
         roll, _, yaw = self.env.robot.GetBaseOrientationRollPitchYaw()
         _, _, height = self.env.robot.GetBasePosition()
         self.roll = max(self.roll, abs(roll))
@@ -96,7 +91,7 @@ class EvaluateMetricJumpOnPlace(gym.Wrapper):
         for c in columns:
             first_line += c + " " * (sep - len(c))
         print(first_line)
-        return first_line
+        return first_line + "\n"
 
     def fill_line(self, id):
         metric, power, height_max, height_min = self.get_metric().get_values()
@@ -105,11 +100,11 @@ class EvaluateMetricJumpOnPlace(gym.Wrapper):
         for c in columns:
             line += str(c) + " " * (self._sep - len(str(c)))
         print(line)
-        return line
+        return line + "\n"
 
     def get_metric(self):
         metric = 0
-        max_power = self.power
+        max_power = self.jump_metric.power_max
         if self._landed and abs(max_power) >= 0.01:
             max_height_rel = max(self.jump_metric.height_max - self._init_height, 0)
             rew_dist = 1 / 3 * max_height_rel * np.exp(-self.compute_forward_distance() ** 2 / 0.1)
