@@ -33,30 +33,64 @@ class JumpingStateMachine(gym.Wrapper):
         self._time_step = self.env._time_step
         self._robot_config = self.env._robot_config
         self._enable_springs = self.env._enable_springs
+        self._jump_end = False
+        self._first_take_off = False
 
     def compute_action(self):
         return self._actions[self._state]()
 
     def compensate_spring(self):
         spring_action = self.env.robot._spring_torque
-        return -np.array(spring_action)
+        return -np.array(spring_action)        
 
     def update_state(self):
         if self._step_counter <= self._settling_duration_steps:
             actual_state = self._states["settling"]
         elif self._step_counter <= self._settling_duration_steps + self._couching_duration_steps:
             actual_state = self._states["couching"]
-            # print(self.env.robot.GetBasePosition()[2])
         else:
-            if self.all_feet_in_contact():
-                actual_state = self._states["jumping_ground"]
-            else:
-                if self.is_landing():
-                    actual_state = self._states["landing"]
+            if not self._jump_end:
+                if not self.is_flying():
+                    actual_state = self._states["jumping_ground"]
                 else:
-                    actual_state = self._states["jumping_air"]
+                    if not self.flight_time_gone():
+                        actual_state = self._states["jumping_air"]
+                    else:
+                        self._jump_end = True
+            if self._jump_end:
+                actual_state = self._states["landing"]
+
         self.max_height = max(self.max_height, self.env.robot.GetBasePosition()[2])
+        if self._state != actual_state:
+            print('********************')
+            print(f'{self._state} -> {actual_state}')
+            print(f'joint config is: {self.env.robot.GetMotorAngles()}')
+            print(f'sim time is: {self.env.get_sim_time()}')
+            print('********************')
         self._state = actual_state
+
+    def flight_time_gone(self):
+        if not self._first_take_off:
+            self._take_off_time = self.env.get_sim_time()
+            self.vz = self.base_velocity()[2]
+            print(self.vz)
+            self._flight_time = self.vz / 9.81
+            self._first_take_off = True
+        self._flight_timer = self.env.get_sim_time() - self._take_off_time
+        return self._flight_timer >= self._flight_time
+    
+    def base_velocity(self):
+        q_dot = self.env.robot.GetMotorVelocities()
+        _, _, _, feet_contact = self.env.robot.GetContactInfo()
+        base_vel = np.zeros(3)
+        count = 1
+        for in_contact, id in zip(feet_contact, list(range(4))):
+            if in_contact:
+                Jac, _ = self.env.robot.ComputeJacobianAndPosition(id)
+                vel = - Jac @ q_dot[3 * id : 3 * (id + 1)]
+                base_vel = base_vel + (vel - base_vel) / count
+                count += 1
+        return base_vel
 
     def settling_action(self):
         if self.env._enable_springs:
@@ -120,9 +154,9 @@ class JumpingStateMachine(gym.Wrapper):
         action = torque  # + compensate_springs
         return action
 
-    def all_feet_in_contact(self):
+    def is_flying(self):
         _, _, _, feetInContactBool = self.env.robot.GetContactInfo()
-        return np.all(feetInContactBool)
+        return 1 - np.all(feetInContactBool)
 
     def is_landing(self):
         if self._flying_up_counter >= 20:
@@ -195,6 +229,7 @@ def build_env():
     env_config["record_video"] = False
     env_config["action_space_mode"] = "DEFAULT"
     env_config["task_env"] = "JUMPING_ON_PLACE_ABS_HEIGHT_TASK"
+    env_config["adapt_spring_parameters"] = False
 
     env = QuadrupedGymEnv(**env_config)
     return env
