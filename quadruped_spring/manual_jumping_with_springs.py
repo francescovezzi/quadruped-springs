@@ -241,6 +241,8 @@ def build_env():
     env_config["task_env"] = "JUMPING_ON_PLACE_ABS_HEIGHT_TASK"
     env_config["adapt_spring_parameters"] = False
 
+    if fill_line:
+        env_config["render"] = False
     env = QuadrupedGymEnv(**env_config)
     return env
 

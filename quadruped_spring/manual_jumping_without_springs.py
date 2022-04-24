@@ -234,11 +234,13 @@ def build_env():
     env_config["robot_model"] = "GO1"
     env_config["motor_control_mode"] = "TORQUE"
     env_config["action_repeat"] = 1
-    env_config["record_video"] = True
+    env_config["record_video"] = False
     env_config["action_space_mode"] = "DEFAULT"
     env_config["task_env"] = "JUMPING_ON_PLACE_ABS_HEIGHT_TASK"
     env_config["adapt_spring_parameters"] = False
 
+    if fill_line:
+        env_config["render"] = False
     env = QuadrupedGymEnv(**env_config)
     return env
 
@@ -254,8 +256,8 @@ if __name__ == "__main__":
     env = JumpingStateMachine(env)
     sim_steps = env._total_sim_steps + 3000
 
-    env = MonitorState(env=env, path="logs/plots/manual_jumping_without_springs", rec_length=sim_steps)
-    # env = EvaluateMetricJumpOnPlace(env)
+    # env = MonitorState(env=env, path="logs/plots/manual_jumping_without_springs", rec_length=sim_steps)
+    env = EvaluateMetricJumpOnPlace(env)
     done = False
     while not done:
         action = env.compute_action()
@@ -264,8 +266,7 @@ if __name__ == "__main__":
     # env.release_plots()
     if fill_line:
         report_path = os.path.join(current_dir, "logs", "models", "performance_report.txt")
-        with open(report_path, "w") as f:
-            f.write(env.print_first_line_table())
+        with open(report_path, "a") as f:
             f.write(env.fill_line(id="ManualWithNoSprings"))
     else:
         env.print_metric()

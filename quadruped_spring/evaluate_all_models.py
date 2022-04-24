@@ -69,4 +69,4 @@ for model_dir in sorted(glob.glob(os.path.join(currentdir, AUX_DIR, LEARNING_ALG
         f.write(env.env_method("fill_line", id=id, indices=0)[0])
         env.close()
 
-print("end")
+print("end models evaluation")
