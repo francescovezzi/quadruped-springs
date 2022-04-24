@@ -81,7 +81,7 @@ class JumpingStateMachine(gym.Wrapper):
         if not self._first_take_off:
             self._take_off_time = self.env.get_sim_time()
             self.vz = self.base_velocity()[2]
-            print(self.vz)
+            # print(self.vz)
             self._flight_time = self.vz / 9.81
             self._first_take_off = True
         self._flight_timer = self.env.get_sim_time() - self._take_off_time
@@ -125,7 +125,7 @@ class JumpingStateMachine(gym.Wrapper):
         return torques
 
     def jumping_explosive_action(self):
-        coeff = 1.0
+        coeff = 0.8
         f_rear = 190
         f_front = coeff * f_rear
         jump_command = np.full(12, 0)
@@ -135,12 +135,14 @@ class JumpingStateMachine(gym.Wrapper):
             else:
                 f = f_rear
             jump_command[3 * i : 3 * (i + 1)] = self.map_force_to_tau([0, 0, -f], i)
-            jump_command[3 * i] = 0
+            # jump_command[3 * i + 1] = 0
         # print(jump_command)
         return jump_command
 
     def jumping_flying_action(self):
         action = np.full(12, 0)
+        config_des = self.env._robot_config.INIT_MOTOR_ANGLES
+        action = self.angle_ref_to_command(config_des)
         return action
 
     def jumping_landing_action(self):
@@ -151,9 +153,9 @@ class JumpingStateMachine(gym.Wrapper):
         dq = self.robot.GetMotorVelocities()
         compensate_springs = np.full(12, 0)
         if self.env._enable_springs:
-            kp = 20
-            kd = 10.0
-            compensate_springs = self.compensate_spring()
+            kp = 10.0
+            kd = 3.0
+            # compensate_springs = self.compensate_spring()
         else:
             kp = 55
             kd = 0.8
@@ -227,7 +229,7 @@ class JumpingStateMachine(gym.Wrapper):
 def build_env():
     env_config = {}
     env_config["enable_springs"] = True
-    env_config["render"] = False
+    env_config["render"] = True
     env_config["on_rack"] = False
     env_config["enable_joint_velocity_estimate"] = False
     env_config["isRLGymInterface"] = False
