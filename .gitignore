@@ -1,4 +1,5 @@
 .DS_Store
 *.egg-info
 __pycache__/
+logs/
 test_control.py
