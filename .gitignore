@@ -3,3 +3,5 @@
 __pycache__/
 logs/
 test_control.py
+evaluate_all_models.py
+
