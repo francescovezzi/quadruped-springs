@@ -93,7 +93,7 @@ class EvaluateMetricJumpOnPlace(gym.Wrapper):
         for c in columns:
             first_line += c + " " * (sep - len(c))
         print(first_line)
-        return first_line
+        return first_line + '\n'
 
     def fill_line(self, id):
         metric, power, height_max, height_min = self.get_metric().get_values()
@@ -102,7 +102,7 @@ class EvaluateMetricJumpOnPlace(gym.Wrapper):
         for c in columns:
             line += str(c) + " " * (self._sep - len(str(c)))
         print(line)
-        return line
+        return line + '\n'
 
     def get_metric(self):
         metric = 0
