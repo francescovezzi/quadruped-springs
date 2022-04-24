@@ -1649,7 +1649,6 @@ class QuadrupedGymEnv(gym.Env):
         self._robot_config.MOTOR_KD = [1.0, 1.5, 1.5] * 4
 
         self._robot_config.INIT_POSITION = [0, 0, 0.36]
-        self._robot_config.NOMINAL_FOOT_POS_LEG_FRAME = np.array([0, -self._robot_config.HIP_LINK_LENGTH, -0.32] * 4)
 
     ######################################################################################
     # Render, record videos, bookkeping, and misc pybullet helpers.

@@ -50,7 +50,7 @@ THIGH_LINK_LENGTH = 0.213
 CALF_LINK_LENGTH = 0.213
 
 NOMINAL_FOOT_POS_LEG_FRAME = np.array(
-    [0, -HIP_LINK_LENGTH, -0.3, 0, HIP_LINK_LENGTH, -0.3, 0, -HIP_LINK_LENGTH, -0.3, 0, HIP_LINK_LENGTH, -0.3]
+    [0, -HIP_LINK_LENGTH, -0.32, 0, HIP_LINK_LENGTH, -0.32, 0, -HIP_LINK_LENGTH, -0.32, 0, HIP_LINK_LENGTH, -0.32]
 )
 
 ##################################################################################
