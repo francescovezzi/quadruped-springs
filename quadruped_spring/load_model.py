@@ -15,8 +15,7 @@ from quadruped_spring.utils.evaluate_metric import EvaluateMetricJumpOnPlace
 LEARNING_ALGS = {"ars": ARS}
 LEARNING_ALG = "ars"
 ENV_ID = "QuadrupedSpring-v0"
-ID = 26
-
+ID = 'FirstGood'
 
 # define directories
 aux_dir = "logs/models"
@@ -33,7 +32,7 @@ if os.path.isfile(args_file):
         if loaded_args["env_kwargs"] is not None:
             env_kwargs = loaded_args["env_kwargs"]
 env_kwargs["render"] = True
-if ID == 26:
+if ID == 'FirstGood':
     env_kwargs["adapt_spring_parameters"] = False
 
 # build env

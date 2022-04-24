@@ -1,10 +1,16 @@
 import gym
 import numpy as np
 
+import os, inspect
+
+current_dir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+os.sys.path.insert(0, current_dir)
+
 from env.quadruped_gym_env import QuadrupedGymEnv
 from utils.evaluate_metric import EvaluateMetricJumpOnPlace
 from utils.monitor_state import MonitorState
 
+import argparse
 
 class JumpingStateMachine(gym.Wrapper):
     def __init__(self, env):
@@ -61,12 +67,12 @@ class JumpingStateMachine(gym.Wrapper):
                 actual_state = self._states["landing"]
 
         self.max_height = max(self.max_height, self.env.robot.GetBasePosition()[2])
-        if self._state != actual_state:
-            print('********************')
-            print(f'{self._state} -> {actual_state}')
-            print(f'joint config is: {self.env.robot.GetMotorAngles()}')
-            print(f'sim time is: {self.env.get_sim_time()}')
-            print('********************')
+        # if self._state != actual_state:
+        #     print('********************')
+        #     print(f'{self._state} -> {actual_state}')
+        #     print(f'joint config is: {self.env.robot.GetMotorAngles()}')
+        #     print(f'sim time is: {self.env.get_sim_time()}')
+        #     print('********************')
         self._state = actual_state
 
     def flight_time_gone(self):
@@ -234,14 +240,18 @@ def build_env():
     env = QuadrupedGymEnv(**env_config)
     return env
 
-
 if __name__ == "__main__":
+    
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--fill-line", action="store_true", default=False, help="fill line in report.txt")
+    args = parser.parse_args()
+    fill_line = args.fill_line
 
     env = build_env()
     env = JumpingStateMachine(env)
     sim_steps = env._total_sim_steps + 3000
 
-    # env = MonitorState(env=env, path="logs/plots/manual_jumping", rec_length=sim_steps)
+    # env = MonitorState(env=env, path="logs/plots/manual_jumping_with_springs", rec_length=sim_steps)
     env = EvaluateMetricJumpOnPlace(env)
     done = False
     while not done:
@@ -249,6 +259,12 @@ if __name__ == "__main__":
         obs, reward, done, info = env.step(action)
         # print(env.robot.GetMotorVelocities()-env.get_joint_velocity_estimation())
     # env.release_plots()
-    env.print_metric()
+    if fill_line:
+        report_path = os.path.join(current_dir, 'logs', 'models', 'performance_report.txt')
+        with open(report_path, 'w') as f:
+            f.write(env.print_first_line_table())
+            f.write(env.fill_line(id = 'ManualWithSprings'))
+    else:
+        env.print_metric()
     env.close()
     print("end")
