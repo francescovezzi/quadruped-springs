@@ -21,13 +21,15 @@ ENV_ID = "QuadrupedSpring-v0"
 AUX_DIR = "logs/models"
 OBS_SPACE_NAMES = "numeric"  # or "symbolic"
 
+
 def get_id(folder):
-    return folder.split('/')[-1].split('_')[-1]
+    return folder.split("/")[-1].split("_")[-1]
+
 
 subprocess.call(["python", "manual_jumping_with_springs.py", "--fill-line"])
 subprocess.call(["python", "manual_jumping_without_springs.py", "--fill-line"])
 
-report_file = os.path.join(currentdir, AUX_DIR, 'performance_report.txt')
+report_file = os.path.join(currentdir, AUX_DIR, "performance_report.txt")
 for model_dir in sorted(glob.glob(os.path.join(currentdir, AUX_DIR, LEARNING_ALG, f"{ENV_ID}_*"))):
     # define directories
     id = get_id(model_dir)
@@ -44,7 +46,7 @@ for model_dir in sorted(glob.glob(os.path.join(currentdir, AUX_DIR, LEARNING_ALG
                 env_kwargs = loaded_args["env_kwargs"]
     env_kwargs["render"] = False
     enable_processing = True
-    if id == 'FirstGood':
+    if id == "FirstGood":
         env_kwargs["adapt_spring_parameters"] = False
 
     # build env
@@ -63,8 +65,8 @@ for model_dir in sorted(glob.glob(os.path.join(currentdir, AUX_DIR, LEARNING_ALG
     for i in range(sim_steps):
         action, _states = model.predict(obs, deterministic=True)
         obs, rewards, dones, info = env.step(action)
-    with open(report_file, 'a') as f:
-        f.write(env.env_method("fill_line", id=id, indices = 0)[0])
+    with open(report_file, "a") as f:
+        f.write(env.env_method("fill_line", id=id, indices=0)[0])
         env.close()
 
 print("end")

@@ -1,6 +1,6 @@
 import inspect
-from mimetypes import init
 import os
+from mimetypes import init
 
 import gym
 import numpy as np
