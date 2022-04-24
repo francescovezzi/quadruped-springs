@@ -1,6 +1,6 @@
 .DS_Store
 *.egg-info
 __pycache__/
-logs/
+
 test_control.py
 make_performance_report.sh

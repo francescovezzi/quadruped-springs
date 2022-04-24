@@ -1,0 +1,4 @@
+ID                  METRIC              MAX_POWER [w]       MAX_HEIGHT [m]      MIN_HEIGHT [m]      
+ManualWithSprings   1.313               1009.855            1.212               0.147               
+ManualWithNoSprings 0.934               872.153             0.906               0.131               
+FirstGood           0.391               180.382             0.514               0.260               
