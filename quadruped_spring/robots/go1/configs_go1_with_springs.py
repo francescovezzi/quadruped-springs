@@ -21,7 +21,7 @@ MOTORS_PER_LEG = 3
 
 INIT_RACK_POSITION = [0, 0, 1]  # when hung up in air (for debugging)
 INIT_POSITION = [0, 0, 0.36]  # normal initial height
-IS_FALLEN_HEIGHT = 0.12  # height at which robot is considered fallen
+IS_FALLEN_HEIGHT = 0.10  # height at which robot is considered fallen
 
 INIT_ORIENTATION = (0, 0, 0, 1)
 _, INIT_ORIENTATION_INV = pyb.invertTransform(position=[0, 0, 0], orientation=INIT_ORIENTATION)
@@ -47,9 +47,14 @@ HIP_LINK_LENGTH = 0.0847
 THIGH_LINK_LENGTH = 0.213
 CALF_LINK_LENGTH = 0.213
 
+# default foot pos in leg frame
+DEFAULT_X = 0
+DEFAULT_Y = HIP_LINK_LENGTH
+DEFAULT_Z = - 0.32
+
 NOMINAL_FOOT_POS_LEG_FRAME = np.array(
-    [0, -HIP_LINK_LENGTH, -0.32, 0, HIP_LINK_LENGTH, -0.32, 0, -HIP_LINK_LENGTH, -0.32, 0, HIP_LINK_LENGTH, -0.32]
-)
+    list(map(lambda sign: [DEFAULT_X, sign * DEFAULT_Y, DEFAULT_Z], [-1, 1, -1, 1]))
+    ).flatten()
 
 ##################################################################################
 # Actuation limits/gains, position, and velocity limits
@@ -65,6 +70,14 @@ RL_LOWER_ANGLE_JOINT = np.array(
 )  # if calf angle=-2.42 the robot height is 0.15
 # RL_LOWER_ANGLE_JOINT = np.array([-0.2, DEFAULT_THIGH_ANGLE - 0.4, DEFAULT_CALF_ANGLE - 0.85] * NUM_LEGS)
 
+RL_UPPER_CARTESIAN_POS = NOMINAL_FOOT_POS_LEG_FRAME + np.array(
+    list(map(lambda sign: [0.2, sign * 0.05, 0.18], [1, 1, 1, 1]))
+    ).flatten()
+
+RL_LOWER_CARTESIAN_POS = NOMINAL_FOOT_POS_LEG_FRAME - np.array(
+    list(map(lambda sign: [0.2, sign * 0.05, 0.07], [1, 1, 1, 1]))
+    ).flatten()
+
 # torque and velocity limits
 # Set to 0.4 * ... to limit max torque
 TORQUE_LIMITS = 1.0 * np.asarray([23.7, 23.7, 1.0 * 33.55] * NUM_LEGS)
@@ -78,7 +91,6 @@ MOTOR_KD = [1.0, 2.0, 2.0] * NUM_LEGS
 # Sample Cartesian Gains
 kpCartesian = np.diag([1200, 2000, 2000])
 kdCartesian = np.diag([13, 15, 15])
-
 
 ##################################################################################
 # Hip, thigh, calf strings, naming conventions from URDF (don't modify)

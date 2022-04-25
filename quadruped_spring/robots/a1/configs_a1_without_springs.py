@@ -62,7 +62,15 @@ REAL_LOWER_ANGLE_JOINT = np.array([-0.802851455917, -1.0471975512, -2.6965336943
 
 # modified range in simulation (min observation space for RL)
 RL_UPPER_ANGLE_JOINT = np.array([0.2, DEFAULT_THIGH_ANGLE + 0.4, DEFAULT_CALF_ANGLE + 0.4] * NUM_LEGS)
-RL_LOWER_ANGLE_JOINT = np.array([-0.2, DEFAULT_THIGH_ANGLE - 0.4, DEFAULT_CALF_ANGLE - 0.7] * NUM_LEGS)
+RL_LOWER_ANGLE_JOINT = np.array([-0.2, DEFAULT_THIGH_ANGLE - 0.4, -2.2] * NUM_LEGS)
+
+RL_UPPER_CARTESIAN_POS = NOMINAL_FOOT_POS_LEG_FRAME + np.array(
+    list(map(lambda sign: [0.2, sign * 0.05, 0.18], [1, 1, 1, 1]))
+    ).flatten()
+
+RL_LOWER_CARTESIAN_POS = NOMINAL_FOOT_POS_LEG_FRAME - np.array(
+    list(map(lambda sign: [0.2, sign * 0.05, 0.07], [1, 1, 1, 1]))
+    ).flatten()
 
 # torque and velocity limits
 TORQUE_LIMITS = np.asarray([33.5] * NUM_MOTORS)
