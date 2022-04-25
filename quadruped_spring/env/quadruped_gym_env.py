@@ -22,8 +22,11 @@ from gym import spaces
 from gym.utils import seeding
 from scipy.spatial.transform import Rotation as R
 
-import quadruped_spring.robots.a1.configs_a1 as a1_config
-import quadruped_spring.robots.go1.configs_go1 as go1_config
+import robots.a1.configs_a1_with_springs as a1_config_with_springs
+import robots.a1.configs_a1_without_springs as a1_config_without_springs
+import robots.go1.configs_go1_with_springs as go1_config_with_springs
+import robots.go1.configs_go1_without_springs as go1_config_without_springs
+
 from quadruped_spring.utils import action_filter
 
 ACTION_EPS = 0.01
@@ -116,7 +119,8 @@ VIDEO_LOG_DIRECTORY = "videos/" + datetime.datetime.now().strftime("vid-%Y-%m-%d
 EPISODE_LENGTH = 10  # how long before we reset the environment (max episode length for RL)
 MAX_FWD_VELOCITY = 5  # to avoid exploiting simulator dynamics, cap max reward for body velocity
 
-ROBOT_CLASS_MAP = {"A1": a1_config, "GO1": go1_config}
+ROBOT_CLASS_MAP_WITH_SPRINGS = {"A1": a1_config_with_springs, "GO1": go1_config_with_springs}
+ROBOT_CLASS_MAP_WITHOUT_SPRINGS = {"A1": a1_config_without_springs, "GO1": go1_config_without_springs}
 
 
 class QuadrupedGymEnv(gym.Env):
@@ -150,7 +154,6 @@ class QuadrupedGymEnv(gym.Env):
         enable_action_filter=False,
         enable_action_clipping=False,
         enable_joint_velocity_estimate=False,
-        adapt_spring_parameters=True,
         test_env=False,  # NOT ALLOWED FOR TRAINING!
     ):
         """Initialize the quadruped gym environment.
@@ -184,12 +187,16 @@ class QuadrupedGymEnv(gym.Env):
           enable_joint_velocity_estimate: Boolean specifying if it's used the
             estimated or the true joint velocity. Actually it affects only real
             observations space modes.
-          adapt_spring_parameters: Boolean specifying if modify robot configs for taking
-            into account the spring presence. Used for retrocompatibility with previous models.
         """
         self.seed()
+        self._enable_springs = enable_springs
         try:
-            robot_config = ROBOT_CLASS_MAP[robot_model]
+            if self._enable_springs:
+                robot_config = ROBOT_CLASS_MAP_WITH_SPRINGS[robot_model]
+            elif self._enable_springs:
+                 robot_config = ROBOT_CLASS_MAP_WITH_SPRINGS[robot_model]
+            else:
+                raise ValueError('Specify wheter springs are enabled')
         except KeyError:
             raise KeyError('Robot model should be "A1" or "GO1"')
         self._robot_config = robot_config
@@ -207,12 +214,10 @@ class QuadrupedGymEnv(gym.Env):
         self._is_render = render
         self._is_record_video = record_video
         self._add_noise = add_noise
-        self._enable_springs = enable_springs
         self._enable_action_interpolation = enable_action_interpolation
         self._enable_action_filter = enable_action_filter
         self._enable_action_clipping = enable_action_clipping
         self._enable_joint_velocity_estimate = enable_joint_velocity_estimate
-        self._adapt_spring_parameters = adapt_spring_parameters
         self._using_test_env = test_env
         if test_env:
             self._add_noise = True
@@ -228,9 +233,6 @@ class QuadrupedGymEnv(gym.Env):
         self._last_frame_time = 0.0  # for rendering
         self._MAX_EP_LEN = EPISODE_LENGTH  # max sim time in seconds, arbitrary
         self._action_bound = 1.0
-
-        if self._enable_springs and self._adapt_spring_parameters:
-            self._adjust_configs_springs()
 
         self.setupActionSpace()
         self.setupObservationSpace()
@@ -1427,7 +1429,7 @@ class QuadrupedGymEnv(gym.Env):
         sampling_rate = 1 / (self._time_step * self._action_repeat)
         num_joints = self._action_dim
         a_filter = action_filter.ActionFilterButter(sampling_rate=sampling_rate, num_joints=num_joints)
-        if self._enable_springs and self._adjust_configs_springs:
+        if self._enable_springs:
             a_filter.highcut = 2.5
         return a_filter
 
@@ -1627,28 +1629,6 @@ class QuadrupedGymEnv(gym.Env):
         self._max_pitch = 0.0
         self._jump_init_height = self._robot_pose_take_off[2]
         self._max_height = 0.0
-
-    def _adjust_configs_springs(self):
-        spring_angles = np.array(self._robot_config.SPRINGS_REST_ANGLE * 4)
-        self._robot_config.INIT_JOINT_ANGLES = spring_angles
-        self._robot_config.INIT_MOTOR_ANGLES = spring_angles
-        self._robot_config.kpCartesian = np.diag([1200, 2000, 2000])
-        self._robot_config.kdCartesian = np.diag([13, 15, 15])
-
-        self._robot_config.RL_LOWER_ANGLE_JOINT = np.array(
-            [
-                self._robot_config.DEFAULT_HIP_ANGLE - 0.2,
-                self._robot_config.DEFAULT_THIGH_ANGLE - 0.4,
-                self._robot_config.DEFAULT_CALF_ANGLE - 0.85,
-            ]
-            * 4
-        )
-        # self._robot_config.RL_UPPER_ANGLE_JOINT = self._robot_config.RL_UPPER_ANGLE_JOINT
-
-        self._robot_config.MOTOR_KP = [100, 100, 100] * 4
-        self._robot_config.MOTOR_KD = [1.0, 1.5, 1.5] * 4
-
-        self._robot_config.INIT_POSITION = [0, 0, 0.36]
 
     ######################################################################################
     # Render, record videos, bookkeping, and misc pybullet helpers.
