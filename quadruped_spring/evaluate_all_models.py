@@ -6,6 +6,7 @@ os.sys.path.insert(0, currentdir)
 
 import glob
 import subprocess
+import time
 
 import yaml
 from sb3_contrib import ARS
@@ -67,6 +68,7 @@ for model_dir in sorted(glob.glob(os.path.join(currentdir, AUX_DIR, LEARNING_ALG
         obs, rewards, dones, info = env.step(action)
     with open(report_file, "a") as f:
         f.write(env.env_method("fill_line", id=id, indices=0)[0])
-        env.close()
+    env.close()
+    time.sleep(0.5)
 
 print("end models evaluation")
