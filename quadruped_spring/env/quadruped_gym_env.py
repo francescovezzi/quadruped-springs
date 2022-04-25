@@ -1506,7 +1506,7 @@ class QuadrupedGymEnv(gym.Env):
         init_action = self.adapt_action_dim_for_robot(init_action)
         if self._is_render:
             time.sleep(0.2)
-        for _ in range(1000):
+        for _ in range(1500):
             proc_action = self._transform_action_to_motor_command(init_action)
             self.robot.ApplyAction(proc_action)
             if self._is_render:
@@ -1528,7 +1528,7 @@ class QuadrupedGymEnv(gym.Env):
         init_motor_angles = self._robot_config.INIT_MOTOR_ANGLES + self._robot_config.JOINT_OFFSETS
         if self._is_render:
             time.sleep(0.2)
-        for _ in range(800):
+        for _ in range(1500):
             self.robot.ApplyAction(init_motor_angles)
             if self._is_render:
                 time.sleep(0.001)
