@@ -96,7 +96,14 @@ class EvaluateMetricJumpOnPlace(gym.Wrapper):
 
     def fill_line(self, id):
         metric, power, height_max, height_min = self.get_metric().get_values()
-        columns = [id, f"{metric:.3f}", f"{power:.3f}", f"{height_max:.3f}", f"{height_min:.3f}", f"{self.env._enable_springs}"]
+        columns = [
+            id,
+            f"{metric:.3f}",
+            f"{power:.3f}",
+            f"{height_max:.3f}",
+            f"{height_min:.3f}",
+            f"{self.env._enable_springs}",
+        ]
         line = ""
         for c in columns:
             line += str(c) + " " * (self._sep - len(str(c)))
