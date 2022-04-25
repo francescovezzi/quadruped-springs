@@ -1236,8 +1236,12 @@ class QuadrupedGymEnv(gym.Env):
 
     def _invkin_action_to_command(self, actions):
         u = np.clip(actions, -1, 1)
-        des_foot_pos = self._scale_helper(u, self._robot_config.RL_LOWER_CARTESIAN_POS, self._robot_config.RL_UPPER_CARTESIAN_POS)
-        q_des = np.array(list(map(lambda i: self.robot.ComputeInverseKinematics(i, des_foot_pos[3 * i : 3 * (i + 1)]), range(4))))
+        des_foot_pos = self._scale_helper(
+            u, self._robot_config.RL_LOWER_CARTESIAN_POS, self._robot_config.RL_UPPER_CARTESIAN_POS
+        )
+        q_des = np.array(
+            list(map(lambda i: self.robot.ComputeInverseKinematics(i, des_foot_pos[3 * i : 3 * (i + 1)]), range(4)))
+        )
         return q_des.flatten()
 
     def _scale_helper(self, action, lower_lim, upper_lim):
