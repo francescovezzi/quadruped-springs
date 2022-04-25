@@ -21,7 +21,7 @@ MOTORS_PER_LEG = 3
 
 INIT_RACK_POSITION = [0, 0, 1]  # when hung up in air (for debugging)
 INIT_POSITION = [0, 0, 0.32]  # normal initial height
-IS_FALLEN_HEIGHT = 0.18  # height at which robot is considered fallen
+IS_FALLEN_HEIGHT = 0.12  # height at which robot is considered fallen
 
 INIT_ORIENTATION = (0, 0, 0, 1)
 _, INIT_ORIENTATION_INV = pyb.invertTransform(position=[0, 0, 0], orientation=INIT_ORIENTATION)
@@ -62,7 +62,7 @@ REAL_LOWER_ANGLE_JOINT = np.array([-1.0471975512, -0.663225115758, -2.7227136331
 
 # modified range in simulation (min observation space for RL)
 RL_UPPER_ANGLE_JOINT = np.array([0.2, DEFAULT_THIGH_ANGLE + 0.4, DEFAULT_CALF_ANGLE + 0.4] * NUM_LEGS)
-RL_LOWER_ANGLE_JOINT = np.array([-0.2, DEFAULT_THIGH_ANGLE - 0.4, DEFAULT_CALF_ANGLE - 0.4] * NUM_LEGS)
+RL_LOWER_ANGLE_JOINT = np.array([-0.2, DEFAULT_THIGH_ANGLE - 0.4, -2.42] * NUM_LEGS) # if calf angle=-2.42 the robot height is 0.15
 
 # torque and velocity limits
 # Set to 0.4 * ... to limit max torque
@@ -113,22 +113,6 @@ _HIP_NAME_PATTERN = re.compile(r"\w+_hip_j\w+")
 _THIGH_NAME_PATTERN = re.compile(r"\w+_thigh_j\w+")
 _CALF_NAME_PATTERN = re.compile(r"\w+_calf_j\w+")
 _FOOT_NAME_PATTERN = re.compile(r"\w+_foot_\w+")
-
-############################################
-# Spring level joint Variables
-############################################
-# stiffness
-K_HIP = 25
-K_THIGH = 25
-K_CALF = 30
-# damping
-D_HIP = 0.4
-D_TIHGH = 0.4
-D_CALF = 0.4
-
-SPRINGS_STIFFNESS = [K_HIP, K_THIGH, K_CALF]
-SPRINGS_DAMPING = [D_HIP, D_TIHGH, D_CALF]
-SPRINGS_REST_ANGLE = [DEFAULT_HIP_ANGLE, DEFAULT_THIGH_ANGLE, DEFAULT_CALF_ANGLE + 0.3]
 
 ################################################
 # Parameters for actions clipping

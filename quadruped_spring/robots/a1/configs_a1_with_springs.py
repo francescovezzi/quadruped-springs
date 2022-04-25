@@ -20,8 +20,8 @@ NUM_LEGS = 4
 MOTORS_PER_LEG = 3
 
 INIT_RACK_POSITION = [0, 0, 1]  # when hung up in air (for debugging)
-INIT_POSITION = [0, 0, 0.305]  # normal initial height
-IS_FALLEN_HEIGHT = 0.18  # height at which robot is considered fallen
+INIT_POSITION = [0, 0, 0.33]  # normal initial height
+IS_FALLEN_HEIGHT = 0.12  # height at which robot is considered fallen
 
 INIT_ORIENTATION = (0, 0, 0, 1)
 _, INIT_ORIENTATION_INV = pyb.invertTransform(position=[0, 0, 0], orientation=INIT_ORIENTATION)
@@ -31,8 +31,6 @@ DEFAULT_HIP_ANGLE = 0  # anca
 DEFAULT_THIGH_ANGLE = np.pi / 4  # coscia
 DEFAULT_CALF_ANGLE = -np.pi / 2  # ginocchio
 
-INIT_JOINT_ANGLES = np.array([DEFAULT_HIP_ANGLE, DEFAULT_THIGH_ANGLE, DEFAULT_CALF_ANGLE] * NUM_LEGS)
-INIT_MOTOR_ANGLES = INIT_JOINT_ANGLES
 # Used to convert the robot SDK joint angles to URDF joint angles.
 JOINT_DIRECTIONS = np.array([1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1])
 
@@ -62,7 +60,7 @@ REAL_LOWER_ANGLE_JOINT = np.array([-0.802851455917, -1.0471975512, -2.6965336943
 
 # modified range in simulation (min observation space for RL)
 RL_UPPER_ANGLE_JOINT = np.array([0.2, DEFAULT_THIGH_ANGLE + 0.4, DEFAULT_CALF_ANGLE + 0.4] * NUM_LEGS)
-RL_LOWER_ANGLE_JOINT = np.array([-0.2, DEFAULT_THIGH_ANGLE - 0.4, DEFAULT_CALF_ANGLE - 0.4] * NUM_LEGS)
+RL_LOWER_ANGLE_JOINT = np.array([-0.2, DEFAULT_THIGH_ANGLE - 0.4, DEFAULT_CALF_ANGLE - 0.7] * NUM_LEGS)
 
 # torque and velocity limits
 TORQUE_LIMITS = np.asarray([33.5] * NUM_MOTORS)
@@ -73,8 +71,8 @@ RL_VELOCITY_LIMITS = 1.0 * np.asarray([10, 10, 10] * NUM_LEGS)  #  Used for nois
 MOTOR_KP = [100.0, 100.0, 100.0] * NUM_LEGS
 MOTOR_KD = [1.0, 2.0, 2.0] * NUM_LEGS
 
-MOTOR_KP = [55, 55, 55] * NUM_LEGS
-MOTOR_KD = [0.8, 0.8, 0.8] * NUM_LEGS
+# MOTOR_KP = [55, 55, 55] * NUM_LEGS
+# MOTOR_KD = [0.8, 0.8, 0.8] * NUM_LEGS
 
 # Sample Cartesian Gains
 kpCartesian = np.diag([500, 500, 500])
@@ -128,6 +126,9 @@ D_CALF = 0.4
 SPRINGS_STIFFNESS = [K_HIP, K_CALF, K_THIGH]
 SPRINGS_DAMPING = [D_HIP, D_TIHGH, D_CALF]
 SPRINGS_REST_ANGLE = [DEFAULT_HIP_ANGLE, DEFAULT_THIGH_ANGLE, DEFAULT_CALF_ANGLE + 0.3]
+
+INIT_JOINT_ANGLES = np.array(SPRINGS_REST_ANGLE * NUM_LEGS)
+INIT_MOTOR_ANGLES = INIT_JOINT_ANGLES
 
 ################################################
 # Parameters for actions clipping
