@@ -49,9 +49,14 @@ HIP_LINK_LENGTH = 0.0847
 THIGH_LINK_LENGTH = 0.213
 CALF_LINK_LENGTH = 0.213
 
+# default foot pos in leg frame
+DEFAULT_X = 0
+DEFAULT_Y = HIP_LINK_LENGTH
+DEFAULT_Z = - 0.32
+
 NOMINAL_FOOT_POS_LEG_FRAME = np.array(
-    [0, -HIP_LINK_LENGTH, -0.32, 0, HIP_LINK_LENGTH, -0.32, 0, -HIP_LINK_LENGTH, -0.32, 0, HIP_LINK_LENGTH, -0.32]
-)
+    list(map(lambda sign: [DEFAULT_X, sign * DEFAULT_Y, DEFAULT_Z], [-1, 1, -1, 1]))
+    ).flatten()
 
 ##################################################################################
 # Actuation limits/gains, position, and velocity limits
@@ -92,8 +97,8 @@ MOTOR_KD = [0.8, 0.8, 0.8] * NUM_LEGS
 kpCartesian = np.diag([500, 500, 500])
 kdCartesian = np.diag([10, 10, 10])
 
-kpCartesian = np.diag([700, 700, 700])
-kdCartesian = np.diag([12, 12, 12])
+# kpCartesian = np.diag([700, 700, 700])
+# kdCartesian = np.diag([12, 12, 12])
 
 ##################################################################################
 # Hip, thigh, calf strings, naming conventions from URDF (don't modify)
