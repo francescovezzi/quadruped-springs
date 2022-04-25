@@ -49,9 +49,14 @@ HIP_LINK_LENGTH = 0.0838
 THIGH_LINK_LENGTH = 0.2
 CALF_LINK_LENGTH = 0.2
 
+# default foot pos in leg frame
+DEFAULT_X = 0
+DEFAULT_Y = HIP_LINK_LENGTH
+DEFAULT_Z = - 0.3
+
 NOMINAL_FOOT_POS_LEG_FRAME = np.array(
-    [0, -HIP_LINK_LENGTH, -0.3, 0, HIP_LINK_LENGTH, -0.3, 0, -HIP_LINK_LENGTH, -0.3, 0, HIP_LINK_LENGTH, -0.3]
-)
+    list(map(lambda sign: [DEFAULT_X, sign * DEFAULT_Y, DEFAULT_Z], [-1, 1, -1, 1]))
+    ).flatten()
 
 ##################################################################################
 # Actuation limits/gains, position, and velocity limits
