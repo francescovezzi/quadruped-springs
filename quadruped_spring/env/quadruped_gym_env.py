@@ -22,10 +22,10 @@ from gym import spaces
 from gym.utils import seeding
 from scipy.spatial.transform import Rotation as R
 
-import robots.a1.configs_a1_with_springs as a1_config_with_springs
-import robots.a1.configs_a1_without_springs as a1_config_without_springs
-import robots.go1.configs_go1_with_springs as go1_config_with_springs
-import robots.go1.configs_go1_without_springs as go1_config_without_springs
+import quadruped_spring.robots.a1.configs_a1_with_springs as a1_config_with_springs
+import quadruped_spring.robots.a1.configs_a1_without_springs as a1_config_without_springs
+import quadruped_spring.robots.go1.configs_go1_with_springs as go1_config_with_springs
+import quadruped_spring.robots.go1.configs_go1_without_springs as go1_config_without_springs
 
 from quadruped_spring.utils import action_filter
 
@@ -193,10 +193,8 @@ class QuadrupedGymEnv(gym.Env):
         try:
             if self._enable_springs:
                 robot_config = ROBOT_CLASS_MAP_WITH_SPRINGS[robot_model]
-            elif self._enable_springs:
-                 robot_config = ROBOT_CLASS_MAP_WITH_SPRINGS[robot_model]
             else:
-                raise ValueError('Specify wheter springs are enabled')
+                 robot_config = ROBOT_CLASS_MAP_WITH_SPRINGS[robot_model]
         except KeyError:
             raise KeyError('Robot model should be "A1" or "GO1"')
         self._robot_config = robot_config
@@ -1852,11 +1850,11 @@ def test_env():
 
     env_config = {}
     env_config["robot_model"] = "GO1"
-    env_config["render"] = False
-    env_config["on_rack"] = True
+    env_config["render"] = True
+    env_config["on_rack"] = False
     env_config["motor_control_mode"] = "CARTESIAN_PD"
     env_config["action_repeat"] = 10
-    env_config["enable_springs"] = True
+    env_config["enable_springs"] = False
     env_config["add_noise"] = False
     env_config["enable_action_interpolation"] = False
     env_config["enable_action_clipping"] = False
