@@ -20,7 +20,6 @@ LEARNING_ALGS = {"ars": ARS}
 LEARNING_ALG = "ars"
 ENV_ID = "QuadrupedSpring-v0"
 AUX_DIR = "logs/models"
-OBS_SPACE_NAMES = "numeric"  # or "symbolic"
 
 
 def get_id(folder):
@@ -34,6 +33,7 @@ report_file = os.path.join(currentdir, AUX_DIR, "performance_report.txt")
 for model_dir in sorted(glob.glob(os.path.join(currentdir, AUX_DIR, LEARNING_ALG, f"{ENV_ID}_*"))):
     # define directories
     id = get_id(model_dir)
+    print(f"-------- ID: {id} --------")
     model_file = os.path.join(model_dir, "best_model.zip")
     args_file = os.path.join(model_dir, ENV_ID, "args.yml")
     stats_file = os.path.join(model_dir, ENV_ID, "vecnormalize.pkl")
@@ -46,9 +46,6 @@ for model_dir in sorted(glob.glob(os.path.join(currentdir, AUX_DIR, LEARNING_ALG
             if loaded_args["env_kwargs"] is not None:
                 env_kwargs = loaded_args["env_kwargs"]
     env_kwargs["render"] = False
-    enable_processing = True
-    if id == "FirstGood":
-        env_kwargs["adapt_spring_parameters"] = False
 
     # build env
     env = lambda: EvaluateMetricJumpOnPlace(QuadrupedGymEnv(**env_kwargs))
@@ -69,6 +66,6 @@ for model_dir in sorted(glob.glob(os.path.join(currentdir, AUX_DIR, LEARNING_ALG
     with open(report_file, "a") as f:
         f.write(env.env_method("fill_line", id=id, indices=0)[0])
     env.close()
-    time.sleep(0.5)
+    time.sleep(0.1)
 
 print("end models evaluation")

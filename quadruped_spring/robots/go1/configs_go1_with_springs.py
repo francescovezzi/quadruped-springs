@@ -60,7 +60,10 @@ REAL_LOWER_ANGLE_JOINT = np.array([-1.0471975512, -0.663225115758, -2.7227136331
 
 # modified range in simulation (min observation space for RL)
 RL_UPPER_ANGLE_JOINT = np.array([0.2, DEFAULT_THIGH_ANGLE + 0.4, DEFAULT_CALF_ANGLE + 0.4] * NUM_LEGS)
-RL_LOWER_ANGLE_JOINT = np.array([-0.2, DEFAULT_THIGH_ANGLE - 0.4, -2.42] * NUM_LEGS) # if calf angle=-2.42 the robot height is 0.15
+RL_LOWER_ANGLE_JOINT = np.array(
+    [-0.2, DEFAULT_THIGH_ANGLE - 0.4, -2.42] * NUM_LEGS
+)  # if calf angle=-2.42 the robot height is 0.15
+# RL_LOWER_ANGLE_JOINT = np.array([-0.2, DEFAULT_THIGH_ANGLE - 0.4, DEFAULT_CALF_ANGLE - 0.85] * NUM_LEGS)
 
 # torque and velocity limits
 # Set to 0.4 * ... to limit max torque

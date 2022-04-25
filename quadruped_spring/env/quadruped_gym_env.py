@@ -26,7 +26,6 @@ import quadruped_spring.robots.a1.configs_a1_with_springs as a1_config_with_spri
 import quadruped_spring.robots.a1.configs_a1_without_springs as a1_config_without_springs
 import quadruped_spring.robots.go1.configs_go1_with_springs as go1_config_with_springs
 import quadruped_spring.robots.go1.configs_go1_without_springs as go1_config_without_springs
-
 from quadruped_spring.utils import action_filter
 
 ACTION_EPS = 0.01
@@ -194,7 +193,7 @@ class QuadrupedGymEnv(gym.Env):
             if self._enable_springs:
                 robot_config = ROBOT_CLASS_MAP_WITH_SPRINGS[robot_model]
             else:
-                 robot_config = ROBOT_CLASS_MAP_WITH_SPRINGS[robot_model]
+                robot_config = ROBOT_CLASS_MAP_WITHOUT_SPRINGS[robot_model]
         except KeyError:
             raise KeyError('Robot model should be "A1" or "GO1"')
         self._robot_config = robot_config
