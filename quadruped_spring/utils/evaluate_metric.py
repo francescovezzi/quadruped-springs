@@ -132,7 +132,6 @@ class EvaluateMetricJumpOnPlace(gym.Wrapper):
         print(f"the maximum reached height amounts to: {self.get_metric().height_max:.3f}")
         print(f"the minimum reached height amounts to: {self.get_metric().height_min:.3f}")
 
-
     def step(self, action):
 
         if self.flag_first:

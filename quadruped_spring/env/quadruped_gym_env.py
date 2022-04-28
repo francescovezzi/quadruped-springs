@@ -1240,15 +1240,13 @@ class QuadrupedGymEnv(gym.Env):
     def _invkin_action_to_command(self, actions):
         u = np.clip(actions, -1, 1)
         des_foot_pos = self._scale_helper(
-            u,
-            self._robot_config.RL_LOWER_CARTESIAN_POS,
-            self._robot_config.RL_UPPER_CARTESIAN_POS
+            u, self._robot_config.RL_LOWER_CARTESIAN_POS, self._robot_config.RL_UPPER_CARTESIAN_POS
         )
         q_des = np.array(
             list(map(lambda i: self.robot.ComputeInverseKinematics(i, des_foot_pos[3 * i : 3 * (i + 1)]), range(4)))
         )
         return q_des.flatten()
-    
+
     def _compute_action_from_command(self, command, min_command, max_command):
         """
         Helper to linearly scale from [min_command, max_command] to [-1, 1].
@@ -1273,9 +1271,7 @@ class QuadrupedGymEnv(gym.Env):
         # add to nominal foot position in leg frame (what are the final ranges?)
         # des_foot_pos = self._robot_config.NOMINAL_FOOT_POS_LEG_FRAME + scale_array * u
         des_foot_pos = self._scale_helper(
-            u,
-            self._robot_config.RL_LOWER_CARTESIAN_POS,
-            self._robot_config.RL_UPPER_CARTESIAN_POS
+            u, self._robot_config.RL_LOWER_CARTESIAN_POS, self._robot_config.RL_UPPER_CARTESIAN_POS
         )
         # get Cartesian kp and kd gains (can be modified)
         kpCartesian = self._robot_config.kpCartesian
@@ -1522,16 +1518,16 @@ class QuadrupedGymEnv(gym.Env):
 
     def _settle_robot_by_action(self):
         """Settle robot in according to the used motor control mode in RL interface"""
-        if self._motor_control_mode == 'PD':
+        if self._motor_control_mode == "PD":
             command = self._robot_config.INIT_MOTOR_ANGLES
-            init_action = self._compute_action_from_command(command,
-                                                            self._robot_config.RL_LOWER_ANGLE_JOINT,
-                                                            self._robot_config.RL_UPPER_ANGLE_JOINT)
-        elif self._motor_control_mode in ['CARTESIAN_PD', 'INVKIN_CARTESIAN_PD']:
+            init_action = self._compute_action_from_command(
+                command, self._robot_config.RL_LOWER_ANGLE_JOINT, self._robot_config.RL_UPPER_ANGLE_JOINT
+            )
+        elif self._motor_control_mode in ["CARTESIAN_PD", "INVKIN_CARTESIAN_PD"]:
             command = self._robot_config.NOMINAL_FOOT_POS_LEG_FRAME
-            init_action = self._compute_action_from_command(command, 
-                                                            self._robot_config.RL_LOWER_CARTESIAN_POS,
-                                                            self._robot_config.RL_UPPER_CARTESIAN_POS)
+            init_action = self._compute_action_from_command(
+                command, self._robot_config.RL_LOWER_CARTESIAN_POS, self._robot_config.RL_UPPER_CARTESIAN_POS
+            )
         if self._is_render:
             time.sleep(0.2)
         for _ in range(1500):
@@ -1874,7 +1870,7 @@ def test_env():
     obs = env.reset()
     for i in range(sim_steps):
         action = np.random.rand(env._action_dim) * 2 - 1
-        action = np.full(12,0)
+        action = np.full(12, 0)
         obs, reward, done, info = env.step(action)
     print("end")
 
