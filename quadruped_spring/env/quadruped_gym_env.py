@@ -884,10 +884,13 @@ class QuadrupedGymEnv(gym.Env):
 
     def _termination(self):
         """Decide whether we should stop the episode and reset the environment."""
+        self.terimnated = False
         if self._TASK_ENV in ["JUMPING_TASK", "LR_COURSE_TASK", "FWD_LOCOMOTION"]:
-            return self.is_fallen()
+            self.terimnated = self.is_fallen()
+            return self.terminated
         elif self._TASK_ENV in ["JUMPING_ON_PLACE_TASK", "JUMPING_ON_PLACE_HEIGHT_TASK", "JUMPING_ON_PLACE_ABS_HEIGHT_TASK"]:
-            return self.is_fallen() or self._not_allowed_contact()
+            self.terimnated = self.is_fallen() or self._not_allowed_contact()
+            return self.terimnated
         elif self._TASK_ENV == "LANDING_TASK":
             pass
         else:
