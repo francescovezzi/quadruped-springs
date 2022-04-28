@@ -884,13 +884,13 @@ class QuadrupedGymEnv(gym.Env):
 
     def _termination(self):
         """Decide whether we should stop the episode and reset the environment."""
-        self.terimnated = False
+        self.terminated = False
         if self._TASK_ENV in ["JUMPING_TASK", "LR_COURSE_TASK", "FWD_LOCOMOTION"]:
-            self.terimnated = self.is_fallen()
+            self.terminated = self.is_fallen()
             return self.terminated
         elif self._TASK_ENV in ["JUMPING_ON_PLACE_TASK", "JUMPING_ON_PLACE_HEIGHT_TASK", "JUMPING_ON_PLACE_ABS_HEIGHT_TASK"]:
-            self.terimnated = self.is_fallen() or self._not_allowed_contact()
-            return self.terimnated
+            self.terminated = self.is_fallen() or self._not_allowed_contact()
+            return self.terminated
         elif self._TASK_ENV == "LANDING_TASK":
             pass
         else:
@@ -1240,12 +1240,20 @@ class QuadrupedGymEnv(gym.Env):
     def _invkin_action_to_command(self, actions):
         u = np.clip(actions, -1, 1)
         des_foot_pos = self._scale_helper(
-            u, self._robot_config.RL_LOWER_CARTESIAN_POS, self._robot_config.RL_UPPER_CARTESIAN_POS
+            u,
+            self._robot_config.RL_LOWER_CARTESIAN_POS,
+            self._robot_config.RL_UPPER_CARTESIAN_POS
         )
         q_des = np.array(
             list(map(lambda i: self.robot.ComputeInverseKinematics(i, des_foot_pos[3 * i : 3 * (i + 1)]), range(4)))
         )
         return q_des.flatten()
+    
+    def _compute_action_from_command(self, command, min_command, max_command):
+        """
+        Helper to linearly scale from [min_command, max_command] to [-1, 1].
+        """
+        return -1 + 2 * (command - min_command) / (max_command - min_command)
 
     def _scale_helper(self, action, lower_lim, upper_lim):
         """Helper to linearly scale from [-1,1] to lower/upper limits."""
@@ -1261,9 +1269,14 @@ class QuadrupedGymEnv(gym.Env):
         u = np.clip(actions, -1, 1)
         # scale to corresponding desired foot positions (i.e. ranges in x,y,z we allow the agent to choose foot positions)
         # [TODO: edit (do you think these should these be increased? How limiting is this?)]
-        scale_array = np.array([0.2, 0.05, 0.15] * 4)  # [0.1, 0.05, 0.08]*4)
+        # scale_array = np.array([0.2, 0.05, 0.15] * 4)  # [0.1, 0.05, 0.08]*4)
         # add to nominal foot position in leg frame (what are the final ranges?)
-        des_foot_pos = self._robot_config.NOMINAL_FOOT_POS_LEG_FRAME + scale_array * u
+        # des_foot_pos = self._robot_config.NOMINAL_FOOT_POS_LEG_FRAME + scale_array * u
+        des_foot_pos = self._scale_helper(
+            u,
+            self._robot_config.RL_LOWER_CARTESIAN_POS,
+            self._robot_config.RL_UPPER_CARTESIAN_POS
+        )
         # get Cartesian kp and kd gains (can be modified)
         kpCartesian = self._robot_config.kpCartesian
         kdCartesian = self._robot_config.kdCartesian
@@ -1509,8 +1522,16 @@ class QuadrupedGymEnv(gym.Env):
 
     def _settle_robot_by_action(self):
         """Settle robot in according to the used motor control mode in RL interface"""
-        init_action = np.zeros(self._action_dim)
-        init_action = self.adapt_action_dim_for_robot(init_action)
+        if self._motor_control_mode == 'PD':
+            command = self._robot_config.INIT_MOTOR_ANGLES
+            init_action = self._compute_action_from_command(command,
+                                                            self._robot_config.RL_LOWER_ANGLE_JOINT,
+                                                            self._robot_config.RL_UPPER_ANGLE_JOINT)
+        elif self._motor_control_mode in ['CARTESIAN_PD', 'INVKIN_CARTESIAN_PD']:
+            command = self._robot_config.NOMINAL_FOOT_POS_LEG_FRAME
+            init_action = self._compute_action_from_command(command, 
+                                                            self._robot_config.RL_LOWER_CARTESIAN_POS,
+                                                            self._robot_config.RL_UPPER_CARTESIAN_POS)
         if self._is_render:
             time.sleep(0.2)
         for _ in range(1500):
@@ -1835,7 +1856,7 @@ def test_env():
     env_config["robot_model"] = "GO1"
     env_config["render"] = True
     env_config["on_rack"] = False
-    env_config["motor_control_mode"] = "INVKIN_CARTESIAN_PD"
+    env_config["motor_control_mode"] = "CARTESIAN_PD"
     env_config["action_repeat"] = 10
     env_config["enable_springs"] = True
     env_config["add_noise"] = False
@@ -1853,7 +1874,7 @@ def test_env():
     obs = env.reset()
     for i in range(sim_steps):
         action = np.random.rand(env._action_dim) * 2 - 1
-        # action = np.full(12,0)
+        action = np.full(12,0)
         obs, reward, done, info = env.step(action)
     print("end")
 
