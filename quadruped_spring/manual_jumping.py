@@ -1,6 +1,6 @@
 import inspect
 import os
-from mimetypes import init
+import time
 
 import gym
 import numpy as np
@@ -19,10 +19,6 @@ from utils.evaluate_metric import EvaluateMetricJumpOnPlace
 class JumpingStateMachine(gym.Wrapper):
     def __init__(self, env):
         super().__init__(env)
-        if self.env._isRLGymInterface:
-            raise ValueError("disable RLGymInterface in env_configs")
-        if self.env._motor_control_mode != "TORQUE":
-            raise ValueError("motor control mode should be TORQUE")
         self._settling_duration_steps = 1000
         self._couching_duration_steps = 4000
         assert self._couching_duration_steps >= 1000, "couching duration steps number should be >= 1000"
@@ -33,8 +29,7 @@ class JumpingStateMachine(gym.Wrapper):
             0: self.settling_action,
             1: self.couching_action,
             2: self.jumping_explosive_action,
-            3: self.jumping_flying_action,
-            4: self.jumping_landing_action,
+            3: self.jumping_flying_action
         }
         self._total_sim_steps = 9000
         self.max_height = 0.0
@@ -45,13 +40,56 @@ class JumpingStateMachine(gym.Wrapper):
         self._enable_springs = self.env._enable_springs
         self._jump_end = False
         self._first_take_off = False
+        
+        self._default_action = self.env._compute_action_from_command(self._robot_config.INIT_MOTOR_ANGLES,
+                                                        self._robot_config.RL_LOWER_ANGLE_JOINT,
+                                                        self._robot_config.RL_UPPER_ANGLE_JOINT)
+        
+    def temporary_switch_motor_control_mode(mode):
+        def _decorator(foo):
+            def wrapper(self, *args, **kwargs):
+                """Settle robot and add noise to init configuration."""
+                # change to 'mode' control mode to set initial position, then set back..
+                tmp_save_motor_control_mode_ENV = self.env._motor_control_mode
+                tmp_save_motor_control_mode_ROB = self.env.robot._motor_control_mode
+                self.env._motor_control_mode = mode
+                self.env.robot._motor_control_mode = mode
+                try:
+                    tmp_save_motor_control_mode_MOT = self.env.robot._motor_model._motor_control_mode
+                    self.env.robot._motor_model._motor_control_mode = mode
+                except:
+                    pass
+                foo(self, *args, **kwargs)
+                # set control mode back
+                self.env._motor_control_mode = tmp_save_motor_control_mode_ENV
+                self.env.robot._motor_control_mode = tmp_save_motor_control_mode_ROB
+                try:
+                    self.env.robot._motor_model._motor_control_mode = tmp_save_motor_control_mode_MOT
+                except:
+                    pass
+            return wrapper
+        return _decorator
+
+    def temporary_switch_motor_control_gain(foo):
+        def wrapper(self, *args, **kwargs):
+                """Settle robot and add noise to init configuration."""
+                if self.env._enable_springs:
+                    ret = foo(self, *args, **kwargs)
+                else:
+                    tmp_save_motor_kp = self.env.robot._motor_model._kp
+                    tmp_save_motor_kd = self.env.robot._motor_model._kd
+                    self.env.robot._motor_model._kp = 60
+                    self.env.robot._motor_model._kd = 3.0
+                    ret = foo(self, *args, **kwargs)
+                    self.env.robot._motor_model._kp = tmp_save_motor_kp
+                    self.env.robot._motor_model._kd = tmp_save_motor_kd
+                return ret
+        return wrapper
 
     def compute_action(self):
+        if self._state == self._states["landing"]:
+            raise ValueError('this phase should be managed by')
         return self._actions[self._state]()
-
-    def compensate_spring(self):
-        spring_action = self.env.robot._spring_torque
-        return -np.array(spring_action)
 
     def update_state(self):
         if self._step_counter <= self._settling_duration_steps:
@@ -82,7 +120,8 @@ class JumpingStateMachine(gym.Wrapper):
     def flight_time_gone(self):
         if not self._first_take_off:
             self._take_off_time = self.env.get_sim_time()
-            self.vz = self.base_velocity()[2]
+            # self.vz = self.base_velocity()[2]
+            _, _, self.vz = self.env.robot.GetBaseLinearVelocity()
             self._flight_time = self.vz / 9.81
             self._first_take_off = True
         self._flight_timer = self.env.get_sim_time() - self._take_off_time
@@ -102,77 +141,65 @@ class JumpingStateMachine(gym.Wrapper):
         return base_vel
 
     def settling_action(self):
-        if self.env._enable_springs:
-            config_des = np.array(self.env._robot_config.SPRINGS_REST_ANGLE * 4)
-            config_init = self.env._robot_config.INIT_MOTOR_ANGLES
-            config_ref = self.generate_ramp(
-                self._step_counter, 0, self._settling_duration_steps - 200, config_init, config_des
-            )
-            action = self.angle_ref_to_command(config_ref)
-        else:
-            config_des = self.env._robot_config.INIT_MOTOR_ANGLES
-            action = self.angle_ref_to_command(config_des)
-        return action
-
+        return self._default_action
+    
     def couching_action(self):
-        init_angle = self.env._robot_config.INIT_MOTOR_ANGLES
-        end_angle = np.array([0, 1.43, -2.5] * 4)
+        max_action_calf = -1
+        min_action_calf = self._default_action[2]
+        max_action_thigh = 1
+        min_action_thigh = self._default_action[1]
         i = self._step_counter
         i_min = self._settling_duration_steps
         i_max = i_min + self._couching_duration_steps - 500
-        config_ref = self.generate_ramp(i, i_min, i_max, init_angle, end_angle)
-        action = self.angle_ref_to_command(config_ref)
-        return action
-
+        action_thigh = self.generate_ramp(i, i_min, i_max, min_action_thigh, max_action_thigh)
+        action_calf = self.generate_ramp(i, i_min, i_max, min_action_calf, max_action_calf)
+        torques = np.array([0, action_thigh, action_calf] * 4)
+        #torques = np.array([0, 0.5, 1] * 4)
+        return torques
+    
     def jumping_explosive_action(self):
-        coeff = 1.0
-        f_rear = 170
-        f_front = coeff * f_rear
-        jump_command = np.full(12, 0)
-        for i in range(4):
-            if i < 2:
-                f = f_front
-            else:
-                f = f_rear
-            jump_command[3 * i : 3 * (i + 1)] = self.map_force_to_tau([0, 0, -f], i)
-            # jump_command[3 * i + 1] = 0
-        # print(jump_command)
-        return jump_command
+        if self.env._enable_springs:
+            coeff = 0.0
+        else:
+            coeff = 0.1
+        action_front = np.array([0, 0, coeff * 1] * 2)
+        action_rear = np.array([0, 0, 1] * 2)
+        jump_action = np.concatenate((action_front, action_rear))
+        return jump_action
 
     def jumping_flying_action(self):
-        config_des = self.env._robot_config.INIT_MOTOR_ANGLES
-        action = self.angle_ref_to_command(config_des)
+        action = np.zeros(12)
+        action = np.array([0, 0, 1] * 4)
         return action
 
-    def jumping_landing_action(self):
-        config_des = np.array(self.env._robot_config.SPRINGS_REST_ANGLE * 4)
-        config_des = np.array(self.env._robot_config.INIT_MOTOR_ANGLES)
-        # config_des += np.array([0, -0.2, -0.2] * 2 + [0, 0, 0] * 2)
-        q = self.robot.GetMotorAngles()
-        dq = self.robot.GetMotorVelocities()
-        compensate_springs = np.full(12, 0)
-        if self.env._enable_springs:
-            kp = 20
-            kd = 10.0
-            compensate_springs = self.compensate_spring()
-        else:
-            kp = 80
-            kd = 7.0
-        torque = -kp * (q - config_des) - kd * dq
-        # action = self.angle_ref_to_command(config_des)
-        action = torque  # + compensate_springs
-        return action
+    def landing_step(self):
+        self.robot.ApplyAction(self.jumping_landing_torque())
+        if self.env._is_render:
+            self.env._render_step_helper()
+        self.env._pybullet_client.stepSimulation()
+
+    def robot_stopped(self):
+        vel = self.env.robot.GetBaseLinearVelocity()
+        vel_module = np.sqrt(np.dot(vel, vel))
+        return vel_module < 0.01
+
+    def stop_landing(self):
+        return self.env.terminated or self.robot_stopped()
+    
+    @temporary_switch_motor_control_gain
+    def landing_phase(self):
+        command = self.env._robot_config.INIT_MOTOR_ANGLES
+        action = self.env._compute_action_from_command(command,
+                                                        self._robot_config.RL_LOWER_ANGLE_JOINT,
+                                                        self._robot_config.RL_UPPER_ANGLE_JOINT)
+        done = False
+        while not done:
+            obs, reward, done, infos = self.env.step(action)
+        return obs, reward, done, infos
 
     def is_flying(self):
         _, _, _, feetInContactBool = self.env.robot.GetContactInfo()
-        return 1 - np.all(feetInContactBool)
-
-    def is_landing(self):
-        if self._flying_up_counter >= 20:
-            return True
-        else:
-            self._flying_up_counter += 1
-            return False
+        return np.all(1 - np.array(feetInContactBool))
 
     def generate_ramp(self, i, i_min, i_max, u_min, u_max) -> float:
         if i < i_min:
@@ -182,35 +209,15 @@ class JumpingStateMachine(gym.Wrapper):
         else:
             return u_min + (u_max - u_min) * (i - i_min) / (i_max - i_min)
 
-    def angle_ref_to_command(self, angles_ref):
-        q = self.robot.GetMotorAngles()
-        dq = self.robot.GetMotorVelocities()
-        if self.env._enable_springs:
-            kp = 70
-            kd = 0.8
-        else:
-            kp = 55
-            kd = 0.8
-        torque = -kp * (q - angles_ref) - kd * dq
-        return torque
-
-    def height_to_theta_des(self, h):
-        l = self.env._robot_config.THIGH_LINK_LENGTH
-        theta_thigh = np.arccos(h / (2 * l))
-        theta_des = np.array([0, theta_thigh, -2 * theta_thigh] * 4)
-        return theta_des
-
-    def map_force_to_tau(self, F_foot, i):
-        J, _ = self.env.robot.ComputeJacobianAndPosition(i)
-        tau = J.T @ F_foot
-        return tau
-
     def step(self, action):
 
         obs, reward, done, infos = self.env.step(action)
         self._step_counter += 1
 
         self.update_state()
+
+        if self._state == self._states['landing']:
+            _, reward, done, infos = self.landing_phase()
 
         return obs, reward, done, infos
 
@@ -224,24 +231,23 @@ class JumpingStateMachine(gym.Wrapper):
     def close(self):
         self.env.close()
 
-
-def build_env():
+def build_env(enable_springs=False):
     env_config = {}
-    env_config["enable_springs"] = False
+    env_config["enable_springs"] = enable_springs
+    # env_config["enable_springs"] = True
     env_config["render"] = True
     env_config["on_rack"] = False
     env_config["enable_joint_velocity_estimate"] = False
-    env_config["isRLGymInterface"] = False
+    env_config["isRLGymInterface"] = True
     env_config["robot_model"] = "GO1"
-    env_config["motor_control_mode"] = "TORQUE"
+    env_config["motor_control_mode"] = "PD"
     env_config["action_repeat"] = 1
     env_config["record_video"] = False
     env_config["action_space_mode"] = "DEFAULT"
     env_config["task_env"] = "JUMPING_ON_PLACE_ABS_HEIGHT_TASK"
-    env_config["adapt_spring_parameters"] = False
 
     if fill_line:
-        env_config["render"] = False
+        env_config["render"] = True
     env = QuadrupedGymEnv(**env_config)
     return env
 
@@ -249,26 +255,33 @@ def build_env():
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
+    parser.add_argument("--enable-springs", action="store_true", default=False, help="enable springs")
     parser.add_argument("--fill-line", action="store_true", default=False, help="fill line in report.txt")
     args = parser.parse_args()
+    enable_springs = args.enable_springs
     fill_line = args.fill_line
 
-    env = build_env()
+    env = build_env(enable_springs=enable_springs)
     env = JumpingStateMachine(env)
     sim_steps = env._total_sim_steps + 3000
-
-    # env = MonitorState(env=env, path="logs/plots/manual_jumping_without_springs", rec_length=sim_steps)
+    # env = MonitorState(env=env, path="logs/plots/manual_jumping_with_springs", rec_length=sim_steps)
     env = EvaluateMetricJumpOnPlace(env)
     done = False
     while not done:
         action = env.compute_action()
+        # action = np.zeros(12)
         obs, reward, done, info = env.step(action)
         # print(env.robot.GetMotorVelocities()-env.get_joint_velocity_estimation())
     # env.release_plots()
+    print('******')
+    print(f'reward -> {reward}')
+    print(f'min_height -> {env.get_metric().height_min}')
+    print('******')
     if fill_line:
         report_path = os.path.join(current_dir, "logs", "models", "performance_report.txt")
-        with open(report_path, "a") as f:
-            f.write(env.fill_line(id="ManualWithNoSprings"))
+        with open(report_path, "w") as f:
+            f.write(env.print_first_line_table())
+            f.write(env.fill_line(id="ManualWithSprings"))
     else:
         env.print_metric()
     env.close()
