@@ -46,7 +46,7 @@ class EvaluateMetricJumpOnPlace(gym.Wrapper):
     def init_metric(self):
         self.x_pos, self.y_pos, self.height = self.env.robot.GetBasePosition()
         self.roll, _, self.yaw = abs(self.env.robot.GetBaseOrientationRollPitchYaw())
-        self.penalization_invalid_contact = 0
+        # self.penalization_invalid_contact = 0
         self._landed = False
         self._taking_off = False
         self.jump_metric = MetricInfo(height_max=self.height, height_min=self.height)
@@ -56,8 +56,8 @@ class EvaluateMetricJumpOnPlace(gym.Wrapper):
 
     def eval_metric(self):
         _, numInvalidContacts, _, feet_in_contact = self.env.robot.GetContactInfo()
-        if numInvalidContacts > 0:
-            self.penalization_invalid_contact = -10
+        # if numInvalidContacts > 0:
+        #     self.penalization_invalid_contact = -10
         self.jump_metric.power_max = max(self.jump_metric.power_max, self.compute_max_power())
         roll, _, yaw = self.env.robot.GetBaseOrientationRollPitchYaw()
         _, _, height = self.env.robot.GetBasePosition()
@@ -119,15 +119,19 @@ class EvaluateMetricJumpOnPlace(gym.Wrapper):
             rew_roll = 1 / 3 * max_height_rel * np.exp(-self.roll**2 / 0.1)
             rew_yaw = 1 / 3 * max_height_rel * np.exp(-self.yaw**2 / 0.1)
 
-            metric = rew_dist + rew_roll + rew_yaw + max_height_rel * 1000 / (2 * max_power)
-            metric += self.penalization_invalid_contact
+            metric = rew_dist + rew_roll + rew_yaw + max_height_rel * 1000 / max_power
+            # metric += self.penalization_invalid_contact
             metric -= max(self.bounce_counter - 1, 0) * 0.2
         self.jump_metric.metric_value = max(self.jump_metric.metric_value, metric)
+        if self.env.terminated:
+            self.jump_metric.metric_value = 0.0
         return MetricInfo.best_metrics(self.jump_metric, self.jump_metric_old)
 
     def print_metric(self):
         print(f"the jump (on place) metric performance amounts to: {self.get_metric().metric_value:.3f}")
         print(f"the maximum reached height amounts to: {self.get_metric().height_max:.3f}")
+        print(f"the minimum reached height amounts to: {self.get_metric().height_min:.3f}")
+
 
     def step(self, action):
 
