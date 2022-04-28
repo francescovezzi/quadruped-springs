@@ -66,14 +66,14 @@ REAL_UPPER_ANGLE_JOINT = np.array([1.0471975512, 2.96705972839, -0.837758040957]
 REAL_LOWER_ANGLE_JOINT = np.array([-1.0471975512, -0.663225115758, -2.72271363311] * NUM_LEGS)
 
 # modified range in simulation (min observation space for RL)
-RL_UPPER_ANGLE_JOINT = np.array([0.2, DEFAULT_THIGH_ANGLE + 0.4, -0.95] * NUM_LEGS)
+RL_UPPER_ANGLE_JOINT = np.array([0.2, DEFAULT_THIGH_ANGLE + 0.5, -0.95] * NUM_LEGS)
 RL_LOWER_ANGLE_JOINT = np.array(
-    [-0.2, DEFAULT_THIGH_ANGLE - 0.4, -2.42] * NUM_LEGS
+    [-0.2, DEFAULT_THIGH_ANGLE - 0.5, -2.12] * NUM_LEGS
 )  # if calf angle=-2.42 the robot height is 0.15
 # RL_LOWER_ANGLE_JOINT = np.array([-0.2, DEFAULT_THIGH_ANGLE - 0.4, DEFAULT_CALF_ANGLE - 0.85] * NUM_LEGS)
 
 RL_UPPER_CARTESIAN_POS = (
-    NOMINAL_FOOT_POS_LEG_FRAME + np.array(list(map(lambda sign: [0.2, sign * 0.05, 0.18], [1, 1, 1, 1]))).flatten()
+    NOMINAL_FOOT_POS_LEG_FRAME + np.array(list(map(lambda sign: [0.2, sign * 0.05, 0.11], [1, 1, 1, 1]))).flatten()
 )
 
 RL_LOWER_CARTESIAN_POS = (
