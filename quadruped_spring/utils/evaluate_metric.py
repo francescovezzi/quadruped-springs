@@ -33,7 +33,7 @@ class EvaluateMetricJumpOnPlace(gym.Wrapper):
         vel = abs(self.env.robot.GetMotorVelocities())
 
         return max(*(tau * vel))
-    
+
     def compute_max_torque(self):
         tau = abs(self.env.robot.GetMotorTorques())
         return max(*tau)

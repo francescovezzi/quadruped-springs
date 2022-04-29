@@ -128,7 +128,7 @@ class JumpingStateMachine(gym.Wrapper):
             _, _, self.vz = self.env.robot.GetBaseLinearVelocity()
             flight_time = self.vz / 9.81
             actual_time = self.env.get_sim_time()
-            self._flight_timer.start_timer(timer_time = actual_time, start_time=actual_time, delta_time=flight_time)
+            self._flight_timer.start_timer(timer_time=actual_time, start_time=actual_time, delta_time=flight_time)
         self._flight_timer.update_time(self.env.get_sim_time())
         return self._flight_timer.time_up()
 
