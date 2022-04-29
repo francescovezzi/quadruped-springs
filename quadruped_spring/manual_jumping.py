@@ -22,8 +22,8 @@ class JumpingStateMachine(gym.Wrapper):
         super().__init__(env)
         self._settling_duration_time = 1  # seconds
         self._couching_duration_time = 4  # seconds
-        self._settling_duration_steps = self._settling_duration_steps * self.env._time_step * self.env._action_repeat
-        self._couching_duration_steps = self._couching_duration_steps * self.env._time_step * self.env._action_repeat
+        self._settling_duration_steps = self._settling_duration_time / (self.env._time_step * self.env._action_repeat)
+        self._couching_duration_steps = self._couching_duration_time / (self.env._time_step * self.env._action_repeat)
         assert self._couching_duration_steps >= 1000, "couching duration steps number should be >= 1000"
         self._states = {"settling": 0, "couching": 1, "jumping_ground": 2, "jumping_air": 3, "landing": 4}
         self._state = self._states["settling"]
@@ -49,33 +49,6 @@ class JumpingStateMachine(gym.Wrapper):
             self._robot_config.RL_LOWER_ANGLE_JOINT,
             self._robot_config.RL_UPPER_ANGLE_JOINT,
         )
-
-    def temporary_switch_motor_control_mode(mode):
-        def _decorator(foo):
-            def wrapper(self, *args, **kwargs):
-                """Settle robot and add noise to init configuration."""
-                # change to 'mode' control mode to set initial position, then set back..
-                tmp_save_motor_control_mode_ENV = self.env._motor_control_mode
-                tmp_save_motor_control_mode_ROB = self.env.robot._motor_control_mode
-                self.env._motor_control_mode = mode
-                self.env.robot._motor_control_mode = mode
-                try:
-                    tmp_save_motor_control_mode_MOT = self.env.robot._motor_model._motor_control_mode
-                    self.env.robot._motor_model._motor_control_mode = mode
-                except:
-                    pass
-                foo(self, *args, **kwargs)
-                # set control mode back
-                self.env._motor_control_mode = tmp_save_motor_control_mode_ENV
-                self.env.robot._motor_control_mode = tmp_save_motor_control_mode_ROB
-                try:
-                    self.env.robot._motor_model._motor_control_mode = tmp_save_motor_control_mode_MOT
-                except:
-                    pass
-
-            return wrapper
-
-        return _decorator
 
     def temporary_switch_motor_control_gain(foo):
         def wrapper(self, *args, **kwargs):
@@ -207,8 +180,9 @@ class JumpingStateMachine(gym.Wrapper):
     def is_flying(self):
         _, _, _, feetInContactBool = self.env.robot.GetContactInfo()
         return np.all(1 - np.array(feetInContactBool))
-
-    def generate_ramp(self, i, i_min, i_max, u_min, u_max) -> float:
+    
+    @staticmethod
+    def generate_ramp(i, i_min, i_max, u_min, u_max) -> float:
         if i < i_min:
             return u_min
         elif i > i_max:
