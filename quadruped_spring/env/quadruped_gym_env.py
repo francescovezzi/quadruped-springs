@@ -923,7 +923,10 @@ class QuadrupedGymEnv(gym.Env):
         # return max_height_reward + no_feet_in_contact_reward
 
     def _reward_jumping_on_place(self):
-        """Reward maximum flight time"""
+        """
+        Reward maximum flight time, plus computing maximum orientation angles
+        and forward distance
+        """
         # Change is fallen height
         self._robot_config.IS_FALLEN_HEIGHT = 0.01
 
@@ -961,7 +964,10 @@ class QuadrupedGymEnv(gym.Env):
         return flight_time_reward
 
     def _reward_jumping_on_place_height(self):
-        """Reward maximum flight time"""
+        """
+        Reward maximum height calculated from the jumping taking off, plus
+        compute maximum orientation angles and forward distance
+        """
         # Change is fallen height
         self._robot_config.IS_FALLEN_HEIGHT = 0.01
 
@@ -1003,7 +1009,10 @@ class QuadrupedGymEnv(gym.Env):
         return flight_time_reward
 
     def _reward_jumping_on_place_abs_height(self):
-        """Reward maximum flight time"""
+        """
+        Reward maximum peak height minus the initial height, plus
+        compute maximum orientation angles and forward distance
+        """
         # Change is fallen height
         self._robot_config.IS_FALLEN_HEIGHT = 0.01
 
