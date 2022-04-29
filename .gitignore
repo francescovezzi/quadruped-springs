@@ -4,3 +4,4 @@ __pycache__/
 logs/
 test_control.py
 make_performance_report.sh
+quadruped_spring/evaluate_all_models.py
