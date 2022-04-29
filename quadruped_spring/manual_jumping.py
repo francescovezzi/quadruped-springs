@@ -139,9 +139,9 @@ class JumpingStateMachine(gym.Wrapper):
 
     def jumping_explosive_action(self):
         if self.env._enable_springs:
-            coeff = -0.1
+            coeff = 0.1
         else:
-            coeff = 0.0
+            coeff = 0.3
         action_front = np.array([0, 0, coeff * 1] * 2)
         action_rear = np.array([0, 0, 1] * 2)
         jump_action = np.concatenate((action_front, action_rear))
@@ -150,6 +150,7 @@ class JumpingStateMachine(gym.Wrapper):
     def jumping_flying_action(self):
         action = np.zeros(12)
         action = np.array([0, 0, 1] * 4)
+        action = self.jumping_explosive_action()
         return action
 
     def landing_step(self):
@@ -219,12 +220,12 @@ def build_env(enable_springs=False):
                   "on_rack": False,
                   "enable_joint_velocity_estimate": False,
                   "isRLGymInterface": True,
-                  "robot_model": "GO1",
                   "motor_control_mode": "PD",
                   "action_repeat": 1,
                   "record_video": False,
                   "action_space_mode": "DEFAULT",
                   "task_env": "JUMPING_ON_PLACE_ABS_HEIGHT_TASK"}
+    env_config["enable_springs"] = True
     if fill_line:
         env_config["render"] = True
     env = QuadrupedGymEnv(**env_config)
