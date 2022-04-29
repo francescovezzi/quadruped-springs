@@ -2,8 +2,6 @@
 import inspect
 import os
 
-from cv2 import fastNlMeansDenoisingMulti
-
 # so we can import files
 currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 os.sys.path.insert(0, currentdir)
@@ -24,10 +22,8 @@ from gym import spaces
 from gym.utils import seeding
 from scipy.spatial.transform import Rotation as R
 
-import quadruped_spring.robots.a1.configs_a1_with_springs as a1_config_with_springs
-import quadruped_spring.robots.a1.configs_a1_without_springs as a1_config_without_springs
-import quadruped_spring.robots.go1.configs_go1_with_springs as go1_config_with_springs
-import quadruped_spring.robots.go1.configs_go1_without_springs as go1_config_without_springs
+import quadruped_spring.go1.configs_go1_with_springs as go1_config_with_springs
+import quadruped_spring.go1.configs_go1_without_springs as go1_config_without_springs
 from quadruped_spring.utils import action_filter
 
 ACTION_EPS = 0.01
@@ -121,9 +117,6 @@ VIDEO_LOG_DIRECTORY = "videos/" + datetime.datetime.now().strftime("vid-%Y-%m-%d
 EPISODE_LENGTH = 10  # how long before we reset the environment (max episode length for RL)
 MAX_FWD_VELOCITY = 5  # to avoid exploiting simulator dynamics, cap max reward for body velocity
 
-ROBOT_CLASS_MAP_WITH_SPRINGS = {"A1": a1_config_with_springs, "GO1": go1_config_with_springs}
-ROBOT_CLASS_MAP_WITHOUT_SPRINGS = {"A1": a1_config_without_springs, "GO1": go1_config_without_springs}
-
 
 class QuadrupedGymEnv(gym.Env):
     """The gym environment for a quadruped {Unitree GO1}.
@@ -137,7 +130,6 @@ class QuadrupedGymEnv(gym.Env):
 
     def __init__(
         self,
-        robot_model="GO1",
         isRLGymInterface=True,
         time_step=0.001,
         action_repeat=10,
@@ -161,7 +153,6 @@ class QuadrupedGymEnv(gym.Env):
         """Initialize the quadruped gym environment.
 
         Args:
-          robot_model: String representing the robot model. Select between "A1" or "GO1".
           isRLGymInterface: If the gym environment is being run as RL or not. Affects
             if the actions should be scaled.
           time_step: Simulation time step.
@@ -192,14 +183,10 @@ class QuadrupedGymEnv(gym.Env):
         """
         self.seed()
         self._enable_springs = enable_springs
-        try:
-            if self._enable_springs:
-                robot_config = ROBOT_CLASS_MAP_WITH_SPRINGS[robot_model]
-            else:
-                robot_config = ROBOT_CLASS_MAP_WITHOUT_SPRINGS[robot_model]
-        except KeyError:
-            raise KeyError('Robot model should be "A1" or "GO1"')
-        self._robot_config = robot_config
+        if self._enable_springs:
+            self._robot_config = go1_config_with_springs
+        else:
+            self._robot_config = go1_config_without_springs
         self._isRLGymInterface = isRLGymInterface
         self._time_step = time_step
         self._action_repeat = action_repeat
@@ -1850,8 +1837,7 @@ class QuadrupedGymEnv(gym.Env):
 
 def test_env():
 
-    env_config = {"robot_model": "GO1",
-                  "render": True,
+    env_config = {"render": True,
                   "on_rack": False,
                   "motor_control_mode": "CARTESIAN_PD",
                   "action_repeat": 10,
