@@ -287,7 +287,10 @@ if __name__ == "__main__":
         report_path = os.path.join(current_dir, "logs", "models", "performance_report.txt")
         with open(report_path, "w") as f:
             f.write(env.print_first_line_table())
-            f.write(env.fill_line(id="ManualWithSprings"))
+            if enable_springs:
+                f.write(env.fill_line(id="ManualWithSprings"))
+            else:
+                f.write(env.fill_line(id="ManualWithoutSprings"))
     else:
         env.print_metric()
     env.close()

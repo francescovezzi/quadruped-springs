@@ -26,8 +26,8 @@ def get_id(folder):
     return folder.split("/")[-1].split("_")[-1]
 
 
-subprocess.call(["python", "manual_jumping_with_springs.py", "--fill-line"])
-subprocess.call(["python", "manual_jumping_without_springs.py", "--fill-line"])
+subprocess.call(["python", "manual_jumping.py", "--fill-line"])
+subprocess.call(["python", "manual_jumping.py", "--fill-line", "--enable-springs"])
 
 report_file = os.path.join(currentdir, AUX_DIR, "performance_report.txt")
 for model_dir in sorted(glob.glob(os.path.join(currentdir, AUX_DIR, LEARNING_ALG, f"{ENV_ID}_*"))):
