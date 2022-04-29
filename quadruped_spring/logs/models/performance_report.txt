@@ -1,4 +1,0 @@
-ID                  METRIC              MAX_POWER [w]       MAX_HEIGHT [m]      MIN_HEIGHT [m]      SPRING              
-ManualWithSprings   1.315               1009.855            1.213               0.147               True                
-ManualWithNoSprings 0.934               872.153             0.906               0.131               False               
-FirstGood           0.391               180.382             0.514               0.260               True                
