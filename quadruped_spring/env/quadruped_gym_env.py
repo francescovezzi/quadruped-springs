@@ -2,6 +2,8 @@
 import inspect
 import os
 
+from cv2 import fastNlMeansDenoisingMulti
+
 # so we can import files
 currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 os.sys.path.insert(0, currentdir)
@@ -1848,22 +1850,21 @@ class QuadrupedGymEnv(gym.Env):
 
 def test_env():
 
-    env_config = {}
-    env_config["robot_model"] = "GO1"
-    env_config["render"] = True
-    env_config["on_rack"] = False
-    env_config["motor_control_mode"] = "CARTESIAN_PD"
-    env_config["action_repeat"] = 10
-    env_config["enable_springs"] = True
-    env_config["add_noise"] = False
-    env_config["enable_action_interpolation"] = False
-    env_config["enable_action_clipping"] = False
-    env_config["enable_action_filter"] = True
-    env_config["task_env"] = "JUMPING_ON_PLACE_TASK"
-    env_config["observation_space_mode"] = "REAL_OBS_IMU_JP_Jv_NCF"
-    env_config["action_space_mode"] = "DEFAULT"
-    env_config["enable_joint_velocity_estimate"] = True
-
+    env_config = {"robot_model": "GO1",
+                  "render": True,
+                  "on_rack": False,
+                  "motor_control_mode": "CARTESIAN_PD",
+                  "action_repeat": 10,
+                  "enable_springs": True,
+                  "add_noise": False,
+                  "enable_action_interpolation": False,
+                  "enable_action_clipping": False,
+                  "enable_action_filter": True,
+                  "task_env": "JUMPING_ON_PLACE_TASK",
+                  "observation_space_mode": "REAL_OBS_IMU_JP_Jv_NCF",
+                  "action_space_mode": "DEFAULT",
+                  "enable_joint_velocity_estimate": True}
+    
     env = QuadrupedGymEnv(**env_config)
 
     sim_steps = 1000

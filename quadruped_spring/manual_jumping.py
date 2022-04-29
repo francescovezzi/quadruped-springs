@@ -214,20 +214,17 @@ class JumpingStateMachine(gym.Wrapper):
 
 
 def build_env(enable_springs=False):
-    env_config = {}
-    env_config["enable_springs"] = enable_springs
-    env_config["enable_springs"] = True
-    env_config["render"] = True
-    env_config["on_rack"] = False
-    env_config["enable_joint_velocity_estimate"] = False
-    env_config["isRLGymInterface"] = True
-    env_config["robot_model"] = "GO1"
-    env_config["motor_control_mode"] = "PD"
-    env_config["action_repeat"] = 1
-    env_config["record_video"] = False
-    env_config["action_space_mode"] = "DEFAULT"
-    env_config["task_env"] = "JUMPING_ON_PLACE_ABS_HEIGHT_TASK"
-
+    env_config = {"enable_springs": enable_springs,
+                  "render": True,
+                  "on_rack": False,
+                  "enable_joint_velocity_estimate": False,
+                  "isRLGymInterface": True,
+                  "robot_model": "GO1",
+                  "motor_control_mode": "PD",
+                  "action_repeat": 1,
+                  "record_video": False,
+                  "action_space_mode": "DEFAULT",
+                  "task_env": "JUMPING_ON_PLACE_ABS_HEIGHT_TASK"}
     if fill_line:
         env_config["render"] = True
     env = QuadrupedGymEnv(**env_config)
