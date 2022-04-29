@@ -280,12 +280,12 @@ class QuadrupedGymEnv(gym.Env):
         rpy_low = np.array([-np.pi] * 3)
         drpy_high = np.array([5.0] * 3)
         drpy_low = np.array([-5.0] * 3)
-        foot_pos_high = np.array([0.1, 0.05, 0.1] * 4)
+        foot_pos_high = np.array([0.1, 0.05, 0.1] * self._robot_config.NUM_LEGS)
         foot_pos_low = -foot_pos_high
-        foot_vel_high = np.array([10.0] * 12)
-        foot_vel_low = np.array([-10.0] * 12)
-        contact_high = np.array([5.0] * 4)
-        contact_low = np.array([-5.0] * 4)
+        foot_vel_high = np.array([10.0] * self._robot_config.NUM_MOTORS)
+        foot_vel_low = np.array([-10.0] * self._robot_config.NUM_MOTORS)
+        contact_high = np.array([5.0] * self._robot_config.NUM_LEGS)
+        contact_low = np.array([-5.0] * self._robot_config.NUM_LEGS)
 
         observation_high = (
             np.concatenate(
@@ -327,12 +327,12 @@ class QuadrupedGymEnv(gym.Env):
         rpy_low = np.array([-np.pi] * 3)
         drpy_high = np.array([5.0] * 3)
         drpy_low = np.array([-5.0] * 3)
-        foot_pos_high = np.array([0.1, 0.05, 0.1] * 4)
+        foot_pos_high = np.array([0.1, 0.05, 0.1] * self._robot_config.NUM_LEGS)
         foot_pos_low = -foot_pos_high
-        foot_vel_high = np.array([10.0] * 12)
-        foot_vel_low = np.array([-10.0] * 12)
-        contact_high = np.array([5.0] * 4)
-        contact_low = np.array([-5.0] * 4)
+        foot_vel_high = np.array([10.0] * self._robot_config.NUM_MOTORS)
+        foot_vel_low = np.array([-10.0] * self._robot_config.NUM_MOTORS)
+        contact_high = np.array([5.0] * self._robot_config.NUM_LEGS)
+        contact_low = np.array([-5.0] * self._robot_config.NUM_LEGS)
 
         observation_high = (
             np.concatenate(
@@ -374,12 +374,12 @@ class QuadrupedGymEnv(gym.Env):
         rpy_low = np.array([-np.pi] * 3)
         drpy_high = np.array([5.0] * 3)
         drpy_low = np.array([-5.0] * 3)
-        foot_pos_high = np.array([0.1, 0.05, 0.1] * 4)
+        foot_pos_high = np.array([0.1, 0.05, 0.1] * self._robot_config.NUM_LEGS)
         foot_pos_low = -foot_pos_high
-        foot_vel_high = np.array([10.0] * 12)
-        foot_vel_low = np.array([-10.0] * 12)
-        contact_high = np.array([5.0] * 4)
-        contact_low = np.array([-5.0] * 4)
+        foot_vel_high = np.array([10.0] * self._robot_config.NUM_MOTORS)
+        foot_vel_low = np.array([-10.0] * self._robot_config.NUM_MOTORS)
+        contact_high = np.array([5.0] * self._robot_config.NUM_LEGS)
+        contact_low = np.array([-5.0] * self._robot_config.NUM_LEGS)
 
         observation_high = (
             np.concatenate(
@@ -413,12 +413,12 @@ class QuadrupedGymEnv(gym.Env):
     def _set_obs_space_real_obs_FP_Fv_NCF_JP(self):
         q_high = self._robot_config.RL_UPPER_ANGLE_JOINT
         q_low = self._robot_config.RL_LOWER_ANGLE_JOINT
-        foot_pos_high = np.array([0.1, 0.05, 0.1] * 4)
+        foot_pos_high = np.array([0.1, 0.05, 0.1] * self._robot_config.NUM_LEGS)
         foot_pos_low = -foot_pos_high
-        foot_vel_high = np.array([10.0] * 12)
-        foot_vel_low = np.array([-10.0] * 12)
-        contact_high = np.array([5.0] * 4)
-        contact_low = np.array([-5.0] * 4)
+        foot_vel_high = np.array([10.0] * self._robot_config.NUM_MOTORS)
+        foot_vel_low = np.array([-10.0] * self._robot_config.NUM_MOTORS)
+        contact_high = np.array([5.0] * self._robot_config.NUM_LEGS)
+        contact_low = np.array([-5.0] * self._robot_config.NUM_LEGS)
 
         observation_high = (
             np.concatenate(
@@ -450,12 +450,12 @@ class QuadrupedGymEnv(gym.Env):
         q_low = self._robot_config.RL_LOWER_ANGLE_JOINT
         dq_high = self._robot_config.VELOCITY_LIMITS
         dq_low = -self._robot_config.VELOCITY_LIMITS
-        foot_pos_high = np.array([0.1, 0.05, 0.1] * 4)
+        foot_pos_high = np.array([0.1, 0.05, 0.1] * self._robot_config.NUM_LEGS)
         foot_pos_low = -foot_pos_high
-        foot_vel_high = np.array([10.0] * 12)
-        foot_vel_low = np.array([-10.0] * 12)
-        contact_high = np.array([5.0] * 4)
-        contact_low = np.array([-5.0] * 4)
+        foot_vel_high = np.array([10.0] * self._robot_config.NUM_MOTORS)
+        foot_vel_low = np.array([-10.0] * self._robot_config.NUM_MOTORS)
+        contact_high = np.array([5.0] * self._robot_config.NUM_LEGS)
+        contact_low = np.array([-5.0] * self._robot_config.NUM_LEGS)
 
         observation_high = (
             np.concatenate(
@@ -487,12 +487,12 @@ class QuadrupedGymEnv(gym.Env):
     def _set_obs_space_real_obs_FP_Fv_CB_JP_Jv(self):
         q_high = self._robot_config.RL_UPPER_ANGLE_JOINT
         q_low = self._robot_config.RL_LOWER_ANGLE_JOINT
-        foot_pos_high = np.array([0.1, 0.05, 0.1] * 4)
+        foot_pos_high = np.array([0.1, 0.05, 0.1] * self._robot_config.NUM_LEGS)
         foot_pos_low = -foot_pos_high
-        foot_vel_high = np.array([10.0] * 12)
-        foot_vel_low = np.array([-10.0] * 12)
-        contact_high = np.array([1.0] * 4)
-        contact_low = np.array([0.0] * 4)
+        foot_vel_high = np.array([10.0] * self._robot_config.NUM_MOTORS)
+        foot_vel_low = np.array([-10.0] * self._robot_config.NUM_MOTORS)
+        contact_high = np.array([1.0] * self._robot_config.NUM_LEGS)
+        contact_low = np.array([0.0] * self._robot_config.NUM_LEGS)
 
         observation_high = (
             np.concatenate(
@@ -520,12 +520,12 @@ class QuadrupedGymEnv(gym.Env):
         return observation_high, observation_low
 
     def _set_obs_space_real_obs_FP_Fv_CB_JP(self):
-        foot_pos_high = np.array([0.1, 0.05, 0.1] * 4)
+        foot_pos_high = np.array([0.1, 0.05, 0.1] * self._robot_config.NUM_LEGS)
         foot_pos_low = -foot_pos_high
-        foot_vel_high = np.array([10.0] * 12)
-        foot_vel_low = np.array([-10.0] * 12)
-        contact_high = np.array([1.0] * 4)
-        contact_low = np.array([0.0] * 4)
+        foot_vel_high = np.array([10.0] * self._robot_config.NUM_MOTORS)
+        foot_vel_low = np.array([-10.0] * self._robot_config.NUM_MOTORS)
+        contact_high = np.array([1.0] * self._robot_config.NUM_LEGS)
+        contact_low = np.array([0.0] * self._robot_config.NUM_LEGS)
 
         observation_high = (
             np.concatenate(
@@ -563,10 +563,10 @@ class QuadrupedGymEnv(gym.Env):
         drpy_low = np.array([-5.0] * 3)
         foot_pos_high = np.array([0.1, 0.05, 0.1])
         foot_pos_low = -foot_pos_high
-        foot_vel_high = np.array([10.0] * 12)
-        foot_vel_low = np.array([-10.0] * 12)
-        contact_high = np.array([1.0] * 4)
-        contact_low = np.array([0.0] * 4)
+        foot_vel_high = np.array([10.0] * self._robot_config.NUM_MOTORS)
+        foot_vel_low = np.array([-10.0] * self._robot_config.NUM_MOTORS)
+        contact_high = np.array([1.0] * self._robot_config.NUM_LEGS)
+        contact_low = np.array([0.0] * self._robot_config.NUM_LEGS)
 
         observation_high = (
             np.concatenate(
@@ -605,12 +605,12 @@ class QuadrupedGymEnv(gym.Env):
 
     def _set_obs_space_default(self):
         observation_high = (
-            np.concatenate((self._robot_config.RL_UPPER_ANGLE_JOINT, self._robot_config.VELOCITY_LIMITS, np.array([1.0] * 4)))
+            np.concatenate((self._robot_config.RL_UPPER_ANGLE_JOINT, self._robot_config.VELOCITY_LIMITS, np.array([1.0] * self._robot_config.NUM_LEGS)))
             + OBSERVATION_EPS
         )
         observation_low = (
             np.concatenate(
-                (self._robot_config.RL_LOWER_ANGLE_JOINT, -self._robot_config.VELOCITY_LIMITS, np.array([-1.0] * 4))
+                (self._robot_config.RL_LOWER_ANGLE_JOINT, -self._robot_config.VELOCITY_LIMITS, np.array([-1.0] * self._robot_config.NUM_LEGS))
             )
             - OBSERVATION_EPS
         )
@@ -629,10 +629,10 @@ class QuadrupedGymEnv(gym.Env):
         drpy_low = np.array([-5.0] * 3)
         foot_pos_high = np.array([0.1, 0.05, 0.1])
         foot_pos_low = -foot_pos_high
-        foot_vel_high = np.array([10.0] * 12)
-        foot_vel_low = np.array([-10.0] * 12)
-        contact_high = np.array([1.0] * 4)
-        contact_low = np.array([0.0] * 4)
+        foot_vel_high = np.array([10.0] * self._robot_config.NUM_MOTORS)
+        foot_vel_low = np.array([-10.0] * self._robot_config.NUM_MOTORS)
+        contact_high = np.array([1.0] * self._robot_config.NUM_LEGS)
+        contact_low = np.array([0.0] * self._robot_config.NUM_LEGS)
 
         observation_high = (
             np.concatenate(
