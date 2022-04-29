@@ -24,7 +24,10 @@ class Timer:
         self.timer_started = False
 
     def time_up(self):
-        return self.timer_time > self.end_time
+        if self.timer_started:
+            return self.timer_time > self.end_time
+        else:
+            return self.timer_started
 
     def update_time(self, time):
         self.timer_time = time
