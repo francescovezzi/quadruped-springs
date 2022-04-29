@@ -10,7 +10,8 @@ class MetricInfo:
         self.height_min = height_min
         self.tau_max = tau_max
 
-    def get_values(self):
+    @staticmethod
+    def get_metric_values(self):
         return (self.metric_value, self.power_max, self.height_max, self.height_min, self.tau_max)
 
     def best_metrics(a, b):
@@ -102,7 +103,7 @@ class EvaluateMetricJumpOnPlace(gym.Wrapper):
         return first_line + "\n"
 
     def fill_line(self, id):
-        metric, power, height_max, height_min, torque_max = self.get_metric().get_values()
+        metric, power, height_max, height_min, torque_max = self.get_metric().get_metric_values()
         columns = [
             id,
             f"{metric:.3f}",
