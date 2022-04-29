@@ -153,12 +153,6 @@ class JumpingStateMachine(gym.Wrapper):
         action = self.jumping_explosive_action()
         return action
 
-    def landing_step(self):
-        self.robot.ApplyAction(self.jumping_landing_torque())
-        if self.env._is_render:
-            self.env._render_step_helper()
-        self.env._pybullet_client.stepSimulation()
-
     def robot_stopped(self):
         vel = self.env.robot.GetBaseLinearVelocity()
         vel_module = np.sqrt(np.dot(vel, vel))
