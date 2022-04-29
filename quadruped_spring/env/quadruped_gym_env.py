@@ -214,9 +214,6 @@ class QuadrupedGymEnv(gym.Env):
 
         # other bookkeeping
         self._num_bullet_solver_iterations = int(300 / action_repeat)
-        self._env_step_counter = 0
-        self._sim_step_counter = 0
-        self._last_base_position = np.array([0, 0, 0])
         self._last_frame_time = 0.0  # for rendering
         self._MAX_EP_LEN = EPISODE_LENGTH  # max sim time in seconds, arbitrary
         self._action_bound = 1.0
@@ -1496,6 +1493,7 @@ class QuadrupedGymEnv(gym.Env):
         self._env_step_counter = 0
         self._sim_step_counter = 0
         self._last_base_position = [0, 0, 0]
+        self._init_action = self._compute_init_action()
 
         if self._is_render:
             self._pybullet_client.resetDebugVisualizerCamera(self._cam_dist, self._cam_yaw, self._cam_pitch, [0, 0, 0])
@@ -1520,20 +1518,10 @@ class QuadrupedGymEnv(gym.Env):
 
     def _settle_robot_by_action(self):
         """Settle robot in according to the used motor control mode in RL interface"""
-        if self._motor_control_mode == "PD":
-            command = self._robot_config.INIT_MOTOR_ANGLES
-            init_action = self._compute_action_from_command(
-                command, self._robot_config.RL_LOWER_ANGLE_JOINT, self._robot_config.RL_UPPER_ANGLE_JOINT
-            )
-        elif self._motor_control_mode in ["CARTESIAN_PD", "INVKIN_CARTESIAN_PD"]:
-            command = self._robot_config.NOMINAL_FOOT_POS_LEG_FRAME
-            init_action = self._compute_action_from_command(
-                command, self._robot_config.RL_LOWER_CARTESIAN_POS, self._robot_config.RL_UPPER_CARTESIAN_POS
-            )
         if self._is_render:
             time.sleep(0.2)
         for _ in range(1500):
-            proc_action = self._transform_action_to_motor_command(init_action)
+            proc_action = self._transform_action_to_motor_command(self._init_action)
             self.robot.ApplyAction(proc_action)
             if self._is_render:
                 time.sleep(0.001)
@@ -1573,6 +1561,21 @@ class QuadrupedGymEnv(gym.Env):
             self._settle_robot_by_action()
         else:
             self._settle_robot_by_PD()
+            
+    def _compute_init_action(self):
+        if self._motor_control_mode == "PD":
+            command = self._robot_config.INIT_MOTOR_ANGLES
+            init_action = self._compute_action_from_command(
+                command, self._robot_config.RL_LOWER_ANGLE_JOINT, self._robot_config.RL_UPPER_ANGLE_JOINT
+            )
+        elif self._motor_control_mode in ["CARTESIAN_PD", "INVKIN_CARTESIAN_PD"]:
+            command = self._robot_config.NOMINAL_FOOT_POS_LEG_FRAME
+            init_action = self._compute_action_from_command(
+                command, self._robot_config.RL_LOWER_CARTESIAN_POS, self._robot_config.RL_UPPER_CARTESIAN_POS
+            )
+        else:
+            raise ValueError(f'motor control mode {self._motor_control_mode} not supported yet in RLGymInterface.')
+        return init_action
 
     def _init_task_variables(self):
         if self._TASK_ENV == "JUMPING_TASK":
