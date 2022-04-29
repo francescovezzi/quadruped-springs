@@ -1321,6 +1321,10 @@ class QuadrupedGymEnv(gym.Env):
             raise ValueError(f"Clipping angles available for PD control only, not in {self._motor_control_mode}")
 
     def adapt_action_dim_for_robot(self, action):
+        """
+        In according to the selected action spaced the action is converted to have the
+        same dimension as the default one -> 12 in the properly way.
+        """
         assert (
             len(action) == self._action_dim
         ), f"action dimension is {len(action)}, action space has dimension {self._action_dim} "
