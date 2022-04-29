@@ -12,6 +12,7 @@ import argparse
 
 from env.quadruped_gym_env import QuadrupedGymEnv
 from utils.evaluate_metric import EvaluateMetricJumpOnPlace
+from utils.timer import Timer
 
 # from utils.monitor_state import MonitorState
 
@@ -39,7 +40,7 @@ class JumpingStateMachine(gym.Wrapper):
         self._robot_config = self.env._robot_config
         self._enable_springs = self.env._enable_springs
         self._jump_end = False
-        self._first_take_off = False
+        self._flight_timer = Timer()
 
         self._default_action = self.env._compute_action_from_command(
             self._robot_config.INIT_MOTOR_ANGLES,
@@ -123,14 +124,13 @@ class JumpingStateMachine(gym.Wrapper):
         self._state = actual_state
 
     def flight_time_gone(self):
-        if not self._first_take_off:
-            self._take_off_time = self.env.get_sim_time()
-            # self.vz = self.base_velocity()[2]
+        if not self._flight_timer.already_started():
             _, _, self.vz = self.env.robot.GetBaseLinearVelocity()
-            self._flight_time = self.vz / 9.81
-            self._first_take_off = True
-        self._flight_timer = self.env.get_sim_time() - self._take_off_time
-        return self._flight_timer >= self._flight_time
+            flight_time = self.vz / 9.81
+            actual_time = self.env.get_sim_time()
+            self._flight_timer.start_timer(timer_time = actual_time, start_time=actual_time, delta_time=flight_time)
+        self._flight_timer.update_time(self.env.get_sim_time())
+        return self._flight_timer.time_up()
 
     def base_velocity(self):
         q_dot = self.env.robot.GetMotorVelocities()
@@ -151,7 +151,7 @@ class JumpingStateMachine(gym.Wrapper):
     def couching_action(self):
         max_action_calf = -1
         min_action_calf = self._default_action[2]
-        max_action_thigh = 1
+        max_action_thigh = 0.9
         min_action_thigh = self._default_action[1]
         i = self._step_counter
         i_min = self._settling_duration_steps
@@ -164,7 +164,7 @@ class JumpingStateMachine(gym.Wrapper):
 
     def jumping_explosive_action(self):
         if self.env._enable_springs:
-            coeff = 0.0
+            coeff = -0.1
         else:
             coeff = 0.1
         action_front = np.array([0, 0, coeff * 1] * 2)
