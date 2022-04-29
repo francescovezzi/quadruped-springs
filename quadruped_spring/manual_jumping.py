@@ -20,8 +20,10 @@ from utils.timer import Timer
 class JumpingStateMachine(gym.Wrapper):
     def __init__(self, env):
         super().__init__(env)
-        self._settling_duration_steps = 1000
-        self._couching_duration_steps = 4000
+        self._settling_duration_time = 1  # seconds
+        self._couching_duration_time = 4  # seconds
+        self._settling_duration_steps = self._settling_duration_steps * self.env._time_step * self.env._action_repeat
+        self._couching_duration_steps = self._couching_duration_steps * self.env._time_step * self.env._action_repeat
         assert self._couching_duration_steps >= 1000, "couching duration steps number should be >= 1000"
         self._states = {"settling": 0, "couching": 1, "jumping_ground": 2, "jumping_air": 3, "landing": 4}
         self._state = self._states["settling"]
