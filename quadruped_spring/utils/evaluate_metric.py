@@ -3,14 +3,15 @@ import numpy as np
 
 
 class MetricInfo:
-    def __init__(self, metric=0.0, power=0.0, height_max=0.0, height_min=0.0):
+    def __init__(self, metric=0.0, power=0.0, height_max=0.0, height_min=0.0, tau_max=0.0):
         self.metric_value = metric
         self.power_max = power
         self.height_max = height_max
         self.height_min = height_min
+        self.tau_max = tau_max
 
     def get_values(self):
-        return (self.metric_value, self.power_max, self.height_max, self.height_min)
+        return (self.metric_value, self.power_max, self.height_max, self.height_min, self.tau_max)
 
     def best_metrics(a, b):
         if a.metric_value >= b.metric_value:
@@ -32,6 +33,10 @@ class EvaluateMetricJumpOnPlace(gym.Wrapper):
         vel = abs(self.env.robot.GetMotorVelocities())
 
         return max(*(tau * vel))
+    
+    def compute_max_torque(self):
+        tau = abs(self.env.robot.GetMotorTorques())
+        return max(*tau)
 
     def compute_forward_distance(self):
         x, y, _ = self.env.robot.GetBasePosition()
@@ -59,6 +64,7 @@ class EvaluateMetricJumpOnPlace(gym.Wrapper):
         # if numInvalidContacts > 0:
         #     self.penalization_invalid_contact = -10
         self.jump_metric.power_max = max(self.jump_metric.power_max, self.compute_max_power())
+        self.jump_metric.tau_max = max(self.jump_metric.tau_max, self.compute_max_torque())
         roll, _, yaw = self.env.robot.GetBaseOrientationRollPitchYaw()
         _, _, height = self.env.robot.GetBasePosition()
         self.roll = max(self.roll, abs(roll))
@@ -84,9 +90,10 @@ class EvaluateMetricJumpOnPlace(gym.Wrapper):
         s3 = "MAX_POWER [w]"
         s4 = "MAX_HEIGHT [m]"
         s5 = "MIN_HEIGHT [m]"
-        s6 = "SPRING"
+        s6 = "MAX_TORQUE [Nm/rad]"
+        s7 = "SPRING"
         sep = self._sep
-        columns = [s1, s2, s3, s4, s5, s6]
+        columns = [s1, s2, s3, s4, s5, s6, s7]
         first_line = ""
         # print('*' * (sep * len(columns) + 4))
         for c in columns:
@@ -95,13 +102,14 @@ class EvaluateMetricJumpOnPlace(gym.Wrapper):
         return first_line + "\n"
 
     def fill_line(self, id):
-        metric, power, height_max, height_min = self.get_metric().get_values()
+        metric, power, height_max, height_min, torque_max = self.get_metric().get_values()
         columns = [
             id,
             f"{metric:.3f}",
             f"{power:.3f}",
             f"{height_max:.3f}",
             f"{height_min:.3f}",
+            f"{torque_max:.3f}",
             f"{self.env._enable_springs}",
         ]
         line = ""
@@ -113,13 +121,14 @@ class EvaluateMetricJumpOnPlace(gym.Wrapper):
     def get_metric(self):
         metric = 0
         max_power = self.jump_metric.power_max
-        if self._landed and abs(max_power) >= 0.01:
+        max_torque = self.jump_metric.tau_max
+        if self._landed and abs(max_torque) >= 0.01:
             max_height_rel = max(self.jump_metric.height_max - self._init_height, 0)
             rew_dist = 1 / 3 * max_height_rel * np.exp(-self.compute_forward_distance() ** 2 / 0.1)
             rew_roll = 1 / 3 * max_height_rel * np.exp(-self.roll**2 / 0.1)
             rew_yaw = 1 / 3 * max_height_rel * np.exp(-self.yaw**2 / 0.1)
 
-            metric = rew_dist + rew_roll + rew_yaw + max_height_rel * 1000 / max_power
+            metric = rew_dist + rew_roll + rew_yaw + max_height_rel * 35 / max_torque + 0.01 * max_power / max_torque
             # metric += self.penalization_invalid_contact
             metric -= max(self.bounce_counter - 1, 0) * 0.2
         self.jump_metric.metric_value = max(self.jump_metric.metric_value, metric)

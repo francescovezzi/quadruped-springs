@@ -166,7 +166,7 @@ class JumpingStateMachine(gym.Wrapper):
         if self.env._enable_springs:
             coeff = -0.1
         else:
-            coeff = 0.1
+            coeff = 0.0
         action_front = np.array([0, 0, coeff * 1] * 2)
         action_rear = np.array([0, 0, 1] * 2)
         jump_action = np.concatenate((action_front, action_rear))
@@ -240,7 +240,7 @@ class JumpingStateMachine(gym.Wrapper):
 def build_env(enable_springs=False):
     env_config = {}
     env_config["enable_springs"] = enable_springs
-    # env_config["enable_springs"] = True
+    env_config["enable_springs"] = True
     env_config["render"] = True
     env_config["on_rack"] = False
     env_config["enable_joint_velocity_estimate"] = False
