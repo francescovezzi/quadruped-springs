@@ -1188,15 +1188,16 @@ class QuadrupedGymEnv(gym.Env):
             # Optionally: no reward in case of crash
             reward -= 0.08
         max_height = 0.8
-        reward += self._max_height / max_height
-        reward += 0.05 * np.exp(-self._max_yaw**2 / 0.01)  # orientation
-        reward += 0.05 * np.exp(-self._max_pitch**2 / 0.01)  # orientation
+        max_height_normalized = self._max_height / max_height
+        reward += max_height_normalized
+        reward += max_height_normalized * 0.05 * np.exp(-self._max_yaw**2 / 0.01)  # orientation
+        reward += max_height_normalized * 0.05 * np.exp(-self._max_pitch**2 / 0.01)  # orientation
 
-        reward += 0.1 * np.exp(-self._max_forward_distance**2 / 0.05)  # be on place
+        reward += max_height_normalized * 0.1 * np.exp(-self._max_forward_distance**2 / 0.05)  # be on place
 
         if self._max_height > 0 and not self._termination():
             # Alive bonus proportional to the risk taken
-            reward += 0.1 * self._max_height / max_height
+            reward += 0.1 * max_height_normalized
         # print(f"Forward dist: {self._max_forward_distance}")
         return reward
 
