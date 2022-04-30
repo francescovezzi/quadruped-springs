@@ -14,6 +14,7 @@ from env.quadruped_gym_env import QuadrupedGymEnv
 from utils.evaluate_metric import EvaluateMetricJumpOnPlace
 from utils.landing_wrapper import LandingWrapper
 from utils.timer import Timer
+from utils.rest_wrapper import RestWrapper
 
 # from utils.monitor_state import MonitorState
 
@@ -125,7 +126,7 @@ class JumpingStateMachine(gym.Wrapper):
 def build_env(enable_springs=False):
     env_config = {
         "enable_springs": enable_springs,
-        "render": True,
+        "render": False,
         "on_rack": False,
         "enable_joint_velocity_estimate": False,
         "isRLGymInterface": True,
@@ -156,6 +157,7 @@ if __name__ == "__main__":
     # sim_steps = env._total_sim_steps + 3000
     # env = MonitorState(env=env, path="logs/plots/manual_jumping_with_springs", rec_length=sim_steps)
     env = EvaluateMetricJumpOnPlace(env)
+    env = RestWrapper(env)
     env = LandingWrapper(env)
     done = False
     while not done:
