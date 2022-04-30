@@ -258,7 +258,7 @@ class Quadruped(object):
         return numValidContacts, numInvalidContacts, feetNormalForces, feetInContactBool
     
     def _is_flying(self):
-        _, _, _, feet_in_contact = self.robot.GetContactInfo()
+        _, _, _, feet_in_contact = self.GetContactInfo()
         return np.all(1 - np.array(feet_in_contact))
 
     ######################################################################################
