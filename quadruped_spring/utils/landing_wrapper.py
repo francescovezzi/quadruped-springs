@@ -4,21 +4,41 @@ import numpy as np
 from utils.timer import Timer
 
 
-class LandingWrapper(gym.Env):
+class LandingWrapper(gym.Wrapper):
     """ Wrapper to switch controller when robot starts landing"""
-    def __init__(self):
-        self._landing_pose = self._compute_landing_pose()
-        self.timer_jumping = Timer()
+    def __init__(self, env):
+        super().__init__(env)
+        self._robot_config = self.env.get_robot_config()
+        self._landing_action = self._compute_landing_action()
+        self.timer_jumping = Timer(dt=self.env.dt)
     
     def _compute_landing_pose(self):
-        landing_pose = np.zeros(self.env._robot_configs.NUM_MOTORS)
-        landing_pose = self.env._init_action
+        motor_control_mode = self.env.get_motor_control_mode()
+        if motor_control_mode in ["CARTESIAN_PD" or "INVKIN_CARTESIAN_PD"]:
+            x = 0.0
+            y = self._robot_config.DEFAULT_Y
+            z = -0.28
+            landing_pose =  np.array(
+                list(map(lambda sign: [x, sign * y, z], [-1, 1, -1, 1]))
+                ).flatten()
+        elif motor_control_mode == "PD":
+            # hip = 0
+            # thigh = np.pi / 4
+            # calf = -np.pi / 2
+            # landing_pose = np.array([hip, thigh, calf] * self._robot_config.NUM_LEGS)
+            landing_pose = self._robot_config.INIT_MOTOR_ANGLES
         return landing_pose
+    
+    def _compute_landing_action(self):
+        landing_pose = self._compute_landing_pose()
+        landing_action = self.env.compute_action_from_command(landing_pose)
+        landing_action = self.env.adapt_command_to_action_dim(landing_action)
+        return landing_action
     
     def temporary_switch_motor_control_gain(foo):
         def wrapper(self, *args, **kwargs):
             """Temporary switch motor control gain"""
-            if self.env._enable_springs:
+            if self.env.are_springs_enabled():
                 ret = foo(self, *args, **kwargs)
             else:
                 tmp_save_motor_kp = self.env.robot._motor_model._kp
@@ -33,8 +53,7 @@ class LandingWrapper(gym.Env):
 
     @temporary_switch_motor_control_gain
     def landing_phase(self):
-        self.env._enable_action_interpolation = True  # Encourage smoothed action when robot is flying
-        action = self._landing_pose
+        action = self._landing_action
         done = False
         while not done:
             obs, reward, done, infos = self.env.step(action)
@@ -42,8 +61,10 @@ class LandingWrapper(gym.Env):
     
     def take_off_phase(self, action):
         """ Repeat last action until you rech the height peak """
-        while not self.timer_jumping.time_up():
-            self.start_jumping_timer()
+        done = False
+        self.start_jumping_timer()
+        while done or not self.timer_jumping.time_up():
+            self.timer_jumping.step_timer()
             obs, reward, done, infos = self.env.step(action)
         return obs, reward, done, infos
 
@@ -53,7 +74,7 @@ class LandingWrapper(gym.Env):
     def compute_time_for_peak_heihgt(self):
         """Compute the time the robot needs to reach the maximum height
         """
-        _, _, vz = self.env.robot.GetBaseVelocity()
+        _, _, vz = self.env.robot.GetBaseLinearVelocity()
         return vz / 9.81
     
     def start_jumping_timer(self):
@@ -61,7 +82,10 @@ class LandingWrapper(gym.Env):
         self.timer_jumping.start_timer(timer_time=actual_time,
                                         start_time=actual_time,
                                         delta_time=self.compute_time_for_peak_heihgt())        
-
+# TODO
+# Apply landing wrapper to manual jumping, nothing should change except for the smoothing
+# Add termination condition on robot stopped
+# Add reward landing feet touch ground simultaneously
     def step(self, action):
         obs, reward, done, infos = self.env.step(action)
         
