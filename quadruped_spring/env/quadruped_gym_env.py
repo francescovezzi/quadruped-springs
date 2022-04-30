@@ -603,12 +603,22 @@ class QuadrupedGymEnv(gym.Env):
 
     def _set_obs_space_default(self):
         observation_high = (
-            np.concatenate((self._robot_config.RL_UPPER_ANGLE_JOINT, self._robot_config.VELOCITY_LIMITS, np.array([1.0] * self._robot_config.NUM_LEGS)))
+            np.concatenate(
+                (
+                    self._robot_config.RL_UPPER_ANGLE_JOINT,
+                    self._robot_config.VELOCITY_LIMITS,
+                    np.array([1.0] * self._robot_config.NUM_LEGS),
+                )
+            )
             + OBSERVATION_EPS
         )
         observation_low = (
             np.concatenate(
-                (self._robot_config.RL_LOWER_ANGLE_JOINT, -self._robot_config.VELOCITY_LIMITS, np.array([-1.0] * self._robot_config.NUM_LEGS))
+                (
+                    self._robot_config.RL_LOWER_ANGLE_JOINT,
+                    -self._robot_config.VELOCITY_LIMITS,
+                    np.array([-1.0] * self._robot_config.NUM_LEGS),
+                )
             )
             - OBSERVATION_EPS
         )
@@ -1367,7 +1377,7 @@ class QuadrupedGymEnv(gym.Env):
             raise ValueError(f"action space mode {self._action_space_mode} not implemented yet")
 
         return leg
-    
+
     def adapt_command_to_action_dim(self, command):
         """Given a command it's been converted to a command with the same dimension
             of the Action Space. Actually used in LandingWrapper.
@@ -1583,7 +1593,7 @@ class QuadrupedGymEnv(gym.Env):
             self._settle_robot_by_action()
         else:
             self._settle_robot_by_PD()
-            
+
     def compute_action_from_command(self, command):
         if self._motor_control_mode == "PD":
             action = self._compute_action_from_command(
@@ -1594,9 +1604,9 @@ class QuadrupedGymEnv(gym.Env):
                 command, self._robot_config.RL_LOWER_CARTESIAN_POS, self._robot_config.RL_UPPER_CARTESIAN_POS
             )
         else:
-            raise ValueError(f'motor control mode {self._motor_control_mode} not supported yet in RLGymInterface.')
+            raise ValueError(f"motor control mode {self._motor_control_mode} not supported yet in RLGymInterface.")
         return action
-    
+
     def _compute_init_action(self):
         if self._motor_control_mode == "PD":
             command = self._robot_config.INIT_MOTOR_ANGLES
@@ -1605,7 +1615,7 @@ class QuadrupedGymEnv(gym.Env):
             command = self._robot_config.NOMINAL_FOOT_POS_LEG_FRAME
             init_action = self.compute_action_from_command(command)
         else:
-            raise ValueError(f'motor control mode {self._motor_control_mode} not supported yet in RLGymInterface.')
+            raise ValueError(f"motor control mode {self._motor_control_mode} not supported yet in RLGymInterface.")
         return init_action
 
     def _init_task_variables(self):
@@ -1779,17 +1789,17 @@ class QuadrupedGymEnv(gym.Env):
     def get_sim_time(self):
         """Get current simulation time."""
         return self._sim_step_counter * self._time_step
-    
+
     def get_motor_control_mode(self):
         """Get current motor control mode."""
         return self._motor_control_mode
-    
+
     def get_robot_config(self):
-        """ Get current robot config."""
+        """Get current robot config."""
         return self._robot_config
-    
+
     def are_springs_enabled(self):
-        """ Get boolean specifying if springs are enabled or not."""
+        """Get boolean specifying if springs are enabled or not."""
         return self._enable_springs
 
     def scale_rand(self, num_rand, low, high):
@@ -1896,20 +1906,22 @@ class QuadrupedGymEnv(gym.Env):
 
 def test_env():
 
-    env_config = {"render": True,
-                  "on_rack": False,
-                  "motor_control_mode": "CARTESIAN_PD",
-                  "action_repeat": 10,
-                  "enable_springs": True,
-                  "add_noise": False,
-                  "enable_action_interpolation": False,
-                  "enable_action_clipping": False,
-                  "enable_action_filter": True,
-                  "task_env": "JUMPING_ON_PLACE_TASK",
-                  "observation_space_mode": "REAL_OBS_IMU_JP_Jv_NCF",
-                  "action_space_mode": "SYMMETRIC",
-                  "enable_joint_velocity_estimate": True}
-    
+    env_config = {
+        "render": True,
+        "on_rack": False,
+        "motor_control_mode": "CARTESIAN_PD",
+        "action_repeat": 10,
+        "enable_springs": True,
+        "add_noise": False,
+        "enable_action_interpolation": False,
+        "enable_action_clipping": False,
+        "enable_action_filter": True,
+        "task_env": "JUMPING_ON_PLACE_TASK",
+        "observation_space_mode": "REAL_OBS_IMU_JP_Jv_NCF",
+        "action_space_mode": "SYMMETRIC",
+        "enable_joint_velocity_estimate": True,
+    }
+
     env = QuadrupedGymEnv(**env_config)
 
     sim_steps = 1000

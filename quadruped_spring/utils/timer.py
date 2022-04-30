@@ -18,7 +18,7 @@ class Timer:
         if self.already_started():
             self.timer_time += self.dt
         else:
-            raise ValueError('Timer not started yet')
+            raise ValueError("Timer not started yet")
 
     def start_timer(self, timer_time, start_time, delta_time):
         if not self.timer_started:
@@ -29,7 +29,7 @@ class Timer:
             if not self.timer_stopped:
                 self.relative_timer_time = self.timer_time - self.start_time
             assert self.start_time <= self.end_time, "timer not feasible"
-    
+
     def stop_timer(self):
         self.timer_stopped = True
         return self.relative_timer_time

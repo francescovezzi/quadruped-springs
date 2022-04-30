@@ -256,7 +256,7 @@ class Quadruped(object):
                 feetNormalForces[footIndex] += c[9]  # if multiple contact locations
                 feetInContactBool[footIndex] = 1
         return numValidContacts, numInvalidContacts, feetNormalForces, feetInContactBool
-    
+
     def _is_flying(self):
         _, _, _, feet_in_contact = self.GetContactInfo()
         return np.all(1 - np.array(feet_in_contact))

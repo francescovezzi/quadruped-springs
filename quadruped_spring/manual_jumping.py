@@ -12,8 +12,8 @@ import argparse
 
 from env.quadruped_gym_env import QuadrupedGymEnv
 from utils.evaluate_metric import EvaluateMetricJumpOnPlace
-from utils.timer import Timer
 from utils.landing_wrapper import LandingWrapper
+from utils.timer import Timer
 
 # from utils.monitor_state import MonitorState
 
@@ -42,10 +42,9 @@ class JumpingStateMachine(gym.Wrapper):
         self._robot_config = self.env.get_robot_config()
         self._enable_springs = self.env._enable_springs
         self._jump_end = False
-        self._flight_timer = Timer(dt = self._time_step)
+        self._flight_timer = Timer(dt=self._time_step)
 
-        self._default_action = self.env.compute_action_from_command(
-            self._robot_config.INIT_MOTOR_ANGLES)
+        self._default_action = self.env.compute_action_from_command(self._robot_config.INIT_MOTOR_ANGLES)
 
     def compute_action(self):
         return self._actions[self._state]()
@@ -57,7 +56,7 @@ class JumpingStateMachine(gym.Wrapper):
             actual_state = self._states["couching"]
         else:
             actual_state = self._states["jumping_ground"]
-            
+
         self.max_height = max(self.max_height, self.env.robot.GetBasePosition()[2])
         # if self._state != actual_state:
         #     print('********************')
@@ -93,7 +92,7 @@ class JumpingStateMachine(gym.Wrapper):
         action_rear = np.array([0, 0, 1] * 2)
         jump_action = np.concatenate((action_front, action_rear))
         return jump_action
-    
+
     @staticmethod
     def generate_ramp(i, i_min, i_max, u_min, u_max) -> float:
         if i < i_min:
@@ -124,16 +123,18 @@ class JumpingStateMachine(gym.Wrapper):
 
 
 def build_env(enable_springs=False):
-    env_config = {"enable_springs": enable_springs,
-                  "render": True,
-                  "on_rack": False,
-                  "enable_joint_velocity_estimate": False,
-                  "isRLGymInterface": True,
-                  "motor_control_mode": "PD",
-                  "action_repeat": 1,
-                  "record_video": False,
-                  "action_space_mode": "DEFAULT",
-                  "task_env": "JUMPING_ON_PLACE_ABS_HEIGHT_TASK"}
+    env_config = {
+        "enable_springs": enable_springs,
+        "render": True,
+        "on_rack": False,
+        "enable_joint_velocity_estimate": False,
+        "isRLGymInterface": True,
+        "motor_control_mode": "PD",
+        "action_repeat": 1,
+        "record_video": False,
+        "action_space_mode": "DEFAULT",
+        "task_env": "JUMPING_ON_PLACE_ABS_HEIGHT_TASK",
+    }
     # env_config["enable_springs"] = True
     if fill_line:
         env_config["render"] = False
