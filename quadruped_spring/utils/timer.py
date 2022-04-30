@@ -3,7 +3,7 @@ import numpy as np
 
 class Timer:
     def __init__(self, dt):
-        """_summary_
+        """Class to simulate a Timer.
 
         Args:
             dt (Float): It means how much the timer time should increase by default
