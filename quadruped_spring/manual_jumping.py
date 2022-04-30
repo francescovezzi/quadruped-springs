@@ -134,7 +134,7 @@ def build_env(enable_springs=False):
                   "record_video": False,
                   "action_space_mode": "DEFAULT",
                   "task_env": "JUMPING_ON_PLACE_ABS_HEIGHT_TASK"}
-    env_config["enable_springs"] = True
+    # env_config["enable_springs"] = True
     if fill_line:
         env_config["render"] = False
     env = QuadrupedGymEnv(**env_config)
