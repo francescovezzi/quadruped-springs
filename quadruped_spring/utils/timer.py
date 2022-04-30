@@ -33,6 +33,7 @@ class Timer:
 
     def reset_timer(self):
         self.timer_started = False
+        self.timer_stopped = False
 
     def time_up(self):
         if self.timer_started:
