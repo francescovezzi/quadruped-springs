@@ -1,6 +1,3 @@
-import numpy as np
-
-
 class Timer:
     def __init__(self, dt):
         """Class to simulate a Timer.
