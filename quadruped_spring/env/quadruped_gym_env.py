@@ -190,6 +190,7 @@ class QuadrupedGymEnv(gym.Env):
         self._isRLGymInterface = isRLGymInterface
         self._time_step = time_step
         self._action_repeat = action_repeat
+        self.dt = self._action_repeat * self._time_step
         self._distance_weight = distance_weight
         self._energy_weight = energy_weight
         self._motor_control_mode = motor_control_mode
@@ -1366,6 +1367,27 @@ class QuadrupedGymEnv(gym.Env):
             raise ValueError(f"action space mode {self._action_space_mode} not implemented yet")
 
         return leg
+    
+    def adapt_command_to_action_dim(self, command):
+        """Given a command it's been converted to a command with the same dimension
+            of the Action Space. Actually used in LandingWrapper.
+
+        Args:
+            command (np.Array): the command you would like to apply to the robot
+        """
+        assert len(command) == 12, "command has not right dimensions. Should be (12,)"
+        if self._action_space_mode == "DEFAULT":
+            return command
+        elif self._action_space_mode == "SYMMETRIC":
+            leg_FR = command[0:3]
+            leg_RR = command[6:9]
+            return np.concatenate((leg_FR, leg_RR))
+        elif self._action_space_mode == "SYMMETRIC_NO_HIP":
+            leg_FR = command[1:3]
+            leg_RR = command[7:9]
+            return np.concatenate((leg_FR, leg_RR))
+        else:
+            raise ValueError(f"action space {self._action_space_mode} not supported yet")
 
     def step(self, action):
         """Step forward the simulation, given the action."""
@@ -1493,7 +1515,7 @@ class QuadrupedGymEnv(gym.Env):
         self._env_step_counter = 0
         self._sim_step_counter = 0
         self._last_base_position = [0, 0, 0]
-        self._init_action = self._compute_init_action()
+        self.init_action = self._compute_init_action()
 
         if self._is_render:
             self._pybullet_client.resetDebugVisualizerCamera(self._cam_dist, self._cam_yaw, self._cam_pitch, [0, 0, 0])
@@ -1521,7 +1543,7 @@ class QuadrupedGymEnv(gym.Env):
         if self._is_render:
             time.sleep(0.2)
         for _ in range(1500):
-            proc_action = self._transform_action_to_motor_command(self._init_action)
+            proc_action = self._transform_action_to_motor_command(self.init_action)
             self.robot.ApplyAction(proc_action)
             if self._is_render:
                 time.sleep(0.001)
@@ -1562,17 +1584,26 @@ class QuadrupedGymEnv(gym.Env):
         else:
             self._settle_robot_by_PD()
             
-    def _compute_init_action(self):
+    def compute_action_from_command(self, command):
         if self._motor_control_mode == "PD":
-            command = self._robot_config.INIT_MOTOR_ANGLES
-            init_action = self._compute_action_from_command(
+            action = self._compute_action_from_command(
                 command, self._robot_config.RL_LOWER_ANGLE_JOINT, self._robot_config.RL_UPPER_ANGLE_JOINT
             )
         elif self._motor_control_mode in ["CARTESIAN_PD", "INVKIN_CARTESIAN_PD"]:
-            command = self._robot_config.NOMINAL_FOOT_POS_LEG_FRAME
-            init_action = self._compute_action_from_command(
+            action = self._compute_action_from_command(
                 command, self._robot_config.RL_LOWER_CARTESIAN_POS, self._robot_config.RL_UPPER_CARTESIAN_POS
             )
+        else:
+            raise ValueError(f'motor control mode {self._motor_control_mode} not supported yet in RLGymInterface.')
+        return action
+    
+    def _compute_init_action(self):
+        if self._motor_control_mode == "PD":
+            command = self._robot_config.INIT_MOTOR_ANGLES
+            init_action = self.compute_action_from_command(command)
+        elif self._motor_control_mode in ["CARTESIAN_PD", "INVKIN_CARTESIAN_PD"]:
+            command = self._robot_config.NOMINAL_FOOT_POS_LEG_FRAME
+            init_action = self.compute_action_from_command(command)
         else:
             raise ValueError(f'motor control mode {self._motor_control_mode} not supported yet in RLGymInterface.')
         return init_action
@@ -1748,6 +1779,18 @@ class QuadrupedGymEnv(gym.Env):
     def get_sim_time(self):
         """Get current simulation time."""
         return self._sim_step_counter * self._time_step
+    
+    def get_motor_control_mode(self):
+        """Get current motor control mode."""
+        return self._motor_control_mode
+    
+    def get_robot_config(self):
+        """ Get current robot config."""
+        return self._robot_config
+    
+    def are_springs_enabled(self):
+        """ Get boolean specifying if springs are enabled or not."""
+        return self._enable_springs
 
     def scale_rand(self, num_rand, low, high):
         """scale number of rand numbers between low and high"""
@@ -1864,16 +1907,17 @@ def test_env():
                   "enable_action_filter": True,
                   "task_env": "JUMPING_ON_PLACE_TASK",
                   "observation_space_mode": "REAL_OBS_IMU_JP_Jv_NCF",
-                  "action_space_mode": "DEFAULT",
+                  "action_space_mode": "SYMMETRIC",
                   "enable_joint_velocity_estimate": True}
     
     env = QuadrupedGymEnv(**env_config)
 
     sim_steps = 1000
+    action_dim = env._action_dim
     obs = env.reset()
     for i in range(sim_steps):
         action = np.random.rand(env._action_dim) * 2 - 1
-        action = np.full(12, 0)
+        action = np.full(action_dim, 0)
         obs, reward, done, info = env.step(action)
     print("end")
 
