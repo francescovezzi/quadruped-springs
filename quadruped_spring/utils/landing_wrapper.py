@@ -5,7 +5,11 @@ from utils.timer import Timer
 
 
 class LandingWrapper(gym.Wrapper):
-    """Wrapper to switch controller when robot starts taking off"""
+    """
+    Wrapper to switch controller when robot starts taking off.
+    Dear user please pay attention at the order of the wrapper you are using.
+    It's recommended to use this one as the last one.
+    """
 
     def __init__(self, env):
         super().__init__(env)
