@@ -2,9 +2,23 @@ import numpy as np
 
 
 class Timer:
-    def __init__(self):
+    def __init__(self, dt):
+        """_summary_
+
+        Args:
+            dt (Float): It means how much the timer time should increase by default
+                        each time the increase method is called.
+        """
         self.timer_started = False
         self.timer_stopped = False
+        assert dt >= 0.0, "delta time given should be >= 0"
+        self.dt = dt
+
+    def step_timer(self):
+        if self.already_started():
+            self.timer_time += self.dt
+        else:
+            raise ValueError('Timer not started yet')
 
     def start_timer(self, timer_time, start_time, delta_time):
         if not self.timer_started:
