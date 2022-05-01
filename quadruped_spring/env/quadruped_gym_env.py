@@ -369,7 +369,7 @@ class QuadrupedGymEnv(gym.Env):
         return observation_high, observation_low
 
     def _set_obs_space_real_obs_FP_Fv_NCF_IMU(self):
-        v_des_high = MAX_FWD_VELOCITY
+        v_des_high = [MAX_FWD_VELOCITY]
         v_des_low = -v_des_high
         vel_high = np.array([MAX_FWD_VELOCITY] * 3)
         vel_low = np.array([-MAX_FWD_VELOCITY] * 3)
