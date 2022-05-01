@@ -67,13 +67,13 @@ class LandingWrapper(gym.Wrapper):
         """Repeat last action until you rech the height peak"""
         done = False
         self.start_jumping_timer()
-        while done or not self.timer_jumping.time_up():
+        while not (self.timer_jumping.time_up() or done):  # episode or timer end
             self.timer_jumping.step_timer()
             obs, reward, done, infos = self.env.step(action)
         return obs, reward, done, infos
 
     def is_flying(self):
-        return self.env.robot._is_flying()
+        return self.env.robot._is_flying() and self.compute_time_for_peak_heihgt() > 0
 
     def compute_time_for_peak_heihgt(self):
         """Compute the time the robot needs to reach the maximum height"""
@@ -82,14 +82,11 @@ class LandingWrapper(gym.Wrapper):
 
     def start_jumping_timer(self):
         actual_time = self.env.get_sim_time()
+        self.timer_jumping.reset_timer()
         self.timer_jumping.start_timer(
             timer_time=actual_time, start_time=actual_time, delta_time=self.compute_time_for_peak_heihgt()
         )
 
-    # TODO
-    # Apply landing wrapper to manual jumping, nothing should change except for the smoothing
-    # Add termination condition on robot stopped
-    # Add reward landing feet touch ground simultaneously
     def step(self, action):
         obs, reward, done, infos = self.env.step(action)
 
