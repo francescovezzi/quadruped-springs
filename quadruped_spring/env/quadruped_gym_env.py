@@ -1213,14 +1213,14 @@ class QuadrupedGymEnv(gym.Env):
             # Malus for crashing
             # Optionally: no reward in case of crash
             reward -= 0.08
-        max_fwd = 0.5
-        max_height = 0.5
+        max_fwd = 0.2
+        max_height = 0.2
         normalize_fwd_distance = self._max_forward_distance / max_fwd
         reward += normalize_fwd_distance
         reward += normalize_fwd_distance * 0.05 * np.exp(-self._max_yaw**2 / 0.1)  # orientation
         reward += normalize_fwd_distance * 0.05 * np.exp(-self._max_roll**2 / 0.1)  # orientation
 
-        reward += 0.2 * normalize_fwd_distance *  self._max_height / max_height  # bonus max_height
+        reward += 0.1 * self._max_height / max_height  # bonus max_height
 
         if self._max_forward_distance > 0 and not self._termination():
             # Alive bonus proportional to the risk taken
@@ -1268,7 +1268,7 @@ class QuadrupedGymEnv(gym.Env):
             # Malus for crashing
             # Optionally: no reward in case of crash
             reward -= 0.08
-        max_height = 0.8
+        max_height = 0.4
         max_height_normalized = self._max_height / max_height
         reward += max_height_normalized
         reward += max_height_normalized * 0.05 * np.exp(-self._max_yaw**2 / 0.01)  # orientation
