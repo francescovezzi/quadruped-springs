@@ -701,6 +701,9 @@ class QuadrupedGymEnv(gym.Env):
         self.action_space = spaces.Box(-action_high, action_high, dtype=np.float32)
         self._action_dim = action_dim
 
+    def get_action_dim(self):
+        return self._action_dim
+
     def _get_observation(self):
         """Get observation, depending on obs space selected."""
         if self._observation_space_mode == "DEFAULT":
@@ -1929,13 +1932,13 @@ def test_env():
     }
 
     env = QuadrupedGymEnv(**env_config)
-
-    sim_steps = 10
-    action_dim = env._action_dim
+    
+    sim_steps = 150
+    action_dim = env.get_action_dim()
     obs = env.reset()
     for i in range(sim_steps):
-        action = np.random.rand(env._action_dim) * 2 - 1
-        action = np.full(action_dim, 0)
+        action = np.random.rand(action_dim) * 2 - 1
+        # action = np.full(action_dim, 0)
         obs, reward, done, info = env.step(action)
     print("end")
 
