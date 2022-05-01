@@ -31,7 +31,7 @@ class LandingWrapper(gym.Wrapper):
             # landing_pose = np.array([hip, thigh, calf] * self._robot_config.NUM_LEGS)
             landing_pose = self._robot_config.INIT_MOTOR_ANGLES
         else:
-            raise ValueError(f'motor control mode {motor_control_mode} not supported yet.')
+            raise ValueError(f"motor control mode {motor_control_mode} not supported yet.")
         return landing_pose
 
     def _compute_landing_action(self):
