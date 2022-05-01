@@ -99,7 +99,7 @@ VIDEO_LOG_DIRECTORY = "videos/" + datetime.datetime.now().strftime("vid-%Y-%m-%d
 #     - "LANDING_TASK" (not implemented yet)
 #         Sparse reward, bonus mantain desired position + malus on crushing +
 #         malus on not allowed contact + malus on feet not in contact
-#     - "JUMPING_FORWARD" 
+#     - "JUMPING_FORWARD"
 #         Sparse reward, maximizing jump forward distance + bonus maximum height +
 #         bonus maintain base orientation + malus on crashing + malus on not allowed contacts
 
@@ -893,7 +893,7 @@ class QuadrupedGymEnv(gym.Env):
         roll, _, yaw = self.robot.GetBaseOrientationRollPitchYaw()
         max_angle = 25 * np.pi / 180
         return roll < max_angle or yaw < max_angle
-    
+
     def _base_near_ground(self):
         _, _, z = self.robot.GetBasePosition()
         return z < 0.1
@@ -950,7 +950,7 @@ class QuadrupedGymEnv(gym.Env):
         # max_height_reward = only_positive_height ** 2 / self._init_height ** 2
         # return max_height_reward + flight_time_reward
         # return max_height_reward + no_feet_in_contact_reward
-        
+
     def _reward_jumping_forward(self):
         _, _, _, feet_in_contact = self.robot.GetContactInfo()
         # no_feet_in_contact_reward = -np.mean(feet_in_contact)
@@ -1715,7 +1715,7 @@ class QuadrupedGymEnv(gym.Env):
             self._init_variables_jumping_forward()
         else:
             raise ValueError(f"the task {self._TASK_ENV} is not implemented yet")
-        
+
     def _init_variables_jumping_forward(self):
         self._v_des = 3.0
         self._init_height = self.robot.GetBasePosition()[2]
