@@ -1717,7 +1717,7 @@ class QuadrupedGymEnv(gym.Env):
             raise ValueError(f"the task {self._TASK_ENV} is not implemented yet")
 
     def _init_variables_jumping_forward(self):
-        self._v_des = 3.0
+        self._v_des = np.array([3.0])
         self._init_height = self.robot.GetBasePosition()[2]
         self._all_feet_in_the_air = False
         self._time_take_off = self.get_sim_time()
@@ -1745,7 +1745,7 @@ class QuadrupedGymEnv(gym.Env):
         self._max_forward_distance = 0.0
 
     def _init_variables_jumping_on_place(self):
-        self._v_des = 3.0
+        self._v_des = np.array([3.0])
         self._init_height = self.robot.GetBasePosition()[2]
         self._all_feet_in_the_air = False
         self._time_take_off = self.get_sim_time()
@@ -1758,7 +1758,7 @@ class QuadrupedGymEnv(gym.Env):
         self._max_pitch = 0.0
 
     def _init_variables_jumping_on_place_height(self):
-        self._v_des = 3.0
+        self._v_des = np.array([3.0])
         self._init_height = self.robot.GetBasePosition()[2]
         self._all_feet_in_the_air = False
         self._time_take_off = self.get_sim_time()
