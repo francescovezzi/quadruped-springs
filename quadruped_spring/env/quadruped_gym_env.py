@@ -64,7 +64,7 @@ VIDEO_LOG_DIRECTORY = "videos/" + datetime.datetime.now().strftime("vid-%Y-%m-%d
 #   "REAL_OBS_FP_Fv_NCF_IMU":  Feet positions and velocities
 #                              Feet contact normal forces
 #                              IMU (base veolcity, orientation,
-#                              orientation rate)
+#                              orientation rate), v_des
 #   "REAL_OBS_FP_Fv_NCF_IMU_JP_Jv":  REAL_OBS_FP_Fv_NCF_IMU +
 #                                    Joint configuration +
 #                                    Joint velocity
@@ -366,6 +366,8 @@ class QuadrupedGymEnv(gym.Env):
         return observation_high, observation_low
 
     def _set_obs_space_real_obs_FP_Fv_NCF_IMU(self):
+        v_des_high = np.array([0.001, 0.001, MAX_FWD_VELOCITY])
+        v_des_low = -v_des_high
         vel_high = np.array([MAX_FWD_VELOCITY] * 3)
         vel_low = np.array([-MAX_FWD_VELOCITY] * 3)
         rpy_high = np.array([np.pi] * 3)
@@ -382,6 +384,7 @@ class QuadrupedGymEnv(gym.Env):
         observation_high = (
             np.concatenate(
                 (
+                    v_des_high,
                     vel_high,
                     rpy_high,
                     drpy_high,
@@ -395,6 +398,7 @@ class QuadrupedGymEnv(gym.Env):
         observation_low = (
             np.concatenate(
                 (
+                    v_des_low,
                     vel_low,
                     rpy_low,
                     drpy_low,
@@ -755,7 +759,7 @@ class QuadrupedGymEnv(gym.Env):
         foot_pos, foot_vel = self._compute_feet_position_vel()
         _, _, feetNormalForces, _ = self.robot.GetContactInfo()
 
-        self._observation = np.concatenate((base_vel, base_rpy, base_drpy, foot_pos, foot_vel, feetNormalForces))
+        self._observation = np.concatenate((self._v_des, base_vel, base_rpy, base_drpy, foot_pos, foot_vel, feetNormalForces))
 
     def _get_obs_real_FP_Fv_NCF_JP(self):
         q = self.robot.GetMotorAngles()
@@ -1628,6 +1632,7 @@ class QuadrupedGymEnv(gym.Env):
             self._init_variables_jumping_on_place()
         elif self._TASK_ENV in ["JUMPING_ON_PLACE_HEIGHT_TASK", "JUMPING_ON_PLACE_ABS_HEIGHT_TASK"]:
             self._init_variables_jumping_on_place_height()
+            self._v_des = np.array([0.0, 0.0, 3.0])
         elif self._TASK_ENV == "LANDING_TASK":
             self._init_variables_landing()
         else:
@@ -1908,24 +1913,24 @@ class QuadrupedGymEnv(gym.Env):
 def test_env():
 
     env_config = {
-        "render": True,
+        "render": False,
         "on_rack": False,
-        "motor_control_mode": "CARTESIAN_PD",
+        "motor_control_mode": "PD",
         "action_repeat": 10,
         "enable_springs": True,
         "add_noise": False,
         "enable_action_interpolation": False,
         "enable_action_clipping": False,
         "enable_action_filter": True,
-        "task_env": "JUMPING_ON_PLACE_TASK",
-        "observation_space_mode": "REAL_OBS_IMU_JP_Jv_NCF",
+        "task_env": "JUMPING_ON_PLACE_ABS_HEIGHT_TASK",
+        "observation_space_mode": "REAL_OBS_FP_Fv_NCF_IMU",
         "action_space_mode": "SYMMETRIC",
         "enable_joint_velocity_estimate": True,
     }
 
     env = QuadrupedGymEnv(**env_config)
 
-    sim_steps = 1000
+    sim_steps = 10
     action_dim = env._action_dim
     obs = env.reset()
     for i in range(sim_steps):
