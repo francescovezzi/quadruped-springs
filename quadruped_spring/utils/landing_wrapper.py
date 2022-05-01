@@ -1,7 +1,7 @@
 import gym
 import numpy as np
 
-from utils.timer import Timer
+from quadruped_spring.utils.timer import Timer
 
 
 class LandingWrapper(gym.Wrapper):
