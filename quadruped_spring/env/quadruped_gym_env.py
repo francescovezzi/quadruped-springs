@@ -1932,7 +1932,7 @@ def test_env():
     }
 
     env = QuadrupedGymEnv(**env_config)
-    
+
     sim_steps = 150
     action_dim = env.get_action_dim()
     obs = env.reset()
