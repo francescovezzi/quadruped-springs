@@ -10,7 +10,7 @@ class RestWrapper(gym.Wrapper):
     def __init__(self, env):
         super().__init__(env)
         self.rest_timer = Timer(dt=self.env.dt)
-        self._max_rest_time = 1.5
+        self._max_rest_time = 1.0
 
     def _is_rested(self):
         base_lin_vel = self.env.robot.GetBaseLinearVelocity()
