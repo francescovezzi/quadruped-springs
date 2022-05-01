@@ -20,8 +20,8 @@ class MonitorState(gym.Wrapper):
         self._time_step = self.env._time_step
         self.quadruped = self.env.robot
         self._motor = self.env.robot._motor_model
-        self._spring_stiffness = np.array(self.env._robot_config.SPRINGS_STIFFNESS * 4)
-        self._spring_rest_angles = np.array(self.env._robot_config.SPRINGS_DAMPING * 4)
+        self._spring_stiffness = np.array(self.env._robot_config.SPRINGS_STIFFNESS * self.env._robot_config.NUM_LEGS)
+        self._spring_rest_angles = np.array(self.env._robot_config.SPRINGS_DAMPING * self.env._robot_config.NUM_LEGS)
         self._step_counter = 0
         self._plot_counter = 0
         self._torque_limits = self.env._robot_config.TORQUE_LIMITS

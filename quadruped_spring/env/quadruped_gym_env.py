@@ -22,8 +22,8 @@ from gym import spaces
 from gym.utils import seeding
 from scipy.spatial.transform import Rotation as R
 
-import quadruped_spring.robots.a1.configs_a1 as a1_config
-import quadruped_spring.robots.go1.configs_go1 as go1_config
+import quadruped_spring.go1.configs_go1_with_springs as go1_config_with_springs
+import quadruped_spring.go1.configs_go1_without_springs as go1_config_without_springs
 from quadruped_spring.utils import action_filter
 
 ACTION_EPS = 0.01
@@ -64,7 +64,7 @@ VIDEO_LOG_DIRECTORY = "videos/" + datetime.datetime.now().strftime("vid-%Y-%m-%d
 #   "REAL_OBS_FP_Fv_NCF_IMU":  Feet positions and velocities
 #                              Feet contact normal forces
 #                              IMU (base veolcity, orientation,
-#                              orientation rate)
+#                              orientation rate), v_des
 #   "REAL_OBS_FP_Fv_NCF_IMU_JP_Jv":  REAL_OBS_FP_Fv_NCF_IMU +
 #                                    Joint configuration +
 #                                    Joint velocity
@@ -75,8 +75,6 @@ VIDEO_LOG_DIRECTORY = "videos/" + datetime.datetime.now().strftime("vid-%Y-%m-%d
 # Implemented action spaces for deep reinforcement learning:
 #   - "DEFAULT": classic
 #   - "SYMMETRIC" legs right side and left side move symmetrically
-#   - "SYMMETRIC_ONLY_HEIGHT" as the previous one but only feet height
-#      change (actually only CARTESIAN_PD control is supported)
 #   - "SYMMETRIC_NO_HIP" as symmetric but hips receive action = 0
 
 # Tasks to be learned with reinforcement learning
@@ -114,12 +112,13 @@ VIDEO_LOG_DIRECTORY = "videos/" + datetime.datetime.now().strftime("vid-%Y-%m-%d
 #   - "CARTESIAN_PD":
 #         supply desired foot positions for each leg (12)
 #         torques are computed based on the foot position/velocity error
+#   - "INVKIN_CARTESIAN_PD":
+#         supply desired foot positions for each leg (12)
+#         torques are computed based on the joint position/velocity error
 
 
 EPISODE_LENGTH = 10  # how long before we reset the environment (max episode length for RL)
 MAX_FWD_VELOCITY = 5  # to avoid exploiting simulator dynamics, cap max reward for body velocity
-
-ROBOT_CLASS_MAP = {"A1": a1_config, "GO1": go1_config}
 
 
 class QuadrupedGymEnv(gym.Env):
@@ -134,7 +133,6 @@ class QuadrupedGymEnv(gym.Env):
 
     def __init__(
         self,
-        robot_model="GO1",
         isRLGymInterface=True,
         time_step=0.001,
         action_repeat=10,
@@ -153,13 +151,11 @@ class QuadrupedGymEnv(gym.Env):
         enable_action_filter=False,
         enable_action_clipping=False,
         enable_joint_velocity_estimate=False,
-        adapt_spring_parameters=True,
         test_env=False,  # NOT ALLOWED FOR TRAINING!
     ):
         """Initialize the quadruped gym environment.
 
         Args:
-          robot_model: String representing the robot model. Select between "A1" or "GO1".
           isRLGymInterface: If the gym environment is being run as RL or not. Affects
             if the actions should be scaled.
           time_step: Simulation time step.
@@ -187,18 +183,17 @@ class QuadrupedGymEnv(gym.Env):
           enable_joint_velocity_estimate: Boolean specifying if it's used the
             estimated or the true joint velocity. Actually it affects only real
             observations space modes.
-          adapt_spring_parameters: Boolean specifying if modify robot configs for taking
-            into account the spring presence. Used for retrocompatibility with previous models.
         """
         self.seed()
-        try:
-            robot_config = ROBOT_CLASS_MAP[robot_model]
-        except KeyError:
-            raise KeyError('Robot model should be "A1" or "GO1"')
-        self._robot_config = robot_config
+        self._enable_springs = enable_springs
+        if self._enable_springs:
+            self._robot_config = go1_config_with_springs
+        else:
+            self._robot_config = go1_config_without_springs
         self._isRLGymInterface = isRLGymInterface
         self._time_step = time_step
         self._action_repeat = action_repeat
+        self.dt = self._action_repeat * self._time_step
         self._distance_weight = distance_weight
         self._energy_weight = energy_weight
         self._motor_control_mode = motor_control_mode
@@ -210,12 +205,10 @@ class QuadrupedGymEnv(gym.Env):
         self._is_render = render
         self._is_record_video = record_video
         self._add_noise = add_noise
-        self._enable_springs = enable_springs
         self._enable_action_interpolation = enable_action_interpolation
         self._enable_action_filter = enable_action_filter
         self._enable_action_clipping = enable_action_clipping
         self._enable_joint_velocity_estimate = enable_joint_velocity_estimate
-        self._adapt_spring_parameters = adapt_spring_parameters
         self._using_test_env = test_env
         if test_env:
             self._add_noise = True
@@ -225,15 +218,9 @@ class QuadrupedGymEnv(gym.Env):
 
         # other bookkeeping
         self._num_bullet_solver_iterations = int(300 / action_repeat)
-        self._env_step_counter = 0
-        self._sim_step_counter = 0
-        self._last_base_position = np.array([0, 0, 0])
         self._last_frame_time = 0.0  # for rendering
         self._MAX_EP_LEN = EPISODE_LENGTH  # max sim time in seconds, arbitrary
         self._action_bound = 1.0
-
-        if self._enable_springs and self._adapt_spring_parameters:
-            self._adjust_configs_springs()
 
         self.setupActionSpace()
         self.setupObservationSpace()
@@ -294,12 +281,12 @@ class QuadrupedGymEnv(gym.Env):
         rpy_low = np.array([-np.pi] * 3)
         drpy_high = np.array([5.0] * 3)
         drpy_low = np.array([-5.0] * 3)
-        foot_pos_high = np.array([0.1, 0.05, 0.1] * 4)
+        foot_pos_high = np.array([0.1, 0.05, 0.1] * self._robot_config.NUM_LEGS)
         foot_pos_low = -foot_pos_high
-        foot_vel_high = np.array([10.0] * 12)
-        foot_vel_low = np.array([-10.0] * 12)
-        contact_high = np.array([5.0] * 4)
-        contact_low = np.array([-5.0] * 4)
+        foot_vel_high = np.array([10.0] * self._robot_config.NUM_MOTORS)
+        foot_vel_low = np.array([-10.0] * self._robot_config.NUM_MOTORS)
+        contact_high = np.array([5.0] * self._robot_config.NUM_LEGS)
+        contact_low = np.array([-5.0] * self._robot_config.NUM_LEGS)
 
         observation_high = (
             np.concatenate(
@@ -341,12 +328,12 @@ class QuadrupedGymEnv(gym.Env):
         rpy_low = np.array([-np.pi] * 3)
         drpy_high = np.array([5.0] * 3)
         drpy_low = np.array([-5.0] * 3)
-        foot_pos_high = np.array([0.1, 0.05, 0.1] * 4)
+        foot_pos_high = np.array([0.1, 0.05, 0.1] * self._robot_config.NUM_LEGS)
         foot_pos_low = -foot_pos_high
-        foot_vel_high = np.array([10.0] * 12)
-        foot_vel_low = np.array([-10.0] * 12)
-        contact_high = np.array([5.0] * 4)
-        contact_low = np.array([-5.0] * 4)
+        foot_vel_high = np.array([10.0] * self._robot_config.NUM_MOTORS)
+        foot_vel_low = np.array([-10.0] * self._robot_config.NUM_MOTORS)
+        contact_high = np.array([5.0] * self._robot_config.NUM_LEGS)
+        contact_low = np.array([-5.0] * self._robot_config.NUM_LEGS)
 
         observation_high = (
             np.concatenate(
@@ -382,22 +369,25 @@ class QuadrupedGymEnv(gym.Env):
         return observation_high, observation_low
 
     def _set_obs_space_real_obs_FP_Fv_NCF_IMU(self):
+        v_des_high = np.array([0.001, 0.001, MAX_FWD_VELOCITY])
+        v_des_low = -v_des_high
         vel_high = np.array([MAX_FWD_VELOCITY] * 3)
         vel_low = np.array([-MAX_FWD_VELOCITY] * 3)
         rpy_high = np.array([np.pi] * 3)
         rpy_low = np.array([-np.pi] * 3)
         drpy_high = np.array([5.0] * 3)
         drpy_low = np.array([-5.0] * 3)
-        foot_pos_high = np.array([0.1, 0.05, 0.1] * 4)
+        foot_pos_high = np.array([0.1, 0.05, 0.1] * self._robot_config.NUM_LEGS)
         foot_pos_low = -foot_pos_high
-        foot_vel_high = np.array([10.0] * 12)
-        foot_vel_low = np.array([-10.0] * 12)
-        contact_high = np.array([5.0] * 4)
-        contact_low = np.array([-5.0] * 4)
+        foot_vel_high = np.array([10.0] * self._robot_config.NUM_MOTORS)
+        foot_vel_low = np.array([-10.0] * self._robot_config.NUM_MOTORS)
+        contact_high = np.array([5.0] * self._robot_config.NUM_LEGS)
+        contact_low = np.array([-5.0] * self._robot_config.NUM_LEGS)
 
         observation_high = (
             np.concatenate(
                 (
+                    v_des_high,
                     vel_high,
                     rpy_high,
                     drpy_high,
@@ -411,6 +401,7 @@ class QuadrupedGymEnv(gym.Env):
         observation_low = (
             np.concatenate(
                 (
+                    v_des_low,
                     vel_low,
                     rpy_low,
                     drpy_low,
@@ -427,12 +418,12 @@ class QuadrupedGymEnv(gym.Env):
     def _set_obs_space_real_obs_FP_Fv_NCF_JP(self):
         q_high = self._robot_config.RL_UPPER_ANGLE_JOINT
         q_low = self._robot_config.RL_LOWER_ANGLE_JOINT
-        foot_pos_high = np.array([0.1, 0.05, 0.1] * 4)
+        foot_pos_high = np.array([0.1, 0.05, 0.1] * self._robot_config.NUM_LEGS)
         foot_pos_low = -foot_pos_high
-        foot_vel_high = np.array([10.0] * 12)
-        foot_vel_low = np.array([-10.0] * 12)
-        contact_high = np.array([5.0] * 4)
-        contact_low = np.array([-5.0] * 4)
+        foot_vel_high = np.array([10.0] * self._robot_config.NUM_MOTORS)
+        foot_vel_low = np.array([-10.0] * self._robot_config.NUM_MOTORS)
+        contact_high = np.array([5.0] * self._robot_config.NUM_LEGS)
+        contact_low = np.array([-5.0] * self._robot_config.NUM_LEGS)
 
         observation_high = (
             np.concatenate(
@@ -464,12 +455,12 @@ class QuadrupedGymEnv(gym.Env):
         q_low = self._robot_config.RL_LOWER_ANGLE_JOINT
         dq_high = self._robot_config.VELOCITY_LIMITS
         dq_low = -self._robot_config.VELOCITY_LIMITS
-        foot_pos_high = np.array([0.1, 0.05, 0.1] * 4)
+        foot_pos_high = np.array([0.1, 0.05, 0.1] * self._robot_config.NUM_LEGS)
         foot_pos_low = -foot_pos_high
-        foot_vel_high = np.array([10.0] * 12)
-        foot_vel_low = np.array([-10.0] * 12)
-        contact_high = np.array([5.0] * 4)
-        contact_low = np.array([-5.0] * 4)
+        foot_vel_high = np.array([10.0] * self._robot_config.NUM_MOTORS)
+        foot_vel_low = np.array([-10.0] * self._robot_config.NUM_MOTORS)
+        contact_high = np.array([5.0] * self._robot_config.NUM_LEGS)
+        contact_low = np.array([-5.0] * self._robot_config.NUM_LEGS)
 
         observation_high = (
             np.concatenate(
@@ -501,12 +492,12 @@ class QuadrupedGymEnv(gym.Env):
     def _set_obs_space_real_obs_FP_Fv_CB_JP_Jv(self):
         q_high = self._robot_config.RL_UPPER_ANGLE_JOINT
         q_low = self._robot_config.RL_LOWER_ANGLE_JOINT
-        foot_pos_high = np.array([0.1, 0.05, 0.1] * 4)
+        foot_pos_high = np.array([0.1, 0.05, 0.1] * self._robot_config.NUM_LEGS)
         foot_pos_low = -foot_pos_high
-        foot_vel_high = np.array([10.0] * 12)
-        foot_vel_low = np.array([-10.0] * 12)
-        contact_high = np.array([1.0] * 4)
-        contact_low = np.array([0.0] * 4)
+        foot_vel_high = np.array([10.0] * self._robot_config.NUM_MOTORS)
+        foot_vel_low = np.array([-10.0] * self._robot_config.NUM_MOTORS)
+        contact_high = np.array([1.0] * self._robot_config.NUM_LEGS)
+        contact_low = np.array([0.0] * self._robot_config.NUM_LEGS)
 
         observation_high = (
             np.concatenate(
@@ -534,12 +525,12 @@ class QuadrupedGymEnv(gym.Env):
         return observation_high, observation_low
 
     def _set_obs_space_real_obs_FP_Fv_CB_JP(self):
-        foot_pos_high = np.array([0.1, 0.05, 0.1] * 4)
+        foot_pos_high = np.array([0.1, 0.05, 0.1] * self._robot_config.NUM_LEGS)
         foot_pos_low = -foot_pos_high
-        foot_vel_high = np.array([10.0] * 12)
-        foot_vel_low = np.array([-10.0] * 12)
-        contact_high = np.array([1.0] * 4)
-        contact_low = np.array([0.0] * 4)
+        foot_vel_high = np.array([10.0] * self._robot_config.NUM_MOTORS)
+        foot_vel_low = np.array([-10.0] * self._robot_config.NUM_MOTORS)
+        contact_high = np.array([1.0] * self._robot_config.NUM_LEGS)
+        contact_low = np.array([0.0] * self._robot_config.NUM_LEGS)
 
         observation_high = (
             np.concatenate(
@@ -577,10 +568,10 @@ class QuadrupedGymEnv(gym.Env):
         drpy_low = np.array([-5.0] * 3)
         foot_pos_high = np.array([0.1, 0.05, 0.1])
         foot_pos_low = -foot_pos_high
-        foot_vel_high = np.array([10.0] * 12)
-        foot_vel_low = np.array([-10.0] * 12)
-        contact_high = np.array([1.0] * 4)
-        contact_low = np.array([0.0] * 4)
+        foot_vel_high = np.array([10.0] * self._robot_config.NUM_MOTORS)
+        foot_vel_low = np.array([-10.0] * self._robot_config.NUM_MOTORS)
+        contact_high = np.array([1.0] * self._robot_config.NUM_LEGS)
+        contact_low = np.array([0.0] * self._robot_config.NUM_LEGS)
 
         observation_high = (
             np.concatenate(
@@ -619,12 +610,22 @@ class QuadrupedGymEnv(gym.Env):
 
     def _set_obs_space_default(self):
         observation_high = (
-            np.concatenate((self._robot_config.RL_UPPER_ANGLE_JOINT, self._robot_config.VELOCITY_LIMITS, np.array([1.0] * 4)))
+            np.concatenate(
+                (
+                    self._robot_config.RL_UPPER_ANGLE_JOINT,
+                    self._robot_config.VELOCITY_LIMITS,
+                    np.array([1.0] * self._robot_config.NUM_LEGS),
+                )
+            )
             + OBSERVATION_EPS
         )
         observation_low = (
             np.concatenate(
-                (self._robot_config.RL_LOWER_ANGLE_JOINT, -self._robot_config.VELOCITY_LIMITS, np.array([-1.0] * 4))
+                (
+                    self._robot_config.RL_LOWER_ANGLE_JOINT,
+                    -self._robot_config.VELOCITY_LIMITS,
+                    np.array([-1.0] * self._robot_config.NUM_LEGS),
+                )
             )
             - OBSERVATION_EPS
         )
@@ -643,10 +644,10 @@ class QuadrupedGymEnv(gym.Env):
         drpy_low = np.array([-5.0] * 3)
         foot_pos_high = np.array([0.1, 0.05, 0.1])
         foot_pos_low = -foot_pos_high
-        foot_vel_high = np.array([10.0] * 12)
-        foot_vel_low = np.array([-10.0] * 12)
-        contact_high = np.array([1.0] * 4)
-        contact_low = np.array([0.0] * 4)
+        foot_vel_high = np.array([10.0] * self._robot_config.NUM_MOTORS)
+        foot_vel_low = np.array([-10.0] * self._robot_config.NUM_MOTORS)
+        contact_high = np.array([1.0] * self._robot_config.NUM_LEGS)
+        contact_low = np.array([0.0] * self._robot_config.NUM_LEGS)
 
         observation_high = (
             np.concatenate(
@@ -687,15 +688,13 @@ class QuadrupedGymEnv(gym.Env):
 
     def setupActionSpace(self):
         """Set up action space for RL."""
-        if self._motor_control_mode not in ["PD", "TORQUE", "CARTESIAN_PD"]:
+        if self._motor_control_mode not in ["PD", "TORQUE", "CARTESIAN_PD", "INVKIN_CARTESIAN_PD"]:
             raise ValueError("motor control mode " + self._motor_control_mode + " not implemented yet.")
 
         if self._action_space_mode == "DEFAULT":
             action_dim = 12
         elif self._action_space_mode == "SYMMETRIC":
             action_dim = 6
-        elif self._action_space_mode == "SYMMETRIC_ONLY_HEIGHT":
-            action_dim = 2
         elif self._action_space_mode == "SYMMETRIC_NO_HIP":
             action_dim = 4
         else:
@@ -704,6 +703,9 @@ class QuadrupedGymEnv(gym.Env):
         action_high = np.array([1] * action_dim)
         self.action_space = spaces.Box(-action_high, action_high, dtype=np.float32)
         self._action_dim = action_dim
+
+    def get_action_dim(self):
+        return self._action_dim
 
     def _get_observation(self):
         """Get observation, depending on obs space selected."""
@@ -763,7 +765,7 @@ class QuadrupedGymEnv(gym.Env):
         foot_pos, foot_vel = self._compute_feet_position_vel()
         _, _, feetNormalForces, _ = self.robot.GetContactInfo()
 
-        self._observation = np.concatenate((base_vel, base_rpy, base_drpy, foot_pos, foot_vel, feetNormalForces))
+        self._observation = np.concatenate((self._v_des, base_vel, base_rpy, base_drpy, foot_pos, foot_vel, feetNormalForces))
 
     def _get_obs_real_FP_Fv_NCF_JP(self):
         q = self.robot.GetMotorAngles()
@@ -898,10 +900,13 @@ class QuadrupedGymEnv(gym.Env):
 
     def _termination(self):
         """Decide whether we should stop the episode and reset the environment."""
+        self.terminated = False
         if self._TASK_ENV in ["JUMPING_TASK", "LR_COURSE_TASK", "FWD_LOCOMOTION"]:
-            return self.is_fallen()
+            self.terminated = self.is_fallen()
+            return self.terminated
         elif self._TASK_ENV in ["JUMPING_ON_PLACE_TASK", "JUMPING_ON_PLACE_HEIGHT_TASK", "JUMPING_ON_PLACE_ABS_HEIGHT_TASK"]:
-            return self.is_fallen() or self._not_allowed_contact()
+            self.terminated = self.is_fallen() or self._not_allowed_contact()
+            return self.terminated
         elif self._TASK_ENV == "LANDING_TASK":
             pass
         elif self._TASK_ENV == "JUMPING_FORWARD":
@@ -983,6 +988,13 @@ class QuadrupedGymEnv(gym.Env):
         return 0
 
     def _reward_jumping_on_place(self):
+<<<<<<< HEAD
+=======
+        """
+        Reward maximum flight time, plus computing maximum orientation angles
+        and forward distance
+        """
+>>>>>>> change_task_landing
         # Change is fallen height
         self._robot_config.IS_FALLEN_HEIGHT = 0.01
 
@@ -1020,7 +1032,10 @@ class QuadrupedGymEnv(gym.Env):
         return flight_time_reward
 
     def _reward_jumping_on_place_height(self):
-        """Reward maximum flight time"""
+        """
+        Reward maximum height calculated from the jumping taking off, plus
+        compute maximum orientation angles and forward distance
+        """
         # Change is fallen height
         self._robot_config.IS_FALLEN_HEIGHT = 0.01
 
@@ -1062,7 +1077,10 @@ class QuadrupedGymEnv(gym.Env):
         return flight_time_reward
 
     def _reward_jumping_on_place_abs_height(self):
-        """Reward maximum flight time"""
+        """
+        Reward maximum peak height minus the initial height, plus
+        compute maximum orientation angles and forward distance
+        """
         # Change is fallen height
         self._robot_config.IS_FALLEN_HEIGHT = 0.01
 
@@ -1254,15 +1272,16 @@ class QuadrupedGymEnv(gym.Env):
             # Optionally: no reward in case of crash
             reward -= 0.08
         max_height = 0.8
-        reward += self._max_height / max_height
-        reward += 0.05 * np.exp(-self._max_yaw**2 / 0.01)  # orientation
-        reward += 0.05 * np.exp(-self._max_pitch**2 / 0.01)  # orientation
+        max_height_normalized = self._max_height / max_height
+        reward += max_height_normalized
+        reward += max_height_normalized * 0.05 * np.exp(-self._max_yaw**2 / 0.01)  # orientation
+        reward += max_height_normalized * 0.05 * np.exp(-self._max_pitch**2 / 0.01)  # orientation
 
-        reward += 0.1 * np.exp(-self._max_forward_distance**2 / 0.05)  # be on place
+        reward += max_height_normalized * 0.1 * np.exp(-self._max_forward_distance**2 / 0.05)  # be on place
 
         if self._max_height > 0 and not self._termination():
             # Alive bonus proportional to the risk taken
-            reward += 0.1 * self._max_height / max_height
+            reward += 0.1 * max_height_normalized
         # print(f"Forward dist: {self._max_forward_distance}")
         return reward
 
@@ -1302,9 +1321,28 @@ class QuadrupedGymEnv(gym.Env):
         elif self._motor_control_mode == "CARTESIAN_PD":
             action = self.ScaleActionToCartesianPos(action)
             # Here the clipping happens inside ScaleActionToCartesianPos
+        elif self._motor_control_mode == "INVKIN_CARTESIAN_PD":
+            action = self._invkin_action_to_command(action)
+            action = np.clip(action, self._robot_config.RL_LOWER_ANGLE_JOINT, self._robot_config.RL_UPPER_ANGLE_JOINT)
         else:
             raise ValueError("RL motor control mode" + self._motor_control_mode + "not implemented yet.")
         return action
+
+    def _invkin_action_to_command(self, actions):
+        u = np.clip(actions, -1, 1)
+        des_foot_pos = self._scale_helper(
+            u, self._robot_config.RL_LOWER_CARTESIAN_POS, self._robot_config.RL_UPPER_CARTESIAN_POS
+        )
+        q_des = np.array(
+            list(map(lambda i: self.robot.ComputeInverseKinematics(i, des_foot_pos[3 * i : 3 * (i + 1)]), range(4)))
+        )
+        return q_des.flatten()
+
+    def _compute_action_from_command(self, command, min_command, max_command):
+        """
+        Helper to linearly scale from [min_command, max_command] to [-1, 1].
+        """
+        return -1 + 2 * (command - min_command) / (max_command - min_command)
 
     def _scale_helper(self, action, lower_lim, upper_lim):
         """Helper to linearly scale from [-1,1] to lower/upper limits."""
@@ -1320,9 +1358,12 @@ class QuadrupedGymEnv(gym.Env):
         u = np.clip(actions, -1, 1)
         # scale to corresponding desired foot positions (i.e. ranges in x,y,z we allow the agent to choose foot positions)
         # [TODO: edit (do you think these should these be increased? How limiting is this?)]
-        scale_array = np.array([0.2, 0.05, 0.15] * 4)  # [0.1, 0.05, 0.08]*4)
+        # scale_array = np.array([0.2, 0.05, 0.15] * 4)  # [0.1, 0.05, 0.08]*4)
         # add to nominal foot position in leg frame (what are the final ranges?)
-        des_foot_pos = self._robot_config.NOMINAL_FOOT_POS_LEG_FRAME + scale_array * u
+        # des_foot_pos = self._robot_config.NOMINAL_FOOT_POS_LEG_FRAME + scale_array * u
+        des_foot_pos = self._scale_helper(
+            u, self._robot_config.RL_LOWER_CARTESIAN_POS, self._robot_config.RL_UPPER_CARTESIAN_POS
+        )
         # get Cartesian kp and kd gains (can be modified)
         kpCartesian = self._robot_config.kpCartesian
         kdCartesian = self._robot_config.kdCartesian
@@ -1351,27 +1392,6 @@ class QuadrupedGymEnv(gym.Env):
             action[3 * i : 3 * (i + 1)] = tau  # TODO: add white noise
         return action
 
-    def _map_command_to_action(self, command):
-        """
-        Given the desired motor commmand returns the action that produces
-        that motor command
-        """
-        if self._motor_control_mode == "PD":
-            max_angles = self._robot_config.RL_UPPER_ANGLE_JOINT
-            min_angles = self._robot_config.RL_LOWER_ANGLE_JOINT
-            command = np.clip(command, min_angles, max_angles)
-            action = 2 * (command - min_angles) / (max_angles - min_angles) - 1
-        elif self._motor_control_mode == "CARTESIAN_PD":
-            raise ValueError(
-                f"for the motor control mode {self._motor_control_mode} the mapping from foot cartesian position to action not implemented yet."
-            )
-        else:
-            raise ValueError(f"The motor control mode {self._motor_control_mode} is not implemented for RL")
-
-        action = np.clip(action, -1, 1)
-        # command = self._transform_action_to_motor_command(action)
-        return action
-
     def _clip_motor_commands(self, des_angles):
         """Clips motor commands.
 
@@ -1383,7 +1403,7 @@ class QuadrupedGymEnv(gym.Env):
         """
 
         # clamp the motor command by the joint limit, in case weired things happens
-        if self._motor_control_mode == "PD":
+        if self._motor_control_mode in ["INVKIN_CARTESIAN_PD", "PD"]:
             max_angle_change = self._robot_config.MAX_MOTOR_ANGLE_CHANGE_PER_STEP
             current_motor_angles = self.robot.GetMotorAngles()
             motor_commands = np.clip(
@@ -1394,6 +1414,10 @@ class QuadrupedGymEnv(gym.Env):
             raise ValueError(f"Clipping angles available for PD control only, not in {self._motor_control_mode}")
 
     def adapt_action_dim_for_robot(self, action):
+        """
+        In according to the selected action spaced the action is converted to have the
+        same dimension as the default one -> 12 in the properly way.
+        """
         assert (
             len(action) == self._action_dim
         ), f"action dimension is {len(action)}, action space has dimension {self._action_dim} "
@@ -1402,7 +1426,7 @@ class QuadrupedGymEnv(gym.Env):
         elif self._action_space_mode == "SYMMETRIC":
             if self._motor_control_mode in ["TORQUE", "PD"]:
                 symm_idx = 0  #  hip angle
-            elif self._motor_control_mode == "CARTESIAN_PD":
+            elif self._motor_control_mode in ["INVKIN_CARTESIAN_PD", "CARTESIAN_PD"]:
                 symm_idx = 1  #  y cartesian pos
             else:
                 raise ValueError(f"motor control mode {self._motor_control_mode} not implemented yet")
@@ -1417,15 +1441,6 @@ class QuadrupedGymEnv(gym.Env):
 
             leg = np.concatenate((leg_FR, leg_FL, leg_RR, leg_RL))
 
-        elif self._action_space_mode == "SYMMETRIC_ONLY_HEIGHT":
-            if self._motor_control_mode != "CARTESIAN_PD":
-                raise ValueError(
-                    f"action space mode {self._action_space_mode} for {self._motor_control_mode} not implemented yet"
-                )
-            leg_FR = leg_FL = [0, 0, action[0]]
-            leg_RR = leg_RL = [0, 0, action[1]]
-            leg = np.concatenate((leg_FR, leg_FL, leg_RR, leg_RL))
-
         elif self._action_space_mode == "SYMMETRIC_NO_HIP":
             if self._motor_control_mode == "PD":
                 leg_FR = action[0:2]
@@ -1436,7 +1451,7 @@ class QuadrupedGymEnv(gym.Env):
 
                 leg = np.concatenate((leg_FR, leg_FL, leg_RR, leg_RL))
 
-            elif self._motor_control_mode == "CARTESIAN_PD":
+            elif self._motor_control_mode in ["INVKIN_CARTESIAN_PD", "CARTESIAN_PD"]:
                 # no motion along y
                 leg_FL = leg_FR = np.array([action[0], 0, action[1]])
                 leg_RL = leg_RR = np.array([action[2], 0, action[3]])
@@ -1447,6 +1462,27 @@ class QuadrupedGymEnv(gym.Env):
             raise ValueError(f"action space mode {self._action_space_mode} not implemented yet")
 
         return leg
+
+    def adapt_command_to_action_dim(self, command):
+        """Given a command it's been converted to a command with the same dimension
+            of the Action Space. Actually used in LandingWrapper.
+
+        Args:
+            command (np.Array): the command you would like to apply to the robot
+        """
+        assert len(command) == 12, "command has not right dimensions. Should be (12,)"
+        if self._action_space_mode == "DEFAULT":
+            return command
+        elif self._action_space_mode == "SYMMETRIC":
+            leg_FR = command[0:3]
+            leg_RR = command[6:9]
+            return np.concatenate((leg_FR, leg_RR))
+        elif self._action_space_mode == "SYMMETRIC_NO_HIP":
+            leg_FR = command[1:3]
+            leg_RR = command[7:9]
+            return np.concatenate((leg_FR, leg_RR))
+        else:
+            raise ValueError(f"action space {self._action_space_mode} not supported yet")
 
     def step(self, action):
         """Step forward the simulation, given the action."""
@@ -1500,7 +1536,7 @@ class QuadrupedGymEnv(gym.Env):
         sampling_rate = 1 / (self._time_step * self._action_repeat)
         num_joints = self._action_dim
         a_filter = action_filter.ActionFilterButter(sampling_rate=sampling_rate, num_joints=num_joints)
-        if self._enable_springs and self._adjust_configs_springs:
+        if self._enable_springs:
             a_filter.highcut = 2.5
         return a_filter
 
@@ -1523,7 +1559,7 @@ class QuadrupedGymEnv(gym.Env):
             # init_angles = self._robot_config.INIT_MOTOR_ANGLES + self._robot_config.JOINT_OFFSETS
             # default_action = self._map_command_to_action(init_angles)
             default_action = np.array([0] * self._action_dim)
-        elif self._motor_control_mode == "CARTESIAN_PD":
+        elif self._motor_control_mode in ["INVKIN_CARTESIAN_PD", "CARTESIAN_PD"]:
             # go toward NOMINAL_FOOT_POS_LEG_FRAME
             default_action = np.array([0] * self._action_dim)
         else:
@@ -1574,6 +1610,7 @@ class QuadrupedGymEnv(gym.Env):
         self._env_step_counter = 0
         self._sim_step_counter = 0
         self._last_base_position = [0, 0, 0]
+        self.init_action = self._compute_init_action()
 
         if self._is_render:
             self._pybullet_client.resetDebugVisualizerCamera(self._cam_dist, self._cam_yaw, self._cam_pitch, [0, 0, 0])
@@ -1598,13 +1635,10 @@ class QuadrupedGymEnv(gym.Env):
 
     def _settle_robot_by_action(self):
         """Settle robot in according to the used motor control mode in RL interface"""
-        # init_action = self._compute_first_actions()
-        init_action = np.zeros(self._action_dim)
-        init_action = self.adapt_action_dim_for_robot(init_action)
         if self._is_render:
             time.sleep(0.2)
-        for _ in range(1000):
-            proc_action = self._transform_action_to_motor_command(init_action)
+        for _ in range(1500):
+            proc_action = self._transform_action_to_motor_command(self.init_action)
             self.robot.ApplyAction(proc_action)
             if self._is_render:
                 time.sleep(0.001)
@@ -1625,7 +1659,7 @@ class QuadrupedGymEnv(gym.Env):
         init_motor_angles = self._robot_config.INIT_MOTOR_ANGLES + self._robot_config.JOINT_OFFSETS
         if self._is_render:
             time.sleep(0.2)
-        for _ in range(800):
+        for _ in range(1500):
             self.robot.ApplyAction(init_motor_angles)
             if self._is_render:
                 time.sleep(0.001)
@@ -1645,6 +1679,30 @@ class QuadrupedGymEnv(gym.Env):
         else:
             self._settle_robot_by_PD()
 
+    def compute_action_from_command(self, command):
+        if self._motor_control_mode == "PD":
+            action = self._compute_action_from_command(
+                command, self._robot_config.RL_LOWER_ANGLE_JOINT, self._robot_config.RL_UPPER_ANGLE_JOINT
+            )
+        elif self._motor_control_mode in ["CARTESIAN_PD", "INVKIN_CARTESIAN_PD"]:
+            action = self._compute_action_from_command(
+                command, self._robot_config.RL_LOWER_CARTESIAN_POS, self._robot_config.RL_UPPER_CARTESIAN_POS
+            )
+        else:
+            raise ValueError(f"motor control mode {self._motor_control_mode} not supported yet in RLGymInterface.")
+        return action
+
+    def _compute_init_action(self):
+        if self._motor_control_mode == "PD":
+            command = self._robot_config.INIT_MOTOR_ANGLES
+            init_action = self.compute_action_from_command(command)
+        elif self._motor_control_mode in ["CARTESIAN_PD", "INVKIN_CARTESIAN_PD"]:
+            command = self._robot_config.NOMINAL_FOOT_POS_LEG_FRAME
+            init_action = self.compute_action_from_command(command)
+        else:
+            raise ValueError(f"motor control mode {self._motor_control_mode} not supported yet in RLGymInterface.")
+        return init_action
+
     def _init_task_variables(self):
         if self._TASK_ENV == "JUMPING_TASK":
             self._init_variables_jumping()
@@ -1654,6 +1712,7 @@ class QuadrupedGymEnv(gym.Env):
             self._init_variables_jumping_on_place()
         elif self._TASK_ENV in ["JUMPING_ON_PLACE_HEIGHT_TASK", "JUMPING_ON_PLACE_ABS_HEIGHT_TASK"]:
             self._init_variables_jumping_on_place_height()
+            self._v_des = np.array([0.0, 0.0, 3.0])
         elif self._TASK_ENV == "LANDING_TASK":
             self._init_variables_landing()
         elif self._TASK_ENV == "JUMPING_FORWARD":
@@ -1715,26 +1774,6 @@ class QuadrupedGymEnv(gym.Env):
         self._max_pitch = 0.0
         self._jump_init_height = self._robot_pose_take_off[2]
         self._max_height = 0.0
-
-    def _adjust_configs_springs(self):
-        spring_angles = np.array(self._robot_config.SPRINGS_REST_ANGLE * 4)
-        self._robot_config.INIT_JOINT_ANGLES = spring_angles
-        self._robot_config.INIT_MOTOR_ANGLES = spring_angles
-        self._robot_config.kpCartesian = np.diag([1200, 2000, 2000])
-        self._robot_config.kdCartesian = np.diag([13, 15, 15])
-
-        self._robot_config.RL_LOWER_ANGLE_JOINT = np.array(
-            [
-                self._robot_config.DEFAULT_HIP_ANGLE - 0.2,
-                self._robot_config.DEFAULT_THIGH_ANGLE - 0.4,
-                self._robot_config.DEFAULT_CALF_ANGLE - 0.85,
-            ]
-            * 4
-        )
-        # self._robot_config.RL_UPPER_ANGLE_JOINT = self._robot_config.RL_UPPER_ANGLE_JOINT
-
-        self._robot_config.MOTOR_KP = [100, 100, 100] * 4
-        self._robot_config.MOTOR_KD = [1.0, 1.5, 1.5] * 4
 
     ######################################################################################
     # Render, record videos, bookkeping, and misc pybullet helpers.
@@ -1852,6 +1891,18 @@ class QuadrupedGymEnv(gym.Env):
         """Get current simulation time."""
         return self._sim_step_counter * self._time_step
 
+    def get_motor_control_mode(self):
+        """Get current motor control mode."""
+        return self._motor_control_mode
+
+    def get_robot_config(self):
+        """Get current robot config."""
+        return self._robot_config
+
+    def are_springs_enabled(self):
+        """Get boolean specifying if springs are enabled or not."""
+        return self._enable_springs
+
     def scale_rand(self, num_rand, low, high):
         """scale number of rand numbers between low and high"""
         return low + np.random.random(num_rand) * (high - low)
@@ -1956,6 +2007,7 @@ class QuadrupedGymEnv(gym.Env):
 
 def test_env():
 
+<<<<<<< HEAD
     env_config = {}
     env_config["robot_model"] = "GO1"
     env_config["render"] = False
@@ -1971,14 +2023,32 @@ def test_env():
     env_config["observation_space_mode"] = "REAL_OBS_IMU_JP_Jv_NCF"
     env_config["action_space_mode"] = "SYMMETRIC"
     env_config["enable_joint_velocity_estimate"] = True
+=======
+    env_config = {
+        "render": False,
+        "on_rack": False,
+        "motor_control_mode": "PD",
+        "action_repeat": 10,
+        "enable_springs": True,
+        "add_noise": False,
+        "enable_action_interpolation": False,
+        "enable_action_clipping": False,
+        "enable_action_filter": True,
+        "task_env": "JUMPING_ON_PLACE_ABS_HEIGHT_TASK",
+        "observation_space_mode": "REAL_OBS_FP_Fv_NCF_IMU",
+        "action_space_mode": "SYMMETRIC",
+        "enable_joint_velocity_estimate": True,
+    }
+>>>>>>> change_task_landing
 
     env = QuadrupedGymEnv(**env_config)
 
-    sim_steps = 1000
+    sim_steps = 150
+    action_dim = env.get_action_dim()
     obs = env.reset()
     for i in range(sim_steps):
-        action = np.random.rand(env._action_dim) * 2 - 1
-        # action = np.full(12,0)
+        action = np.random.rand(action_dim) * 2 - 1
+        # action = np.full(action_dim, 0)
         obs, reward, done, info = env.step(action)
     print("end")
 
