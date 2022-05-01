@@ -19,7 +19,7 @@ class LandingWrapper(gym.Wrapper):
 
     def _compute_landing_pose(self):
         motor_control_mode = self.env.get_motor_control_mode()
-        if motor_control_mode in ["CARTESIAN_PD" or "INVKIN_CARTESIAN_PD"]:
+        if motor_control_mode in ["CARTESIAN_PD", "INVKIN_CARTESIAN_PD"]:
             x = 0.0
             y = self._robot_config.DEFAULT_Y
             z = -0.28
@@ -30,6 +30,8 @@ class LandingWrapper(gym.Wrapper):
             # calf = -np.pi / 2
             # landing_pose = np.array([hip, thigh, calf] * self._robot_config.NUM_LEGS)
             landing_pose = self._robot_config.INIT_MOTOR_ANGLES
+        else:
+            raise ValueError(f'motor control mode {motor_control_mode} not supported yet.')
         return landing_pose
 
     def _compute_landing_action(self):
