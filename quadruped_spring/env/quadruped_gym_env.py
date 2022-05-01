@@ -369,7 +369,7 @@ class QuadrupedGymEnv(gym.Env):
         return observation_high, observation_low
 
     def _set_obs_space_real_obs_FP_Fv_NCF_IMU(self):
-        v_des_high = np.array([0.001, 0.001, MAX_FWD_VELOCITY])
+        v_des_high = MAX_FWD_VELOCITY
         v_des_low = -v_des_high
         vel_high = np.array([MAX_FWD_VELOCITY] * 3)
         vel_low = np.array([-MAX_FWD_VELOCITY] * 3)
@@ -955,7 +955,6 @@ class QuadrupedGymEnv(gym.Env):
         _, _, _, feet_in_contact = self.robot.GetContactInfo()
         # no_feet_in_contact_reward = -np.mean(feet_in_contact)
 
-        flight_time_reward = 0.0
         if np.all(1 - np.array(feet_in_contact)):
             if not self._all_feet_in_the_air:
                 self._all_feet_in_the_air = True
@@ -988,13 +987,10 @@ class QuadrupedGymEnv(gym.Env):
         return 0
 
     def _reward_jumping_on_place(self):
-<<<<<<< HEAD
-=======
         """
         Reward maximum flight time, plus computing maximum orientation angles
         and forward distance
         """
->>>>>>> change_task_landing
         # Change is fallen height
         self._robot_config.IS_FALLEN_HEIGHT = 0.01
 
@@ -1219,15 +1215,16 @@ class QuadrupedGymEnv(gym.Env):
             reward -= 0.08
         max_fwd = 0.5
         max_height = 0.5
-        reward += self._max_forward_distance / max_fwd
-        reward += 0.05 * np.exp(-self._max_yaw**2 / 0.1)  # orientation
-        reward += 0.05 * np.exp(-self._max_roll**2 / 0.1)  # orientation
+        normalize_fwd_distance = self._max_forward_distance / max_fwd
+        reward += normalize_fwd_distance
+        reward += normalize_fwd_distance * 0.05 * np.exp(-self._max_yaw**2 / 0.1)  # orientation
+        reward += normalize_fwd_distance * 0.05 * np.exp(-self._max_roll**2 / 0.1)  # orientation
 
-        reward += 0.1 * (self._max_forward_distance / max_fwd) * self._max_height / max_height  # bonus max_height
+        reward += 0.2 * normalize_fwd_distance *  self._max_height / max_height  # bonus max_height
 
         if self._max_forward_distance > 0 and not self._termination():
             # Alive bonus proportional to the risk taken
-            reward += 0.1 * self._max_forward_distance / max_fwd
+            reward += normalize_fwd_distance * 0.1
         # print(f"Forward dist: {self._max_forward_distance}")
         return reward
 
@@ -1712,7 +1709,6 @@ class QuadrupedGymEnv(gym.Env):
             self._init_variables_jumping_on_place()
         elif self._TASK_ENV in ["JUMPING_ON_PLACE_HEIGHT_TASK", "JUMPING_ON_PLACE_ABS_HEIGHT_TASK"]:
             self._init_variables_jumping_on_place_height()
-            self._v_des = np.array([0.0, 0.0, 3.0])
         elif self._TASK_ENV == "LANDING_TASK":
             self._init_variables_landing()
         elif self._TASK_ENV == "JUMPING_FORWARD":
@@ -1721,6 +1717,7 @@ class QuadrupedGymEnv(gym.Env):
             raise ValueError(f"the task {self._TASK_ENV} is not implemented yet")
         
     def _init_variables_jumping_forward(self):
+        self._v_des = 3.0
         self._init_height = self.robot.GetBasePosition()[2]
         self._all_feet_in_the_air = False
         self._time_take_off = self.get_sim_time()
@@ -1748,7 +1745,7 @@ class QuadrupedGymEnv(gym.Env):
         self._max_forward_distance = 0.0
 
     def _init_variables_jumping_on_place(self):
-        self._v_des = np.array([0.0, 0.0])
+        self._v_des = 3.0
         self._init_height = self.robot.GetBasePosition()[2]
         self._all_feet_in_the_air = False
         self._time_take_off = self.get_sim_time()
@@ -1761,7 +1758,7 @@ class QuadrupedGymEnv(gym.Env):
         self._max_pitch = 0.0
 
     def _init_variables_jumping_on_place_height(self):
-        self._v_des = np.array([0.0, 0.0])
+        self._v_des = 3.0
         self._init_height = self.robot.GetBasePosition()[2]
         self._all_feet_in_the_air = False
         self._time_take_off = self.get_sim_time()
@@ -2007,39 +2004,21 @@ class QuadrupedGymEnv(gym.Env):
 
 def test_env():
 
-<<<<<<< HEAD
-    env_config = {}
-    env_config["robot_model"] = "GO1"
-    env_config["render"] = False
-    env_config["on_rack"] = True
-    env_config["motor_control_mode"] = "CARTESIAN_PD"
-    env_config["action_repeat"] = 10
-    env_config["enable_springs"] = True
-    env_config["add_noise"] = False
-    env_config["enable_action_interpolation"] = False
-    env_config["enable_action_clipping"] = False
-    env_config["enable_action_filter"] = True
-    env_config["task_env"] = "JUMPING_FORWARD"
-    env_config["observation_space_mode"] = "REAL_OBS_IMU_JP_Jv_NCF"
-    env_config["action_space_mode"] = "SYMMETRIC"
-    env_config["enable_joint_velocity_estimate"] = True
-=======
     env_config = {
         "render": False,
         "on_rack": False,
-        "motor_control_mode": "PD",
+        "motor_control_mode": "INVKIN_CARTESIAN_PD",
         "action_repeat": 10,
         "enable_springs": True,
         "add_noise": False,
         "enable_action_interpolation": False,
         "enable_action_clipping": False,
         "enable_action_filter": True,
-        "task_env": "JUMPING_ON_PLACE_ABS_HEIGHT_TASK",
+        "task_env": "JUMPING_FORWARD",
         "observation_space_mode": "REAL_OBS_FP_Fv_NCF_IMU",
         "action_space_mode": "SYMMETRIC",
         "enable_joint_velocity_estimate": True,
     }
->>>>>>> change_task_landing
 
     env = QuadrupedGymEnv(**env_config)
 
