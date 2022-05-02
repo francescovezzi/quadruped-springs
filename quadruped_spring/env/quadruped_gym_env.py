@@ -25,6 +25,7 @@ from scipy.spatial.transform import Rotation as R
 import quadruped_spring.go1.configs_go1_with_springs as go1_config_with_springs
 import quadruped_spring.go1.configs_go1_without_springs as go1_config_without_springs
 from quadruped_spring.utils import action_filter
+
 # from quadruped_spring.utils.rest_wrapper import RestWrapper
 # from quadruped_spring.utils.landing_wrapper import LandingWrapper
 
@@ -2025,7 +2026,7 @@ def test_env():
     env = QuadrupedGymEnv(**env_config)
     # env = RestWrapper(env)
     # env = LandingWrapper(env)
-    
+
     sim_steps = 500
     action_dim = env.get_action_dim()
     obs = env.reset()
