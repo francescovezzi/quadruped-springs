@@ -136,3 +136,47 @@ _FOOT_NAME_PATTERN = re.compile(r"\w+_foot_\w+")
 # step size is equal to 0.001 * action_repeat(default_value = 10)
 MAX_MOTOR_ANGLE_CHANGE_PER_STEP = 0.2
 MAX_CARTESIAN_FOOT_POS_CHANGE_PER_STEP = np.array([0.1, 0.02, 0.08])
+
+################################################
+# Sensor High Limits
+################################################
+
+VEL_LIN_HIGH = np.array([5.0] * 3)
+ORIENT_RPY_HIGH = np.array([np.pi] * 3)
+ORIENT_RATE_HIGH = np.array([5.0] * 3)
+IMU_HIGH = np.concatenate((VEL_LIN_HIGH, ORIENT_RPY_HIGH, ORIENT_RATE_HIGH))
+JOINT_ANGLES_HIGH = RL_UPPER_ANGLE_JOINT
+JOINT_VELOCITIES_HIGH = RL_VELOCITY_LIMITS
+CONTACT_FORCE_HIGH = np.array([5.0] * NUM_LEGS)
+CONTACT_BOOL_HIGH = np.array([1.0] * NUM_LEGS)
+FEET_POS_HIGH = RL_UPPER_CARTESIAN_POS
+FEET_VEL_HIGH = np.array([10.0] * NUM_MOTORS)
+
+################################################
+# Sensor Low Limits
+################################################
+
+IMU_LOW = -IMU_HIGH 
+JOINT_ANGLES_LOW = RL_LOWER_ANGLE_JOINT
+JOINT_VELOCITIES_LOW = -JOINT_VELOCITIES_HIGH
+CONTACT_FORCE_LOW = -CONTACT_FORCE_HIGH
+CONTACT_BOOL_LOW = np.array([0.0] * NUM_LEGS)
+FEET_POS_LOW = RL_LOWER_CARTESIAN_POS
+FEET_VEL_LOW = -FEET_POS_HIGH
+
+################################################
+# Sensor Noise std
+################################################
+
+STD_COEFF = 0.01
+
+VEL_LIN_NOISE = VEL_LIN_HIGH * STD_COEFF
+ORIENT_RPY_NOISE= ORIENT_RPY_HIGH * STD_COEFF
+ORIENT_RATE_NOISE = ORIENT_RATE_HIGH * STD_COEFF
+IMU_NOISE = np.concatenate((VEL_LIN_NOISE, ORIENT_RPY_NOISE, ORIENT_RATE_NOISE))
+JOINT_ANGLES_NOISE = JOINT_ANGLES_HIGH * STD_COEFF
+JOINT_VELOCITIES_NOISE = JOINT_VELOCITIES_HIGH * STD_COEFF
+CONTACT_FORCE_NOISE = CONTACT_FORCE_HIGH * STD_COEFF
+CONTACT_BOOL_NOISE = np.array([0] * NUM_LEGS)
+FEET_POS_NOISE = FEET_POS_HIGH * STD_COEFF
+FEET_VEL_NOISE = FEET_POS_HIGH  * STD_COEFF
