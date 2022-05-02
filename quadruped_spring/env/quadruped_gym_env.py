@@ -25,6 +25,8 @@ from scipy.spatial.transform import Rotation as R
 import quadruped_spring.go1.configs_go1_with_springs as go1_config_with_springs
 import quadruped_spring.go1.configs_go1_without_springs as go1_config_without_springs
 from quadruped_spring.utils import action_filter
+# from quadruped_spring.utils.rest_wrapper import RestWrapper
+# from quadruped_spring.utils.landing_wrapper import LandingWrapper
 
 ACTION_EPS = 0.01
 OBSERVATION_EPS = 0.01
@@ -910,7 +912,7 @@ class QuadrupedGymEnv(gym.Env):
         elif self._TASK_ENV == "LANDING_TASK":
             pass
         elif self._TASK_ENV == "JUMPING_FORWARD":
-            return self._base_near_ground() or self._disoriented() or self._not_allowed_contact()
+            return self.is_fallen() or self._not_allowed_contact()
         else:
             raise ValueError("This task mode {self._TASK_ENV} is not implemented yet.")
 
@@ -1191,7 +1193,7 @@ class QuadrupedGymEnv(gym.Env):
         else:
             raise ValueError("This task mode is not implemented yet.")
 
-    def _reward_end_episode(self, reward):
+    def reward_end_episode(self, reward):
         """add bonus and malus at the end of the episode"""
         if self._TASK_ENV == "JUMPING_TASK":
             return self._reward_end_jumping(reward)
@@ -1521,7 +1523,7 @@ class QuadrupedGymEnv(gym.Env):
 
         # Update the actual reward at the end of the episode with bonus or malus
         if done:
-            reward = self._reward_end_episode(reward)
+            reward = self.reward_end_episode(reward)
             # print(reward)
 
         return np.array(self._noisy_observation()), reward, done, infos
@@ -2005,7 +2007,7 @@ class QuadrupedGymEnv(gym.Env):
 def test_env():
 
     env_config = {
-        "render": False,
+        "render": True,
         "on_rack": False,
         "motor_control_mode": "INVKIN_CARTESIAN_PD",
         "action_repeat": 10,
@@ -2021,8 +2023,10 @@ def test_env():
     }
 
     env = QuadrupedGymEnv(**env_config)
-
-    sim_steps = 150
+    # env = RestWrapper(env)
+    # env = LandingWrapper(env)
+    
+    sim_steps = 500
     action_dim = env.get_action_dim()
     obs = env.reset()
     for i in range(sim_steps):
