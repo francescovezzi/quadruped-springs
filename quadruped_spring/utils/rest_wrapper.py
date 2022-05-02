@@ -35,6 +35,8 @@ class RestWrapper(gym.Wrapper):
 
         if self.rest_timer.time_up():
             done = True
+            # Update sparse reward
+            reward = self.env.reward_end_episode(reward)
 
         return obs, reward, done, infos
 
