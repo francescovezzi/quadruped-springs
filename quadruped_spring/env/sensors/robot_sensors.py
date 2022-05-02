@@ -1,18 +1,22 @@
 import numpy as np
-from quadruped_spring.env.sensors.sensor import Sensor
 
 from env.quadruped_gym_env import OBSERVATION_EPS
+from quadruped_spring.env.sensors.sensor import Sensor
+
 
 class BooleanContact(Sensor):
-    """ Boolean variables specifying if the feet are in contact with ground """
+    """Boolean variables specifying if the feet are in contact with ground"""
+
     def __init__(self):
         super().__init__()
-        self._name = 'BoolContatc'
+        self._name = "BoolContatc"
 
     def _update_sensor_info(self, high, low, noise_std):
-        return super()._update_sensor_info(high=self._robot._robot_config.CONTACT_BOOL_HIGH,
-                                           low=self._robot._robot_config.CONTACT_BOOL_LOW,
-                                           noise_std= self._robot._robot_config.CONTACT_BOOL_NOISE)
+        return super()._update_sensor_info(
+            high=self._robot._robot_config.CONTACT_BOOL_HIGH,
+            low=self._robot._robot_config.CONTACT_BOOL_LOW,
+            noise_std=self._robot._robot_config.CONTACT_BOOL_NOISE,
+        )
 
     def _get_data(self):
         _, _, _, feet_in_contact = self._robot.GetContactInfo()
@@ -20,69 +24,83 @@ class BooleanContact(Sensor):
 
     def _read_data(self):
         return self._data
-    
+
     def _reset_sensor(self):
         self._get_data()
-        
+
     def _on_step(self):
         self._get_data()
 
+
 class GroundReactionForce(Sensor):
-    """ Boolean variables specifying if the feet are in contact with ground """
+    """Boolean variables specifying if the feet are in contact with ground"""
+
     def __init__(self):
         super().__init__()
-        self._name = 'Groundreaction'
+        self._name = "Groundreaction"
+
     def _update_sensor_info(self, high, low, noise_std):
-            return super()._update_sensor_info(high=self._robot._robot_config.CONTACT_FORCE_HIGH,
-                                            low=self._robot._robot_config.CONTACT_FORCE_LOW,
-                                            noise_std= self._robot._robot_config.CONTACT_FORCE_NOISE)
+        return super()._update_sensor_info(
+            high=self._robot._robot_config.CONTACT_FORCE_HIGH,
+            low=self._robot._robot_config.CONTACT_FORCE_LOW,
+            noise_std=self._robot._robot_config.CONTACT_FORCE_NOISE,
+        )
+
     def _get_data(self):
         _, _, normal_force, _ = self._robot.GetContactInfo()
         self._data = np.array(normal_force)
 
     def _read_data(self):
         return self._data
-    
+
     def _reset_sensor(self):
         self._get_data()
-        
+
     def _on_step(self):
         self._get_data()
-        
+
+
 class JointPosition(Sensor):
-    """ Joint Configuration """
+    """Joint Configuration"""
+
     def __init__(self):
         super().__init__()
-        self._name = 'Encoder'
+        self._name = "Encoder"
 
     def _update_sensor_info(self, high, low, noise_std):
-        return super()._update_sensor_info(high=self._robot._robot_config.JOINT_ANGLES_HIGH,
-                                           low=self._robot._robot_config.JOINT_ANGLES_LOW,
-                                           noise_std= self._robot._robot_config.JOINT_ANGLES_NOISE)
-    
+        return super()._update_sensor_info(
+            high=self._robot._robot_config.JOINT_ANGLES_HIGH,
+            low=self._robot._robot_config.JOINT_ANGLES_LOW,
+            noise_std=self._robot._robot_config.JOINT_ANGLES_NOISE,
+        )
+
     def _get_data(self):
         angles = self._robot.GetMotorAngles()
         self._data = angles
 
     def _read_data(self):
         return self._data
-    
+
     def _reset_sensor(self):
         self._get_data()
-        
+
     def _on_step(self):
         self._get_data()
-        
+
+
 class JointVelocity(Sensor):
-    """ Joint Vecloity """
+    """Joint Vecloity"""
+
     def __init__(self):
         super().__init__()
-        self._name = 'JointVelocity'
-        
+        self._name = "JointVelocity"
+
     def _update_sensor_info(self, high, low, noise_std):
-        return super()._update_sensor_info(high=self._robot._robot_config.JOINT_VELOCITIES_HIGH,
-                                           low=self._robot._robot_config.JOINT_VELOCITIES_LOW,
-                                           noise_std= self._robot._robot_config.JOINT_VELOCITIES_NOISE)
+        return super()._update_sensor_info(
+            high=self._robot._robot_config.JOINT_VELOCITIES_HIGH,
+            low=self._robot._robot_config.JOINT_VELOCITIES_LOW,
+            noise_std=self._robot._robot_config.JOINT_VELOCITIES_NOISE,
+        )
 
     def _get_data(self):
         velocities = self._robot.GetMotorVelocities()
@@ -90,23 +108,27 @@ class JointVelocity(Sensor):
 
     def _read_data(self):
         return self._data
-    
+
     def _reset_sensor(self):
         self._get_data()
-        
+
     def _on_step(self):
         self._get_data()
-        
+
+
 class FeetPostion(Sensor):
-    """ Feet position in leg frame """
+    """Feet position in leg frame"""
+
     def __init__(self):
         super().__init__()
-        self._name = 'FeetPosition'
+        self._name = "FeetPosition"
 
     def _update_sensor_info(self, high, low, noise_std):
-        return super()._update_sensor_info(high=self._robot._robot_config.FEET_POS_HIGH,
-                                           low=self._robot._robot_config.FEET_POS_LOW,
-                                           noise_std= self._robot._robot_config.FEET_POS_NOISE)
+        return super()._update_sensor_info(
+            high=self._robot._robot_config.FEET_POS_HIGH,
+            low=self._robot._robot_config.FEET_POS_LOW,
+            noise_std=self._robot._robot_config.FEET_POS_NOISE,
+        )
 
     def _get_data(self):
         feet_pos, _ = self._robot.ComputeFeetPosAndVel()
@@ -114,23 +136,27 @@ class FeetPostion(Sensor):
 
     def _read_data(self):
         return self._data
-    
+
     def _reset_sensor(self):
         self._get_data()
-        
+
     def _on_step(self):
         self._get_data()
-        
+
+
 class FeetVelocity(Sensor):
-    """ Feet velocity in leg frame """
+    """Feet velocity in leg frame"""
+
     def __init__(self):
         super().__init__()
-        self._name = 'FeetVelocity'
+        self._name = "FeetVelocity"
 
     def _update_sensor_info(self, high, low, noise_std):
-        return super()._update_sensor_info(high=self._robot._robot_config.FEET_VEL_HIGH,
-                                           low=self._robot._robot_config.FEET_VEL_LOW,
-                                           noise_std= self._robot._robot_config.FEET_VEL_NOISE)
+        return super()._update_sensor_info(
+            high=self._robot._robot_config.FEET_VEL_HIGH,
+            low=self._robot._robot_config.FEET_VEL_LOW,
+            noise_std=self._robot._robot_config.FEET_VEL_NOISE,
+        )
 
     def _get_data(self):
         _, feet_vel = self._robot.ComputeFeetPosAndVel()
@@ -138,23 +164,27 @@ class FeetVelocity(Sensor):
 
     def _read_data(self):
         return self._data
-    
+
     def _reset_sensor(self):
         self._get_data()
-        
+
     def _on_step(self):
         self._get_data()
-        
+
+
 class IMU(Sensor):
-    """ base linear velocity + base_orientation (rpy) + base orientation rate (rpy) """
+    """base linear velocity + base_orientation (rpy) + base orientation rate (rpy)"""
+
     def __init__(self):
         super().__init__()
-        self._name = 'IMU'
-        
+        self._name = "IMU"
+
     def _update_sensor_info(self, high, low, noise_std):
-        return super()._update_sensor_info(high=self._robot._robot_config.IMU_HIGH,
-                                           low=self._robot._robot_config.IMU_LOW,
-                                           noise_std= self._robot._robot_config.IMU_NOISE)
+        return super()._update_sensor_info(
+            high=self._robot._robot_config.IMU_HIGH,
+            low=self._robot._robot_config.IMU_LOW,
+            noise_std=self._robot._robot_config.IMU_NOISE,
+        )
 
     def _get_data(self):
         lin_vel = self._robot.GetBaseLinearVelocity()
@@ -164,53 +194,54 @@ class IMU(Sensor):
 
     def _read_data(self):
         return self._data
-    
+
     def _reset_sensor(self):
         self._get_data()
-        
+
     def _on_step(self):
         self._get_data()
-        
 
-class SensorList():
-    """ Manage all the robot sensors"""
+
+class SensorList:
+    """Manage all the robot sensors"""
+
     def __init__(self, sensor_list):
         if not isinstance(sensor_list):
             raise ValueError("Please use a list of sensors. Also if it is just one")
         self._sensor_list = sensor_list
         self._obs_dim = self._compute_obs_dim()
-        
+
     def _compute_obs_dim(self):
         dim = 0
         for s in self._sensor_list:
             dim += np.sum(np.array(s._dim))
         return dim
-    
+
     def get_obs_dim(self):
         return self._obs_dim
-        
+
     def _get_high_limits(self):
         high = []
         for s in self._sensor_list:
             high.append(s._high)
         return np.array(high).flatten()
-    
+
     def _get_low_limits(self):
         low = []
         for s in self._sensor_list:
             low.append(np.array(s._low))
         return np.array(low).flatten()
-    
+
     def get_obs(self):
         obs = {}
         for s in self._sensor_list:
             obs[s._name] = s._read_data()
         return obs
-    
+
     def _on_step(self):
         for s in self._sensor_list:
             s._get_data()
-            
+
     def _reset(self, robot):
         for s in self._sensor_list:
             s._set_sensor(robot)
