@@ -75,7 +75,7 @@ class LandingWrapper(gym.Wrapper):
         return obs, reward, done, infos
 
     def is_flying(self):
-        return self.env.robot._is_flying() and self.compute_time_for_peak_heihgt() > 0
+        return self.env.robot._is_flying() and self.compute_time_for_peak_heihgt() > 0.06
 
     def compute_time_for_peak_heihgt(self):
         """Compute the time the robot needs to reach the maximum height"""
