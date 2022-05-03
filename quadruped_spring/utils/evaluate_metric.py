@@ -129,7 +129,7 @@ class EvaluateMetricJumpOnPlace(gym.Wrapper):
             metric = rew_dist + rew_roll + rew_yaw + max_height_rel * 35 / max_torque + 0.01 * max_power / max_torque
             metric -= max(self.bounce_counter - 1, 0) * 0.2
         self.jump_metric.metric_value = max(self.jump_metric.metric_value, metric)
-        if self.env.terminated:
+        if self.env.task_terminated():
             self.jump_metric.metric_value = 0.0
         return MetricInfo.best_metrics(self.jump_metric, self.jump_metric_old)
 

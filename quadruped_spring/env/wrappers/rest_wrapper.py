@@ -9,7 +9,7 @@ class RestWrapper(gym.Wrapper):
 
     def __init__(self, env):
         super().__init__(env)
-        self.rest_timer = Timer(dt=self.env.dt)
+        self.rest_timer = Timer(dt=self.env.get_env_time_step())
         self._max_rest_time = 1.0
 
     def _is_rested(self):
@@ -34,9 +34,10 @@ class RestWrapper(gym.Wrapper):
                 self.rest_timer.reset_timer()
 
         if self.rest_timer.time_up():
-            done = True
             # Update sparse reward
-            reward = self.env.reward_end_episode(reward)
+            if not done:
+                reward += self.env.get_reward_end_episode()
+            done = True
 
         return obs, reward, done, infos
 

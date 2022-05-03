@@ -15,7 +15,7 @@ class LandingWrapper(gym.Wrapper):
         super().__init__(env)
         self._robot_config = self.env.get_robot_config()
         self._landing_action = self._compute_landing_action()
-        self.timer_jumping = Timer(dt=self.env.dt)
+        self.timer_jumping = Timer(dt=self.env.get_env_time_step())
 
     def _compute_landing_pose(self):
         motor_control_mode = self.env.get_motor_control_mode()
