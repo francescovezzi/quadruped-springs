@@ -8,7 +8,7 @@ class TaskBase():
     def __init__(self):
         pass
     
-    def _reset_task(self, env):
+    def _reset(self, env):
         """ reset task and initialize task variables """
         self._env = env
         
@@ -24,7 +24,7 @@ class TaskBase():
         """  add bonus and malus to the actual reward at the end of the episode """
         pass
     
-    def _task_terminated(self):
+    def _terminated(self):
         """  return boolean specifying whether episode is terminated """
         pass
 
@@ -35,8 +35,8 @@ class TaskJumping(TaskBase):
     def __init__(self):
         super().__init__()
     
-    def _reset_task(self, env):
-        super()._reset_task(env)
+    def _reset(self, env):
+        super()._reset(env)
         robot = self._env.robot
         self._init_height = robot.GetBasePosition()[2]
         self._all_feet_in_the_air = False
@@ -103,5 +103,5 @@ class TaskJumping(TaskBase):
 
         return num_invalid_contacts
             
-    def _task_terminated(self):
+    def _terminated(self):
         return self.is_fallen() or self._not_allowed_contact()

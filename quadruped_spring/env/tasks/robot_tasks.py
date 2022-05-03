@@ -14,8 +14,9 @@ class JumpingOnPlaceHeight(TaskJumping):
         """Remember the reward is sparse. So is 0 except the end of the episode."""
         return 0
     
-    def _reward_end_episode(self, reward):
-        """Add bonus and malus at the end of the episode for jumping on place task"""
+    def _reward_end_episode(self):
+        """Compute bonus and malus to add to reward at the end of the episode"""
+        reward = 0
         if self._task_terminated():
             # Malus for crashing
             # Optionally: no reward in case of crash
