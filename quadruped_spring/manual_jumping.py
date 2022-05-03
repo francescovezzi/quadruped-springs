@@ -12,9 +12,11 @@ import argparse
 
 from env.quadruped_gym_env import QuadrupedGymEnv
 from utils.evaluate_metric import EvaluateMetricJumpOnPlace
-from utils.landing_wrapper import LandingWrapper
-from utils.rest_wrapper import RestWrapper
+from env.wrappers.landing_wrapper import LandingWrapper
+from env.wrappers.rest_wrapper import RestWrapper
 from utils.timer import Timer
+
+from quadruped_spring.env.quadruped_gym_env import TASK_SPACE_MAP
 
 # from utils.monitor_state import MonitorState
 
@@ -24,8 +26,8 @@ class JumpingStateMachine(gym.Wrapper):
         super().__init__(env)
         self._settling_duration_time = 1  # seconds
         self._couching_duration_time = 4  # seconds
-        self._settling_duration_steps = self._settling_duration_time / (self.env.dt)
-        self._couching_duration_steps = self._couching_duration_time / (self.env.dt)
+        self._settling_duration_steps = self._settling_duration_time / self.env._env_time_step
+        self._couching_duration_steps = self._couching_duration_time / self.env._env_time_step
         assert self._couching_duration_steps >= 1000, "couching duration steps number should be >= 1000"
         self._states = {"settling": 0, "couching": 1, "jumping_ground": 2}
         self._state = self._states["settling"]
@@ -39,11 +41,10 @@ class JumpingStateMachine(gym.Wrapper):
         self.max_height = 0.0
         self._step_counter = 0
 
-        self._time_step = self.env._time_step
         self._robot_config = self.env.get_robot_config()
         self._enable_springs = self.env._enable_springs
         self._jump_end = False
-        self._flight_timer = Timer(dt=self._time_step)
+        self._flight_timer = Timer(dt=self.env._sim_time_step)
 
         self._default_action = self.env.compute_action_from_command(self._robot_config.INIT_MOTOR_ANGLES)
 
@@ -134,7 +135,7 @@ def build_env(enable_springs=False):
         "action_repeat": 1,
         "record_video": False,
         "action_space_mode": "DEFAULT",
-        "task_env": "JUMPING_ON_PLACE_ABS_HEIGHT_TASK",
+        "task_env": "JUMPING_ON_PLACE_HEIGHT",
     }
     # env_config["enable_springs"] = True
     if fill_line:
