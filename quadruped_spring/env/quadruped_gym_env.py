@@ -28,7 +28,7 @@ from quadruped_spring.utils import action_filter
 
 from quadruped_spring.env.sensors import robot_sensors as rs
 from quadruped_spring.env.sensors.robot_sensors import SensorList
-from quadruped_spring.env.sensors.obs_flattening_wrapper import ObsFlatteningWrapper
+from quadruped_spring.env.wrappers.obs_flattening_wrapper import ObsFlatteningWrapper
 
 from quadruped_spring.env.tasks import robot_tasks as rt
 
@@ -436,7 +436,7 @@ class QuadrupedGymEnv(gym.Env):
         # infos = {"base_pos": self.robot.GetBasePosition()}
         infos = {}
 
-        task_terminated = self._task._terminated()
+        task_terminated = self.task_terminated()
         if task_terminated or self.get_sim_time() > self._MAX_EP_LEN:
             infos["TimeLimit.truncated"] = not task_terminated
             done = True
@@ -735,22 +735,6 @@ class QuadrupedGymEnv(gym.Env):
         """Add line between point A and B for duration lifeTime"""
         self._pybullet_client.addUserDebugLine(lineFromXYZ, lineToXYZ, lineColorRGB=color, lifeTime=lifeTime)
 
-    def get_sim_time(self):
-        """Get current simulation time."""
-        return self._sim_step_counter * self._sim_time_step
-
-    def get_motor_control_mode(self):
-        """Get current motor control mode."""
-        return self._motor_control_mode
-
-    def get_robot_config(self):
-        """Get current robot config."""
-        return self._robot_config
-
-    def are_springs_enabled(self):
-        """Get boolean specifying if springs are enabled or not."""
-        return self._enable_springs
-
     def scale_rand(self, num_rand, low, high):
         """scale number of rand numbers between low and high"""
         return low + np.random.random(num_rand) * (high - low)
@@ -852,6 +836,37 @@ class QuadrupedGymEnv(gym.Env):
         for i in range(-1, self._pybullet_client.getNumJoints(quad_ID)):
             self._pybullet_client.setCollisionFilterPair(quad_ID, base_block_ID, i, -1, 0)
 
+########################################################
+# Get methods
+########################################################
+    def get_sim_time(self):
+        """Get current simulation time."""
+        return self._sim_step_counter * self._sim_time_step
+    
+    def get_env_time_step(self):
+        """Get environment simulation time step."""
+        return self._env_time_step
+
+    def get_motor_control_mode(self):
+        """Get current motor control mode."""
+        return self._motor_control_mode
+
+    def get_robot_config(self):
+        """Get current robot config."""
+        return self._robot_config
+
+    def are_springs_enabled(self):
+        """Get boolean specifying if springs are enabled or not."""
+        return self._enable_springs
+    
+    def task_terminated(self):
+        """Return boolean specifying whther the task is terminated."""
+        return self._task._terminated()
+    
+    def get_reward_end_episode(self):
+        """Return bonus and malus to add to the reward at the end of the episode."""
+        return self._task._reward_end_episode()
+    
 
 def test_env():
 
