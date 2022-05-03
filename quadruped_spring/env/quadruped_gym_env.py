@@ -28,6 +28,7 @@ from quadruped_spring.utils import action_filter
 
 from quadruped_spring.env.sensors import robot_sensors as rs
 from quadruped_spring.env.sensors.robot_sensors import SensorList
+from quadruped_spring.env.sensors.obs_flattening_wrapper import ObsFlatteningWrapper
 
 ACTION_EPS = 0.01
 OBSERVATION_EPS = 0.01
@@ -1404,7 +1405,7 @@ def test_env():
     }
 
     env = QuadrupedGymEnv(**env_config)
-    
+    env  = ObsFlatteningWrapper(env)
     # env = RestWrapper(env)
     # env = LandingWrapper(env)
 
