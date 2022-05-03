@@ -1,10 +1,5 @@
 """This file implements the gym environment for a quadruped. """
-import inspect
 import os
-
-# so we can import files
-currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
-os.sys.path.insert(0, currentdir)
 
 import datetime
 import time
@@ -35,10 +30,14 @@ from quadruped_spring.env.tasks import robot_tasks as rt
 
 ACTION_EPS = 0.01
 OBSERVATION_EPS = 0.01
+EPISODE_LENGTH = 10  # max episode length for RL (seconds)
+
 VIDEO_LOG_DIRECTORY = "videos/" + datetime.datetime.now().strftime("vid-%Y-%m-%d-%H-%M-%S-%f")
 
-# For the sensor equipment selectoin
+# For the sensor equipment selection
 OBS_SPACE_MAP = {"DEFAULT": [rs.IMU, rs.FeetPostion, rs.FeetVelocity, rs.GroundReactionForce]}
+
+# For task selection
 TASK_SPACE_MAP = {"JUMPING_ON_PLACE_HEIGHT": rt.JumpingOnPlaceHeight}
 
 # Implemented action spaces for deep reinforcement learning:
@@ -54,14 +53,8 @@ TASK_SPACE_MAP = {"JUMPING_ON_PLACE_HEIGHT": rt.JumpingOnPlaceHeight}
 #         torques are computed based on the joint position/velocity error
 #   - "CARTESIAN_PD":
 #         supply desired foot positions for each leg (12)
-#         torques are computed based on the foot position/velocity error
-#   - "INVKIN_CARTESIAN_PD":
-#         supply desired foot positions for each leg (12)
 #         torques are computed based on the joint position/velocity error
 
-
-EPISODE_LENGTH = 10  # how long before we reset the environment (max episode length for RL)
-MAX_FWD_VELOCITY = 5  # to avoid exploiting simulator dynamics, cap max reward for body velocity
 
 class QuadrupedGymEnv(gym.Env):
     """
