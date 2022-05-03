@@ -30,43 +30,21 @@ from quadruped_spring.env.sensors import robot_sensors as rs
 from quadruped_spring.env.sensors.robot_sensors import SensorList
 from quadruped_spring.env.sensors.obs_flattening_wrapper import ObsFlatteningWrapper
 
+from quadruped_spring.env.tasks import robot_tasks as rt
+
+
 ACTION_EPS = 0.01
 OBSERVATION_EPS = 0.01
 VIDEO_LOG_DIRECTORY = "videos/" + datetime.datetime.now().strftime("vid-%Y-%m-%d-%H-%M-%S-%f")
 
 # For the sensor equipment selectoin
 OBS_SPACE_MAP = {"DEFAULT": [rs.IMU, rs.FeetPostion, rs.FeetVelocity, rs.GroundReactionForce]}
+TASK_SPACE_MAP = {"JUMPING_ON_PLACE_HEIGHT": rt.JumpingOnPlaceHeight}
 
 # Implemented action spaces for deep reinforcement learning:
 #   - "DEFAULT": classic
 #   - "SYMMETRIC" legs right side and left side move symmetrically
 #   - "SYMMETRIC_NO_HIP" as symmetric but hips receive action = 0
-
-# Tasks to be learned with reinforcement learning
-#     - "FWD_LOCOMOTION"
-#         reward forward progress only
-#     - "LR_COURSE_TASK"
-#         [TODO: what should you train for?]
-#         Ideally we want to command GO1 to run in any direction while expending minimal energy
-#         It is suggested to first train to run at 3 sample velocities (0.5 m/s, 1 m/s, 1.5 m/s)
-#         How will you construct your reward function?
-#     - "JUMPING_TASK"
-#         Sparse reward, maximizing flight time + bonus forward_distance + malus on crashing
-#     - "JUMPING_ON_PLACE_TASK"
-#         Sparse reward, maximizing flight time + bonus maintin base position +
-#         malus on crashing + malus on not allowed contacts
-#     - "JUMPING_ON_PLACE_HEIGHT_TASK" (not working actually)
-#         Sparse reward, maximizing maximum height relative to one jump +
-#         bonus maintin base position + malus on crashing + malus on not allowed contacts
-#     - "JUMPING_ON_PLACE_ABS_HEIGHT_TASK"
-#         Sparse reward, maximizing absolute maximum height + bonus maintin base position +
-#         malus on crashing + malus on not allowed contacts
-#     - "LANDING_TASK" (not implemented yet)
-#         Sparse reward, bonus mantain desired position + malus on crushing +
-#         malus on not allowed contact + malus on feet not in contact
-#     - "JUMPING_FORWARD"
-#         Sparse reward, maximizing jump forward distance + bonus maximum height +
-#         bonus maintain base orientation + malus on crashing + malus on not allowed contacts
 
 # Motor control modes:
 #   - "TORQUE":
@@ -86,7 +64,8 @@ EPISODE_LENGTH = 10  # how long before we reset the environment (max episode len
 MAX_FWD_VELOCITY = 5  # to avoid exploiting simulator dynamics, cap max reward for body velocity
 
 class QuadrupedGymEnv(gym.Env):
-    """The gym environment for a quadruped {Unitree GO1}.
+    """
+    The gym environment for a quadruped {Unitree GO1}.
 
     It simulates the locomotion of a quadrupedal robot.
     The state space, action space, and reward functions can be chosen with:
@@ -100,10 +79,8 @@ class QuadrupedGymEnv(gym.Env):
         isRLGymInterface=True,
         time_step=0.001,
         action_repeat=10,
-        distance_weight=1e3,
-        energy_weight=1e-4,  # 0.008,
         motor_control_mode="PD",
-        task_env="FWD_LOCOMOTION",
+        task_env="JUMPING_ON_PLACE_HEIGHT",
         observation_space_mode="DEFAULT",
         action_space_mode="DEFAULT",
         on_rack=False,
@@ -155,13 +132,11 @@ class QuadrupedGymEnv(gym.Env):
         else:
             self._robot_config = go1_config_without_springs
         self._isRLGymInterface = isRLGymInterface
-        self._time_step = time_step
+        self._sim_time_step = time_step
         self._action_repeat = action_repeat
-        self.dt = self._action_repeat * self._time_step
-        self._distance_weight = distance_weight
-        self._energy_weight = energy_weight
+        self._env_time_step = self._action_repeat * self._sim_time_step
         self._motor_control_mode = motor_control_mode
-        self._TASK_ENV = task_env
+        self._task = TASK_SPACE_MAP[task_env]()
         self._robot_sensors = SensorList(OBS_SPACE_MAP[observation_space_mode])
         self._action_space_mode = action_space_mode
         self._hard_reset = True  # must fully reset simulation at init
@@ -234,430 +209,6 @@ class QuadrupedGymEnv(gym.Env):
     
     def get_observation(self):
         return self._robot_sensors.get_obs()
-
-    ######################################################################################
-    # Termination and reward
-    ######################################################################################
-    def is_fallen(self, dot_prod_min=0.85):
-        """Decide whether the quadruped has fallen.
-
-        If the up directions between the base and the world is larger (the dot
-        product is smaller than 0.85) or the base is very low on the ground
-        (the height is smaller than 0.13 meter), the quadruped is considered fallen.
-
-        Returns:
-          Boolean value that indicates whether the quadruped has fallen.
-        """
-        base_rpy = self.robot.GetBaseOrientationRollPitchYaw()
-        orientation = self.robot.GetBaseOrientation()
-        rot_mat = self._pybullet_client.getMatrixFromQuaternion(orientation)
-        local_up = rot_mat[6:]
-        pos = self.robot.GetBasePosition()
-        return (
-            np.dot(np.asarray([0, 0, 1]), np.asarray(local_up)) < dot_prod_min or pos[2] < self._robot_config.IS_FALLEN_HEIGHT
-        )
-
-    def _not_allowed_contact(self):
-        """
-        Return True if the robot is performing some not allowed contact
-        as touching the ground with knees
-        """
-        _, num_invalid_contacts, _, _ = self.robot.GetContactInfo()
-
-        return num_invalid_contacts
-
-    def _disoriented(self):
-        roll, _, yaw = self.robot.GetBaseOrientationRollPitchYaw()
-        max_angle = 25 * np.pi / 180
-        return roll < max_angle or yaw < max_angle
-
-    def _base_near_ground(self):
-        _, _, z = self.robot.GetBasePosition()
-        return z < 0.1
-
-    def _termination(self):
-        """Decide whether we should stop the episode and reset the environment."""
-        self.terminated = False
-        if self._TASK_ENV in ["JUMPING_TASK", "LR_COURSE_TASK", "FWD_LOCOMOTION"]:
-            self.terminated = self.is_fallen()
-            return self.terminated
-        elif self._TASK_ENV in ["JUMPING_ON_PLACE_TASK", "JUMPING_ON_PLACE_HEIGHT_TASK", "JUMPING_ON_PLACE_ABS_HEIGHT_TASK"]:
-            self.terminated = self.is_fallen() or self._not_allowed_contact()
-            return self.terminated
-        elif self._TASK_ENV == "LANDING_TASK":
-            pass
-        elif self._TASK_ENV == "JUMPING_FORWARD":
-            return self.is_fallen() or self._not_allowed_contact()
-        else:
-            raise ValueError("This task mode {self._TASK_ENV} is not implemented yet.")
-
-    def _reward_jumping(self):
-        # Change is fallen height
-        self._robot_config.IS_FALLEN_HEIGHT = 0.01
-
-        _, _, _, feet_in_contact = self.robot.GetContactInfo()
-        # no_feet_in_contact_reward = -np.mean(feet_in_contact)
-
-        flight_time_reward = 0.0
-        if np.all(1 - np.array(feet_in_contact)):
-            if not self._all_feet_in_the_air:
-                self._all_feet_in_the_air = True
-                self._time_take_off = self.get_sim_time()
-                self._robot_pose_take_off = np.array(self.robot.GetBasePosition())
-                self._robot_orientation_take_off = np.array(self.robot.GetBaseOrientationRollPitchYaw())
-            else:
-                # flight_time_reward = self.get_sim_time() - self._time_take_off
-                pass
-        else:
-            if self._all_feet_in_the_air:
-                self._max_flight_time = max(self.get_sim_time() - self._time_take_off, self._max_flight_time)
-                # Compute forward distance according to local frame (starting at take off)
-                rotation_matrix = R.from_euler("z", -self._robot_orientation_take_off[2], degrees=False).as_matrix()
-                translation = -self._robot_pose_take_off
-                pos_abs = np.array(self.robot.GetBasePosition())
-                pos_relative = pos_abs + translation
-                pos_relative = pos_relative @ rotation_matrix
-                self._max_forward_distance = max(pos_relative[0], self._max_forward_distance)
-
-            self._all_feet_in_the_air = False
-
-        return flight_time_reward
-        # max_height_reward = self.robot.GetBasePosition()[2] / self._init_height
-        # only_positive_height = max(self.robot.GetBasePosition()[2] - self._init_height, 0.0)
-        # max_height_reward = only_positive_height ** 2 / self._init_height ** 2
-        # return max_height_reward + flight_time_reward
-        # return max_height_reward + no_feet_in_contact_reward
-
-    def _reward_jumping_forward(self):
-        _, _, _, feet_in_contact = self.robot.GetContactInfo()
-        # no_feet_in_contact_reward = -np.mean(feet_in_contact)
-
-        if np.all(1 - np.array(feet_in_contact)):
-            if not self._all_feet_in_the_air:
-                self._all_feet_in_the_air = True
-                self._time_take_off = self.get_sim_time()
-                self._robot_pose_take_off = np.array(self.robot.GetBasePosition())
-                self._robot_orientation_take_off = np.array(self.robot.GetBaseOrientationRollPitchYaw())
-                self._robot_orientation_take_off_quat = np.array(self.robot.GetBaseOrientation())
-            else:
-                # flight_time_reward = self.get_sim_time() - self._time_take_off
-                pass
-        else:
-            if self._all_feet_in_the_air:
-                self._max_flight_time = max(self.get_sim_time() - self._time_take_off, self._max_flight_time)
-                # Compute forward distance according to local frame (starting at take off)
-                rotation_matrix = R.from_euler("z", -self._robot_orientation_take_off[2], degrees=False).as_matrix()
-                translation = -self._robot_pose_take_off
-                pos_abs = np.array(self.robot.GetBasePosition())
-                pos_relative = pos_abs + translation
-                pos_relative = pos_relative @ rotation_matrix
-                self._max_forward_distance = max(pos_relative[0], self._max_forward_distance)
-
-            self._all_feet_in_the_air = False
-
-        roll, _, yaw = self.robot.GetBaseOrientationRollPitchYaw()
-        self._max_yaw = max(np.abs(yaw), self._max_yaw)
-        self._max_roll = max(np.abs(roll), self._max_roll)
-        delta_height = max(self.robot.GetBasePosition()[2] - self._init_height, 0.0)
-        self._max_height = max(self._max_height, delta_height)
-
-        return 0
-
-    def _reward_jumping_on_place(self):
-        """
-        Reward maximum flight time, plus computing maximum orientation angles
-        and forward distance
-        """
-        # Change is fallen height
-        self._robot_config.IS_FALLEN_HEIGHT = 0.01
-
-        _, _, _, feet_in_contact = self.robot.GetContactInfo()
-        # no_feet_in_contact_reward = -np.mean(feet_in_contact)
-
-        flight_time_reward = 0.0
-        if np.all(1 - np.array(feet_in_contact)):
-            if not self._all_feet_in_the_air:
-                self._all_feet_in_the_air = True
-                self._time_take_off = self.get_sim_time()
-                self._robot_pose_take_off = np.array(self.robot.GetBasePosition())
-                self._robot_orientation_take_off = np.array(self.robot.GetBaseOrientationRollPitchYaw())
-                self._robot_orientation_take_off_quat = np.array(self.robot.GetBaseOrientation())
-            else:
-                # flight_time_reward = self.get_sim_time() - self._time_take_off
-                pass
-        else:
-            if self._all_feet_in_the_air:
-                self._max_flight_time = max(self.get_sim_time() - self._time_take_off, self._max_flight_time)
-                # Compute forward distance according to local frame (starting at take off)
-                rotation_matrix = R.from_euler("z", -self._robot_orientation_take_off[2], degrees=False).as_matrix()
-                translation = -self._robot_pose_take_off
-                pos_abs = np.array(self.robot.GetBasePosition())
-                pos_relative = pos_abs + translation
-                pos_relative = pos_relative @ rotation_matrix
-                self._max_forward_distance = max(pos_relative[0], self._max_forward_distance)
-
-            self._all_feet_in_the_air = False
-
-        _, pitch, yaw = self.robot.GetBaseOrientationRollPitchYaw()
-        self._max_yaw = max(np.abs(yaw), self._max_yaw)
-        self._max_pitch = max(np.abs(pitch), self._max_pitch)
-
-        return flight_time_reward
-
-    def _reward_jumping_on_place_height(self):
-        """
-        Reward maximum height calculated from the jumping taking off, plus
-        compute maximum orientation angles and forward distance
-        """
-        # Change is fallen height
-        self._robot_config.IS_FALLEN_HEIGHT = 0.01
-
-        _, _, _, feet_in_contact = self.robot.GetContactInfo()
-        # no_feet_in_contact_reward = -np.mean(feet_in_contact)
-
-        flight_time_reward = 0.0
-        if np.all(1 - np.array(feet_in_contact)):
-            if not self._all_feet_in_the_air:
-                self._all_feet_in_the_air = True
-                self._time_take_off = self.get_sim_time()
-                self._robot_pose_take_off = np.array(self.robot.GetBasePosition())
-                self._robot_orientation_take_off = np.array(self.robot.GetBaseOrientationRollPitchYaw())
-                self._robot_orientation_take_off_quat = np.array(self.robot.GetBaseOrientation())
-                self._jump_init_height = self._robot_pose_take_off[2]
-            else:
-                delta_height = max(self.robot.GetBasePosition()[2] - self._jump_init_height, 0.0)
-                self._max_height = max(self._max_height, delta_height)
-                # print(self._max_height)
-                # flight_time_reward = self.get_sim_time() - self._time_take_off
-                pass
-        else:
-            if self._all_feet_in_the_air:
-                self._max_flight_time = max(self.get_sim_time() - self._time_take_off, self._max_flight_time)
-                # Compute forward distance according to local frame (starting at take off)
-                rotation_matrix = R.from_euler("z", -self._robot_orientation_take_off[2], degrees=False).as_matrix()
-                translation = -self._robot_pose_take_off
-                pos_abs = np.array(self.robot.GetBasePosition())
-                pos_relative = pos_abs + translation
-                pos_relative = pos_relative @ rotation_matrix
-                self._max_forward_distance = max(pos_relative[0], self._max_forward_distance)
-
-            self._all_feet_in_the_air = False
-
-        _, pitch, yaw = self.robot.GetBaseOrientationRollPitchYaw()
-        self._max_yaw = max(np.abs(yaw), self._max_yaw)
-        self._max_pitch = max(np.abs(pitch), self._max_pitch)
-
-        return flight_time_reward
-
-    def _reward_jumping_on_place_abs_height(self):
-        """
-        Reward maximum peak height minus the initial height, plus
-        compute maximum orientation angles and forward distance
-        """
-        # Change is fallen height
-        self._robot_config.IS_FALLEN_HEIGHT = 0.01
-
-        _, _, _, feet_in_contact = self.robot.GetContactInfo()
-        # no_feet_in_contact_reward = -np.mean(feet_in_contact)
-
-        flight_time_reward = 0.0
-        if np.all(1 - np.array(feet_in_contact)):
-            if not self._all_feet_in_the_air:
-                self._all_feet_in_the_air = True
-                self._time_take_off = self.get_sim_time()
-                self._robot_pose_take_off = np.array(self.robot.GetBasePosition())
-                self._robot_orientation_take_off = np.array(self.robot.GetBaseOrientationRollPitchYaw())
-                self._robot_orientation_take_off_quat = np.array(self.robot.GetBaseOrientation())
-                self._jump_init_height = self._robot_pose_take_off[2]
-            else:
-                # flight_time_reward = self.get_sim_time() - self._time_take_off
-                pass
-        else:
-            if self._all_feet_in_the_air:
-                self._max_flight_time = max(self.get_sim_time() - self._time_take_off, self._max_flight_time)
-                # Compute forward distance according to local frame (starting at take off)
-                rotation_matrix = R.from_euler("z", -self._robot_orientation_take_off[2], degrees=False).as_matrix()
-                translation = -self._robot_pose_take_off
-                pos_abs = np.array(self.robot.GetBasePosition())
-                pos_relative = pos_abs + translation
-                pos_relative = pos_relative @ rotation_matrix
-                self._max_forward_distance = max(pos_relative[0], self._max_forward_distance)
-
-            self._all_feet_in_the_air = False
-
-        _, pitch, yaw = self.robot.GetBaseOrientationRollPitchYaw()
-        self._max_yaw = max(np.abs(yaw), self._max_yaw)
-        self._max_pitch = max(np.abs(pitch), self._max_pitch)
-        delta_height = max(self.robot.GetBasePosition()[2] - self._init_height, 0.0)
-        self._max_height = max(self._max_height, delta_height)
-        # print(self._max_height)
-
-        return flight_time_reward
-
-    def _reward_fwd_locomotion(self):
-        """Reward progress in the positive world x direction."""
-        current_base_position = self.robot.GetBasePosition()
-        forward_reward = current_base_position[0] - self._last_base_position[0]
-        self._last_base_position = current_base_position
-        # clip reward to MAX_FWD_VELOCITY (avoid exploiting simulator dynamics)
-        if MAX_FWD_VELOCITY < np.inf:
-            # calculate what max distance can be over last time interval based on max allowed fwd velocity
-            max_dist = MAX_FWD_VELOCITY * (self._time_step * self._action_repeat)
-            forward_reward = min(forward_reward, max_dist)
-
-        v_x = max(min(self.robot.GetBaseLinearVelocity()[0], MAX_FWD_VELOCITY), -MAX_FWD_VELOCITY)
-        v_y = max(min(self.robot.GetBaseLinearVelocity()[1], MAX_FWD_VELOCITY), -MAX_FWD_VELOCITY)
-        v = np.array([v_x, v_y])
-
-        return 1e-2 * np.linalg.norm(v)
-
-    def _reward_lr_course(self):
-        """Implement your reward function here. How will you improve upon the above?"""
-        current_base_position = np.array(self.robot.GetBasePosition())
-        v_ = (current_base_position[:2] - self._last_base_position[:2]) / (self._time_step * self._action_repeat)
-        self._last_base_position = current_base_position
-        # clip reward to MAX_FWD_VELOCITY (avoid exploiting simulator dynamics)
-        if MAX_FWD_VELOCITY < np.inf:
-            v_x = max(min(v_[0], MAX_FWD_VELOCITY), -MAX_FWD_VELOCITY)
-            v_y = max(min(v_[1], MAX_FWD_VELOCITY), -MAX_FWD_VELOCITY)
-            v = np.array([v_x, v_y])
-
-        e = self._v_des - v
-
-        v_norm = max(np.linalg.norm(v), 0.001)  # prevent CoT explosion for very small movements
-        P = 0.0
-        for i in range(len(self._dt_motor_torques)):
-            P += np.array(self._dt_motor_torques[i]).dot(np.array(self._dt_motor_velocities[i]))
-        P = P / len(self._dt_motor_torques)
-        CoT = P / (5.0 * 10.0 * v_norm)
-
-        ddq = (np.array(self._dt_motor_velocities[-1]) - np.array(self._dt_motor_velocities[0])) / (
-            self._time_step * self._action_repeat
-        )
-
-        rpy = self.robot.GetBaseOrientationRollPitchYaw()
-
-        r = (
-            0.1 * v_norm
-            - 0.0001 * abs(CoT)
-            + 0.1 * np.exp(-1.0 * ddq.dot(ddq))
-            - 0.05 * abs(rpy[2])
-            + np.exp(-10.0 * e.dot(e))
-        )
-
-        return r
-
-    def _reward(self):
-        """Get reward depending on task"""
-        if self._TASK_ENV == "FWD_LOCOMOTION":
-            return self._reward_fwd_locomotion()
-        elif self._TASK_ENV == "LR_COURSE_TASK":
-            return self._reward_lr_course()
-        elif self._TASK_ENV == "JUMPING_TASK":
-            return self._reward_jumping()
-        elif self._TASK_ENV == "JUMPING_ON_PLACE_TASK":
-            return self._reward_jumping_on_place()
-        elif self._TASK_ENV == "JUMPING_ON_PLACE_HEIGHT_TASK":
-            return self._reward_jumping_on_place_height()
-        elif self._TASK_ENV == "JUMPING_ON_PLACE_ABS_HEIGHT_TASK":
-            return self._reward_jumping_on_place_abs_height()
-        elif self._TASK_ENV == "LANDING_TASK":
-            pass
-        elif self._TASK_ENV == "JUMPING_FORWARD":
-            return self._reward_jumping_forward()
-        else:
-            raise ValueError("This task mode is not implemented yet.")
-
-    def reward_end_episode(self, reward):
-        """add bonus and malus at the end of the episode"""
-        if self._TASK_ENV == "JUMPING_TASK":
-            return self._reward_end_jumping(reward)
-        elif self._TASK_ENV == "JUMPING_ON_PLACE_TASK":
-            return self._reward_end_jumping_on_place(reward)
-        elif self._TASK_ENV in ["JUMPING_ON_PLACE_HEIGHT_TASK", "JUMPING_ON_PLACE_ABS_HEIGHT_TASK"]:
-            return self._reward_end_jumping_on_place_height(reward)
-        elif self._TASK_ENV == "LANDING_TASK":
-            pass
-        elif self._TASK_ENV == "JUMPING_FORWARD":
-            return self._reward_end_jumping_forward(reward)
-        else:
-            # do nothing
-            return reward
-
-    def _reward_end_jumping_forward(self, reward):
-        """Add bonus and malus at the end of the episode for jumping forawrd task"""
-        if self._termination():
-            # Malus for crashing
-            # Optionally: no reward in case of crash
-            reward -= 0.08
-        max_fwd = 0.2
-        max_height = 0.2
-        normalize_fwd_distance = self._max_forward_distance / max_fwd
-        reward += normalize_fwd_distance
-        reward += normalize_fwd_distance * 0.05 * np.exp(-self._max_yaw**2 / 0.1)  # orientation
-        reward += normalize_fwd_distance * 0.05 * np.exp(-self._max_roll**2 / 0.1)  # orientation
-
-        reward += 0.1 * self._max_height / max_height  # bonus max_height
-
-        if self._max_forward_distance > 0 and not self._termination():
-            # Alive bonus proportional to the risk taken
-            reward += normalize_fwd_distance * 0.1
-        # print(f"Forward dist: {self._max_forward_distance}")
-        return reward
-
-    def _reward_end_jumping(self, reward):
-        """Add bonus and malus at the end of the episode for jumping task"""
-        if self._termination():
-            # Malus for crashing
-            # Optionally: no reward in case of crash
-            reward -= 0.08
-        reward += self._max_flight_time
-        max_distance = 0.2
-        # Normalize forward distance reward
-        reward += 0.1 * self._max_forward_distance / max_distance
-        if self._max_flight_time > 0 and not self._termination():
-            # Alive bonus proportional to the risk taken
-            reward += 0.1 * self._max_flight_time
-        # print(f"Forward dist: {self._max_forward_distance}")
-        return reward
-
-    def _reward_end_jumping_on_place(self, reward):
-        """Add bonus and malus at the end of the episode for jumping on place task"""
-        if self._termination():
-            # Malus for crashing
-            # Optionally: no reward in case of crash
-            reward -= 0.08
-        reward += self._max_flight_time
-        reward += 0.05 * np.exp(-self._max_yaw**2 / 0.01)  # orientation
-        reward += 0.05 * np.exp(-self._max_pitch**2 / 0.01)  # orientation
-
-        reward += 0.1 * np.exp(-self._max_forward_distance**2 / 0.05)  # be on place
-
-        if self._max_flight_time > 0 and not self._termination():
-            # Alive bonus proportional to the risk taken
-            reward += 0.1 * self._max_flight_time
-        # print(f"Forward dist: {self._max_forward_distance}")
-        return reward
-
-    def _reward_end_jumping_on_place_height(self, reward):
-        """Add bonus and malus at the end of the episode for jumping on place task"""
-        if self._termination():
-            # Malus for crashing
-            # Optionally: no reward in case of crash
-            reward -= 0.08
-        max_height = 0.4
-        max_height_normalized = self._max_height / max_height
-        reward += max_height_normalized
-        reward += max_height_normalized * 0.05 * np.exp(-self._max_yaw**2 / 0.01)  # orientation
-        reward += max_height_normalized * 0.05 * np.exp(-self._max_pitch**2 / 0.01)  # orientation
-
-        reward += max_height_normalized * 0.1 * np.exp(-self._max_forward_distance**2 / 0.05)  # be on place
-
-        if self._max_height > 0 and not self._termination():
-            # Alive bonus proportional to the risk taken
-            reward += 0.1 * max_height_normalized
-        # print(f"Forward dist: {self._max_forward_distance}")
-        return reward
 
     ######################################################################################
     # Step simulation, map policy network actions to joint commands, etc.
@@ -864,9 +415,6 @@ class QuadrupedGymEnv(gym.Env):
         if self._enable_action_filter:
             curr_act = self._filter_action(curr_act)
         curr_act = self.adapt_action_dim_for_robot(curr_act)
-        # save motor torques and velocities to compute power in reward function
-        self._dt_motor_torques = []
-        self._dt_motor_velocities = []
         for sub_step in range(self._action_repeat):
             if self._isRLGymInterface:
                 if self._enable_action_interpolation:
@@ -876,30 +424,26 @@ class QuadrupedGymEnv(gym.Env):
                 proc_action = curr_act
             self.robot.ApplyAction(proc_action)
             self._pybullet_client.stepSimulation()
-            # for joint velocity estimation
-            self._last_joint_config = self._actual_joint_config
-            self._actual_joint_config = self.robot.GetMotorAngles()
             self._sim_step_counter += 1
-            self._dt_motor_torques.append(self.robot.GetMotorTorques())
-            self._dt_motor_velocities.append(self.robot.GetMotorVelocities())
 
             if self._is_render:
                 self._render_step_helper()
 
         self._last_action = curr_act
         self._env_step_counter += 1
-        reward = self._reward()
+        reward = self._task._reward()
         done = False
-        infos = {"base_pos": self.robot.GetBasePosition()}
+        # infos = {"base_pos": self.robot.GetBasePosition()}
+        infos = {}
 
-        if self._termination() or self.get_sim_time() > self._MAX_EP_LEN:
-            infos["TimeLimit.truncated"] = not self._termination()
+        task_terminated = self._task._terminated()
+        if task_terminated or self.get_sim_time() > self._MAX_EP_LEN:
+            infos["TimeLimit.truncated"] = not task_terminated
             done = True
 
         # Update the actual reward at the end of the episode with bonus or malus
         if done:
-            reward = self.reward_end_episode(reward)
-            # print(reward)
+            reward += self._task._reward_end_episode(reward)
             
         self._robot_sensors._on_step()
         obs = self.get_observation()
@@ -910,7 +454,7 @@ class QuadrupedGymEnv(gym.Env):
     # Filtering to smooth actions
     ###################################################
     def _build_action_filter(self):
-        sampling_rate = 1 / (self._time_step * self._action_repeat)
+        sampling_rate = 1 / self._env_time_step
         num_joints = self._action_dim
         a_filter = action_filter.ActionFilterButter(sampling_rate=sampling_rate, num_joints=num_joints)
         if self._enable_springs:
@@ -954,7 +498,7 @@ class QuadrupedGymEnv(gym.Env):
             # set up pybullet simulation
             self._pybullet_client.resetSimulation()
             self._pybullet_client.setPhysicsEngineParameter(numSolverIterations=int(self._num_bullet_solver_iterations))
-            self._pybullet_client.setTimeStep(self._time_step)
+            self._pybullet_client.setTimeStep(self._sim_time_step)
             self.plane = self._pybullet_client.loadURDF(
                 pybullet_data.getDataPath() + "/plane.urdf", basePosition=[80, 0, 0]
             )  # to extend available running space (shift)
@@ -984,8 +528,6 @@ class QuadrupedGymEnv(gym.Env):
         else:
             self.robot.Reset(reload_urdf=False)
 
-        self._robot_sensors._reset(self.robot)
-
         self._env_step_counter = 0
         self._sim_step_counter = 0
         self._last_base_position = [0, 0, 0]
@@ -999,14 +541,11 @@ class QuadrupedGymEnv(gym.Env):
             self._init_filter()
 
         self._settle_robot()  # Settle robot after being spawned
-
-        self._init_task_variables()
-
-        # for joint velocity estimation
-        self._last_joint_config = self.robot.GetMotorAngles()
-        self._actual_joint_config = self.robot.GetMotorAngles()
+        self._robot_sensors._reset(self.robot)  # Rsest sensors
+        self._task._reset(self)  # Reset task internal state
 
         self._last_action = np.zeros(self._action_dim)
+
         if self._is_record_video:
             self.recordVideoHelper()
 
@@ -1084,78 +623,6 @@ class QuadrupedGymEnv(gym.Env):
             raise ValueError(f"motor control mode {self._motor_control_mode} not supported yet in RLGymInterface.")
         return init_action
 
-    def _init_task_variables(self):
-        if self._TASK_ENV == "JUMPING_TASK":
-            self._init_variables_jumping()
-        elif self._TASK_ENV in ["LR_COURSE_TASK", "FWD_LOCOMOTION"]:
-            self._v_des = np.array([2.0, 0.0])  # (np.random.uniform(), 2.*np.random.uniform()-1.)
-        elif self._TASK_ENV == "JUMPING_ON_PLACE_TASK":
-            self._init_variables_jumping_on_place()
-        elif self._TASK_ENV in ["JUMPING_ON_PLACE_HEIGHT_TASK", "JUMPING_ON_PLACE_ABS_HEIGHT_TASK"]:
-            self._init_variables_jumping_on_place_height()
-        elif self._TASK_ENV == "LANDING_TASK":
-            self._init_variables_landing()
-        elif self._TASK_ENV == "JUMPING_FORWARD":
-            self._init_variables_jumping_forward()
-        else:
-            raise ValueError(f"the task {self._TASK_ENV} is not implemented yet")
-
-    def _init_variables_jumping_forward(self):
-        self._v_des = np.array([3.0])
-        self._init_height = self.robot.GetBasePosition()[2]
-        self._all_feet_in_the_air = False
-        self._time_take_off = self.get_sim_time()
-        self._robot_pose_take_off = self.robot.GetBasePosition()
-        self._robot_orientation_take_off = self.robot.GetBaseOrientationRollPitchYaw()
-        self._max_flight_time = 0.0
-        self._max_forward_distance = 0.0
-        self._max_yaw = 0.0
-        self._max_roll = 0.0
-        self._jump_init_height = self._robot_pose_take_off[2]
-        self._max_height = 0.0
-
-    def _init_variables_landing(self):
-        pass
-
-    def _init_variables_jumping(self):
-        # For the jumping task
-        self._v_des = np.array([2.0, 0.0])  # (np.random.uniform(), 2.*np.random.uniform()-1.)
-        self._init_height = self.robot.GetBasePosition()[2]
-        self._all_feet_in_the_air = False
-        self._time_take_off = self.get_sim_time()
-        self._robot_pose_take_off = self.robot.GetBasePosition()
-        self._robot_orientation_take_off = self.robot.GetBaseOrientationRollPitchYaw()
-        self._max_flight_time = 0.0
-        self._max_forward_distance = 0.0
-
-    def _init_variables_jumping_on_place(self):
-        self._v_des = np.array([3.0])
-        self._init_height = self.robot.GetBasePosition()[2]
-        self._all_feet_in_the_air = False
-        self._time_take_off = self.get_sim_time()
-        self._robot_pose_take_off = self.robot.GetBasePosition()
-        self._robot_orientation_take_off = self.robot.GetBaseOrientationRollPitchYaw()
-        self._robot_orientation_take_off_quat = self.robot.GetBaseOrientation()
-        self._max_flight_time = 0.0
-        self._max_forward_distance = 0.0
-        self._max_yaw = 0.0
-        self._max_pitch = 0.0
-
-    def _init_variables_jumping_on_place_height(self):
-        self._v_des = np.array([3.0])
-        self._init_height = self.robot.GetBasePosition()[2]
-        self._all_feet_in_the_air = False
-        self._time_take_off = self.get_sim_time()
-        self._robot_pose_take_off = self.robot.GetBasePosition()
-        self._robot_orientation_take_off = self.robot.GetBaseOrientationRollPitchYaw()
-        self._robot_orientation_take_off_quat = self.robot.GetBaseOrientation()
-        self._max_flight_time = 0.0
-        self._max_forward_distance = 0.0
-        self._max_yaw = 0.0
-        self._max_pitch = 0.0
-        self._jump_init_height = self._robot_pose_take_off[2]
-        self._max_height = 0.0
-
     ######################################################################################
     # Render, record videos, bookkeping, and misc pybullet helpers.
     ######################################################################################
@@ -1211,8 +678,8 @@ class QuadrupedGymEnv(gym.Env):
         time_spent = time.time() - self._last_frame_time
         self._last_frame_time = time.time()
         # time_to_sleep = self._action_repeat * self._time_step - time_spent
-        time_to_sleep = self._time_step - time_spent
-        if time_to_sleep > 0 and (time_to_sleep < self._time_step):
+        time_to_sleep = self._sim_time_step - time_spent
+        if time_to_sleep > 0 and (time_to_sleep < self._sim_time_step):
             time.sleep(time_to_sleep)
 
         base_pos = self.robot.GetBasePosition()
@@ -1270,7 +737,7 @@ class QuadrupedGymEnv(gym.Env):
 
     def get_sim_time(self):
         """Get current simulation time."""
-        return self._sim_step_counter * self._time_step
+        return self._sim_step_counter * self._sim_time_step
 
     def get_motor_control_mode(self):
         """Get current motor control mode."""
@@ -1398,7 +865,7 @@ def test_env():
         "enable_action_interpolation": False,
         "enable_action_clipping": False,
         "enable_action_filter": True,
-        "task_env": "JUMPING_FORWARD",
+        "task_env": "JUMPING_ON_PLACE_HEIGHT",
         "observation_space_mode": "DEFAULT",
         "action_space_mode": "SYMMETRIC",
         "enable_joint_velocity_estimate": True,
