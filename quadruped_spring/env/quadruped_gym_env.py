@@ -1077,6 +1077,8 @@ class QuadrupedGymEnv(gym.Env):
         elif self._motor_control_mode in ["CARTESIAN_PD", "INVKIN_CARTESIAN_PD"]:
             command = self._robot_config.NOMINAL_FOOT_POS_LEG_FRAME
             init_action = self.compute_action_from_command(command)
+        elif self._motor_control_mode == 'TORQUE' and not self._isRLGymInterface:
+            init_action = None
         else:
             raise ValueError(f"motor control mode {self._motor_control_mode} not supported yet in RLGymInterface.")
         return init_action
