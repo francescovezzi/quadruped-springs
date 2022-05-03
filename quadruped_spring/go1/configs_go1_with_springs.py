@@ -31,6 +31,8 @@ DEFAULT_HIP_ANGLE = 0  # anca
 DEFAULT_THIGH_ANGLE = np.pi / 4  # coscia
 DEFAULT_CALF_ANGLE = -np.pi / 2  # ginocchio
 
+LANDING_POSE = np.array([DEFAULT_HIP_ANGLE, DEFAULT_THIGH_ANGLE, DEFAULT_CALF_ANGLE] * NUM_LEGS)
+
 # Used to convert the robot SDK joint angles to URDF joint angles.
 JOINT_DIRECTIONS = np.array([1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1])
 

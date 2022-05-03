@@ -33,6 +33,7 @@ DEFAULT_CALF_ANGLE = -np.pi / 2  # ginocchio
 
 INIT_JOINT_ANGLES = np.array([DEFAULT_HIP_ANGLE, DEFAULT_THIGH_ANGLE, DEFAULT_CALF_ANGLE] * NUM_LEGS)
 INIT_MOTOR_ANGLES = INIT_JOINT_ANGLES
+LANDING_POSE = INIT_MOTOR_ANGLES
 # Used to convert the robot SDK joint angles to URDF joint angles.
 JOINT_DIRECTIONS = np.array([1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1])
 
