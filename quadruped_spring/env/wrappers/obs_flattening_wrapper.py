@@ -8,22 +8,26 @@ class ObsFlatteningWrapper(gym.Wrapper):
     def __init__(self, env):
         super().__init__(env)
 
-    def step(self, action):
-        observation_dict, reward, done, infos = self.env.step(action)
-
+    @staticmethod
+    def _flatten_obs(observation_dict):
         observations = []
         for key, value in observation_dict.items():
             observations.append(np.asarray(value).flatten())
         flat_observations = np.concatenate(observations)
+        return flat_observations
 
+    def step(self, action):
+        observation_dict, reward, done, infos = self.env.step(action)
+        flat_observations = self._flatten_obs(observation_dict)
         return flat_observations, reward, done, infos
 
     def render(self, mode="rgb_array", **kwargs):
         return self.env.render(mode, **kwargs)
 
     def reset(self):
-        obs = self.env.reset()
-        return obs
+        observation_dict = self.env.reset()
+        flat_observations = self._flatten_obs(observation_dict)
+        return flat_observations
 
     def close(self):
         self.env.close()
