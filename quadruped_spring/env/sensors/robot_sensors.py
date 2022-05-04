@@ -201,7 +201,7 @@ class IMU(Sensor):
         self._get_data()
 
 
-class SensorList():
+class SensorList:
     """Manage all the robot sensors"""
 
     def __init__(self, sensor_list):
@@ -245,14 +245,14 @@ class SensorList():
             s._set_sensor(robot)
             s._reset_sensor()
         self._obs_dim = self._compute_obs_dim()
-        
+
     def _init(self, robot_config):
         for idx, s in enumerate(self._sensor_list):
             self._sensor_list[idx] = s()
         for s in self._sensor_list:
             s._init_sensor(robot_config)
             s._update_sensor_info()
-            
+
     def _turn_on(self, robot):
         for s in self._sensor_list:
             s._set_sensor(robot)

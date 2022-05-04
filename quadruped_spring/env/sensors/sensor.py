@@ -1,7 +1,7 @@
 import numpy as np
 
 
-class Sensor():
+class Sensor:
     """A prototype class for a generic sensor"""
 
     def __init__(self):
@@ -22,7 +22,7 @@ class Sensor():
     def _set_sensor(self, robot):
         """Call it at init"""
         self._robot = robot
-        
+
     def _init_sensor(self, robot_config):
         self._robot_config = robot_config
 

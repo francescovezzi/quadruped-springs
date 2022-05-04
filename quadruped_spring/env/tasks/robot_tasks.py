@@ -1,4 +1,5 @@
 import numpy as np
+
 from quadruped_spring.env.tasks.task_base import TaskJumping
 
 
@@ -7,13 +8,14 @@ class JumpingOnPlaceHeight(TaskJumping):
     Robot has to perform one single jump on place. It has to fall the closest as possible
     to the place it landed. Sparse reward based on maximizing the absolute reached height.
     """
+
     def __init__(self):
         super().__init__()
-        
+
     def _reward(self):
         """Remember the reward is sparse. So is 0 except the end of the episode."""
         return 0
-    
+
     def _reward_end_episode(self):
         """Compute bonus and malus to add to reward at the end of the episode"""
         reward = 0

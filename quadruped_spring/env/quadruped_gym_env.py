@@ -1,7 +1,6 @@
 """This file implements the gym environment for a quadruped. """
-import os
-
 import datetime
+import os
 import time
 
 # gym
@@ -18,16 +17,12 @@ from gym.utils import seeding
 
 import quadruped_spring.go1.configs_go1_with_springs as go1_config_with_springs
 import quadruped_spring.go1.configs_go1_without_springs as go1_config_without_springs
-from quadruped_spring.utils import action_filter
-
-from quadruped_spring.env.sensors.sensor_collection import SensorCollection
+from quadruped_spring.env.control_interface.collection import ActionInterfaceCollection, MotorInterfaceCollection
 from quadruped_spring.env.sensors.robot_sensors import SensorList
-from quadruped_spring.env.wrappers.obs_flattening_wrapper import ObsFlatteningWrapper
-
+from quadruped_spring.env.sensors.sensor_collection import SensorCollection
 from quadruped_spring.env.tasks.task_collection import TaskCollection
-
-from quadruped_spring.env.control_interface.collection import MotorInterfaceCollection, ActionInterfaceCollection
-
+from quadruped_spring.env.wrappers.obs_flattening_wrapper import ObsFlatteningWrapper
+from quadruped_spring.utils import action_filter
 
 ACTION_EPS = 0.01
 OBSERVATION_EPS = 0.01
@@ -129,7 +124,7 @@ class QuadrupedGymEnv(gym.Env):
         self._last_frame_time = 0.0  # for rendering
         self._MAX_EP_LEN = EPISODE_LENGTH  # max sim time in seconds, arbitrary
         self._action_bound = 1.0
-        
+
         self._build_action_command_interface(motor_control_mode, action_space_mode)
         self.setupActionSpace()
 
@@ -155,8 +150,8 @@ class QuadrupedGymEnv(gym.Env):
     ######################################################################################
     def setupObservationSpace(self):
         self._robot_sensors._init(robot_config=self._robot_config)
-        obs_high = (self._robot_sensors._get_high_limits() + OBSERVATION_EPS)
-        obs_low = (self._robot_sensors._get_low_limits() - OBSERVATION_EPS)
+        obs_high = self._robot_sensors._get_high_limits() + OBSERVATION_EPS
+        obs_low = self._robot_sensors._get_low_limits() - OBSERVATION_EPS
         self.observation_space = spaces.Box(obs_low, obs_high, dtype=np.float32)
 
     def _build_action_command_interface(self, motor_control_mode, action_space_mode):
@@ -164,7 +159,7 @@ class QuadrupedGymEnv(gym.Env):
         motor_interface = motor_interface(self._robot_config)
         ac_interface = ActionInterfaceCollection().get_el(action_space_mode)
         self._ac_interface = ac_interface(motor_interface)
-        
+
         self._motor_control_mode = motor_control_mode
         self._action_space_mode = action_space_mode
 
@@ -174,7 +169,7 @@ class QuadrupedGymEnv(gym.Env):
         self._action_dim = action_dim
         action_high = np.array([1] * action_dim)
         self.action_space = spaces.Box(-action_high, action_high, dtype=np.float32)
-        
+
     ######################################################################################
     # Step simulation, map policy network actions to joint commands, etc.
     ######################################################################################
@@ -196,7 +191,7 @@ class QuadrupedGymEnv(gym.Env):
             interpolated_action = action
 
         return interpolated_action
- 
+
     def _sub_step(self, action, sub_step):
         if self._isRLGymInterface:
             if self._enable_action_interpolation:
@@ -235,7 +230,7 @@ class QuadrupedGymEnv(gym.Env):
         # Update the actual reward at the end of the episode with bonus or malus
         if done:
             reward += self._task._reward_end_episode()
-            
+
         self._robot_sensors._on_step()
         obs = self.get_observation()
 
@@ -310,7 +305,7 @@ class QuadrupedGymEnv(gym.Env):
         self._env_step_counter = 0
         self._sim_step_counter = 0
         self._last_base_position = [0, 0, 0]
-        
+
         if self._is_render:
             self._pybullet_client.resetDebugVisualizerCamera(self._cam_dist, self._cam_yaw, self._cam_pitch, [0, 0, 0])
 
@@ -590,9 +585,9 @@ class QuadrupedGymEnv(gym.Env):
         for i in range(-1, self._pybullet_client.getNumJoints(quad_ID)):
             self._pybullet_client.setCollisionFilterPair(quad_ID, base_block_ID, i, -1, 0)
 
-########################################################
-# Get methods
-########################################################
+    ########################################################
+    # Get methods
+    ########################################################
     def get_action_dim(self):
         return self._ac_interface.get_action_space_dim()
 
@@ -602,7 +597,7 @@ class QuadrupedGymEnv(gym.Env):
     def get_sim_time(self):
         """Get current simulation time."""
         return self._sim_step_counter * self._sim_time_step
-    
+
     def get_env_time_step(self):
         """Get environment simulation time step."""
         return self._env_time_step
@@ -618,19 +613,19 @@ class QuadrupedGymEnv(gym.Env):
     def are_springs_enabled(self):
         """Get boolean specifying if springs are enabled or not."""
         return self._enable_springs
-    
+
     def task_terminated(self):
         """Return boolean specifying whther the task is terminated."""
         return self._task._terminated()
-    
+
     def get_reward_end_episode(self):
         """Return bonus and malus to add to the reward at the end of the episode."""
         return self._task._reward_end_episode()
-    
+
     def get_init_pose(self):
         """Get the initial init pose for robot settling."""
         return self._ac_interface.get_init_pose()
-    
+
 
 def test_env():
 
@@ -645,11 +640,11 @@ def test_env():
         "enable_action_filter": True,
         "task_env": "JUMPING_ON_PLACE_HEIGHT",
         "observation_space_mode": "DEFAULT",
-        "action_space_mode": "SYMMETRIC_NO_HIP"
+        "action_space_mode": "SYMMETRIC_NO_HIP",
     }
 
     env = QuadrupedGymEnv(**env_config)
-    env  = ObsFlatteningWrapper(env)
+    env = ObsFlatteningWrapper(env)
     # env = RestWrapper(env)
     # env = LandingWrapper(env)
 

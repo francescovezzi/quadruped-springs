@@ -1,9 +1,11 @@
 import numpy as np
+
 from quadruped_spring.env.control_interface.interface_base import MotorInterfaceBase
 
 
 class MotorInterfacePD(MotorInterfaceBase):
     """Command Action interface for PD motor control mode."""
+
     def __init__(self, robot_config):
         super().__init__(robot_config)
         self._motor_control_mode = "PD"
@@ -16,13 +18,15 @@ class MotorInterfacePD(MotorInterfaceBase):
     def _transform_action_to_motor_command(self, action):
         command = self._scale_helper_action_to_motor_command(action)
         return command
-    
+
     def _transform_motor_command_to_action(self, command):
         action = self._scale_helper_motor_command_to_action(command)
         return action
-    
+
+
 class MotorInterfaceCARTESIAN_PD(MotorInterfaceBase):
     """Command Action interface for CARTESIAN_PD motor control mode."""
+
     def __init__(self, robot_config):
         super().__init__(robot_config)
         self._motor_control_mode = "CARTESIAN_PD"
@@ -35,21 +39,23 @@ class MotorInterfaceCARTESIAN_PD(MotorInterfaceBase):
     def _transform_action_to_motor_command(self, action):
         des_foot_pos = self._scale_helper_action_to_motor_command(action)
         q_des = np.array(
-            list(map(lambda i:
-                self._robot.ComputeInverseKinematics(
-                    i, des_foot_pos[3 * i : 3 * (i + 1)]
-                ),
-                range(self._robot_config.NUM_LEGS)))
+            list(
+                map(
+                    lambda i: self._robot.ComputeInverseKinematics(i, des_foot_pos[3 * i : 3 * (i + 1)]),
+                    range(self._robot_config.NUM_LEGS),
+                )
+            )
         )
         return q_des.flatten()
-    
+
     def _transform_motor_command_to_action(self, command):
         action = self._scale_helper_motor_command_to_action(command)
         return action
-    
-    
+
+
 class MotorInterfaceTORQUE(MotorInterfaceBase):
     """In order to supply pure torque to motors"""
+
     def __init__(self, robot_config):
         super().__init__(robot_config)
         self._motor_control_mode = "TORQUE"

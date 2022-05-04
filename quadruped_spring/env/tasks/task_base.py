@@ -2,39 +2,39 @@ import numpy as np
 from scipy.spatial.transform import Rotation as R
 
 
-class TaskBase():
-    """ Prototype class for a generic task """
-    
+class TaskBase:
+    """Prototype class for a generic task"""
+
     def __init__(self):
         pass
-    
+
     def _reset(self, env):
-        """ reset task and initialize task variables """
+        """reset task and initialize task variables"""
         self._env = env
-        
+
     def _on_step(self):
-        """ update task variables """
+        """update task variables"""
         pass
-    
+
     def _reward(self):
-        """ Return the reward funciton """
+        """Return the reward funciton"""
         pass
-        
+
     def _reward_end_episode(self, reward):
-        """  add bonus and malus to the actual reward at the end of the episode """
+        """add bonus and malus to the actual reward at the end of the episode"""
         pass
-    
+
     def _terminated(self):
-        """  return boolean specifying whether episode is terminated """
+        """return boolean specifying whether episode is terminated"""
         pass
 
 
 class TaskJumping(TaskBase):
-    """ Generic Jumping Task """
-    
+    """Generic Jumping Task"""
+
     def __init__(self):
         super().__init__()
-    
+
     def _reset(self, env):
         super()._reset(env)
         robot = self._env.robot
@@ -48,7 +48,7 @@ class TaskJumping(TaskBase):
         self._max_yaw = 0.0
         self._max_roll = 0.0
         self._relative_max_height = 0.0
-        
+
     def _on_step(self):
         if self._env.roobt._is_flying():
             if not self._all_feet_in_the_air:
@@ -67,13 +67,13 @@ class TaskJumping(TaskBase):
                 pos_relative = pos_relative @ rotation_matrix
                 self._max_forward_distance = max(pos_relative[0], self._max_forward_distance)
             self._all_feet_in_the_air = False
-            
+
         _, pitch, yaw = self.robot.GetBaseOrientationRollPitchYaw()
         self._max_yaw = max(np.abs(yaw), self._max_yaw)
         self._max_pitch = max(np.abs(pitch), self._max_pitch)
         delta_height = max(self.robot.GetBasePosition()[2] - self._init_height, 0.0)
         self._relative_max_height = max(self._relative_max_height, delta_height)
-            
+
     def is_fallen(self, dot_prod_min=0.85):
         """Decide whether the quadruped has fallen.
 
@@ -91,7 +91,8 @@ class TaskJumping(TaskBase):
         local_up = rot_mat[6:]
         pos = self._env.robot.GetBasePosition()
         return (
-            np.dot(np.asarray([0, 0, 1]), np.asarray(local_up)) < dot_prod_min or pos[2] < self._env._robot_config.IS_FALLEN_HEIGHT
+            np.dot(np.asarray([0, 0, 1]), np.asarray(local_up)) < dot_prod_min
+            or pos[2] < self._env._robot_config.IS_FALLEN_HEIGHT
         )
 
     def _not_allowed_contact(self):
@@ -102,6 +103,6 @@ class TaskJumping(TaskBase):
         _, num_invalid_contacts, _, _ = self._env.robot.GetContactInfo()
 
         return num_invalid_contacts
-            
+
     def _terminated(self):
         return self.is_fallen() or self._not_allowed_contact()

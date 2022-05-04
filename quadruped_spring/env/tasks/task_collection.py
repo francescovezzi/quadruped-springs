@@ -10,6 +10,7 @@ from quadruped_spring.utils.base_collection import CollectionBase
 
 class TaskCollection(CollectionBase):
     """Utility to collect all the implemented robot tasks."""
+
     def __init__(self):
         super().__init__()
         self.JUMPING_ON_PLACE_HEIGHT = rt.JumpingOnPlaceHeight

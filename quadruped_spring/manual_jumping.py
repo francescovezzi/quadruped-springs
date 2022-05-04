@@ -11,12 +11,11 @@ os.sys.path.insert(0, current_dir)
 import argparse
 
 from env.quadruped_gym_env import QuadrupedGymEnv
-from utils.evaluate_metric import EvaluateMetricJumpOnPlace
 from env.wrappers.landing_wrapper import LandingWrapper
 from env.wrappers.rest_wrapper import RestWrapper
-from utils.timer import Timer
-
 from quadruped_spring.env.quadruped_gym_env import TASK_SPACE_MAP
+from utils.evaluate_metric import EvaluateMetricJumpOnPlace
+from utils.timer import Timer
 
 # from utils.monitor_state import MonitorState
 
