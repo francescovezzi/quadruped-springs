@@ -24,6 +24,9 @@ from quadruped_spring.env.tasks.task_collection import TaskCollection
 from quadruped_spring.env.wrappers.obs_flattening_wrapper import ObsFlatteningWrapper
 from quadruped_spring.utils import action_filter
 
+# from quadruped_spring.env.wrappers.rest_wrapper import RestWrapper
+# from quadruped_spring.env.wrappers.landing_wrapper import LandingWrapper
+
 ACTION_EPS = 0.01
 OBSERVATION_EPS = 0.01
 EPISODE_LENGTH = 10  # max episode length for RL (seconds)
