@@ -15,45 +15,29 @@ import pybullet_utils.bullet_client as bc
 import quadruped
 from gym import spaces
 from gym.utils import seeding
-from scipy.spatial.transform import Rotation as R
 
 import quadruped_spring.go1.configs_go1_with_springs as go1_config_with_springs
 import quadruped_spring.go1.configs_go1_without_springs as go1_config_without_springs
 from quadruped_spring.utils import action_filter
 
-from quadruped_spring.env.sensors import robot_sensors as rs
+from quadruped_spring.env.sensors.sensor_collection import SensorCollection
 from quadruped_spring.env.sensors.robot_sensors import SensorList
 from quadruped_spring.env.wrappers.obs_flattening_wrapper import ObsFlatteningWrapper
 
-from quadruped_spring.env.tasks import robot_tasks as rt
+from quadruped_spring.env.tasks.task_collection import TaskCollection
+
+from quadruped_spring.env.control_interface.collection import MotorInterfaceCollection, ActionInterfaceCollection
 
 
 ACTION_EPS = 0.01
 OBSERVATION_EPS = 0.01
 EPISODE_LENGTH = 10  # max episode length for RL (seconds)
-
 VIDEO_LOG_DIRECTORY = "videos/" + datetime.datetime.now().strftime("vid-%Y-%m-%d-%H-%M-%S-%f")
 
-# For the sensor equipment selection
-OBS_SPACE_MAP = {"DEFAULT": [rs.IMU, rs.FeetPostion, rs.FeetVelocity, rs.GroundReactionForce]}
 
-# For task selection
-TASK_SPACE_MAP = {"JUMPING_ON_PLACE_HEIGHT": rt.JumpingOnPlaceHeight}
-
-# Implemented action spaces for deep reinforcement learning:
-#   - "DEFAULT": classic
-#   - "SYMMETRIC" legs right side and left side move symmetrically
-#   - "SYMMETRIC_NO_HIP" as symmetric but hips receive action = 0
-
-# Motor control modes:
-#   - "TORQUE":
-#         supply raw torques to each motor (12)
-#   - "PD":
-#         supply desired joint positions to each motor (12)
-#         torques are computed based on the joint position/velocity error
-#   - "CARTESIAN_PD":
-#         supply desired foot positions for each leg (12)
-#         torques are computed based on the joint position/velocity error
+# Motor control mode implemented: TORQUE, PD, CARTESIAN_PD
+# Observation space implemented: DEFAULT
+# Action space implemented: DEFAULT, SYMMETRIC, SYMMETRIC_NO_HIP
 
 
 class QuadrupedGymEnv(gym.Env):
@@ -129,8 +113,6 @@ class QuadrupedGymEnv(gym.Env):
         self._action_repeat = action_repeat
         self._env_time_step = self._action_repeat * self._sim_time_step
         self._motor_control_mode = motor_control_mode
-        self._task = TASK_SPACE_MAP[task_env]()
-        self._robot_sensors = SensorList(OBS_SPACE_MAP[observation_space_mode])
         self._action_space_mode = action_space_mode
         self._hard_reset = True  # must fully reset simulation at init
         self._on_rack = on_rack
@@ -154,6 +136,8 @@ class QuadrupedGymEnv(gym.Env):
         self._MAX_EP_LEN = EPISODE_LENGTH  # max sim time in seconds, arbitrary
         self._action_bound = 1.0
 
+        self._task = TaskCollection().get_el(task_env)()
+        self._robot_sensors = SensorList(SensorCollection().get_el(observation_space_mode))
         self.setupActionSpace()
         self.setupObservationSpace()
 
