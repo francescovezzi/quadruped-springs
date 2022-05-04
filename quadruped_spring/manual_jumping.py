@@ -13,7 +13,6 @@ import argparse
 from env.quadruped_gym_env import QuadrupedGymEnv
 from env.wrappers.landing_wrapper import LandingWrapper
 from env.wrappers.rest_wrapper import RestWrapper
-from quadruped_spring.env.quadruped_gym_env import TASK_SPACE_MAP
 from utils.evaluate_metric import EvaluateMetricJumpOnPlace
 from utils.timer import Timer
 
@@ -45,7 +44,7 @@ class JumpingStateMachine(gym.Wrapper):
         self._jump_end = False
         self._flight_timer = Timer(dt=self.env._sim_time_step)
 
-        self._default_action = self.env.compute_action_from_command(self._robot_config.INIT_MOTOR_ANGLES)
+        self._default_action = self.env.get_settling_action()
 
     def compute_action(self):
         return self._actions[self._state]()
@@ -128,7 +127,6 @@ def build_env(enable_springs=False):
         "enable_springs": enable_springs,
         "render": False,
         "on_rack": False,
-        "enable_joint_velocity_estimate": False,
         "isRLGymInterface": True,
         "motor_control_mode": "PD",
         "action_repeat": 1,
