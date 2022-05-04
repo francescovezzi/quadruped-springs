@@ -54,7 +54,7 @@ class MotorInterfaceCARTESIAN_PD(MotorInterfaceBase):
     def _transform_motor_command_to_action(self, command):
         action = self._scale_helper_motor_command_to_action(command)
         return action
-    
+
     def get_landing_pose(self):
         return self._robot_config.CARTESIAN_LANDING_POSE
 

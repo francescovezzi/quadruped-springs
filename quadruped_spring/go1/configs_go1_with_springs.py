@@ -58,9 +58,7 @@ LANDING_Z = -0.29
 NOMINAL_FOOT_POS_LEG_FRAME = np.array(
     list(map(lambda sign: [DEFAULT_X, sign * DEFAULT_Y, DEFAULT_Z], [-1, 1, -1, 1]))
 ).flatten()
-CARTESIAN_LANDING_POSE = np.array(
-    list(map(lambda sign: [DEFAULT_X, sign * DEFAULT_Y, LANDING_Z], [-1, 1, -1, 1]))
-).flatten()
+CARTESIAN_LANDING_POSE = np.array(list(map(lambda sign: [DEFAULT_X, sign * DEFAULT_Y, LANDING_Z], [-1, 1, -1, 1]))).flatten()
 
 ##################################################################################
 # Actuation limits/gains, position, and velocity limits

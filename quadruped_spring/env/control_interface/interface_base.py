@@ -126,6 +126,6 @@ class ActionWrapperBase(MotorInterfaceBase):
     def get_action_space_dim(self):
         """Get the action space dimension."""
         return self._action_dim
-    
+
     def get_landing_pose(self):
         return self._motor_interface.get_landing_pose()

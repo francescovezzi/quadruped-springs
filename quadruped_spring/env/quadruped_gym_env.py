@@ -11,12 +11,12 @@ import numpy as np
 import pybullet
 import pybullet_data
 import pybullet_utils.bullet_client as bc
-from quadruped_spring.env import quadruped
 from gym import spaces
 from gym.utils import seeding
 
 import quadruped_spring.go1.configs_go1_with_springs as go1_config_with_springs
 import quadruped_spring.go1.configs_go1_without_springs as go1_config_without_springs
+from quadruped_spring.env import quadruped
 from quadruped_spring.env.control_interface.collection import ActionInterfaceCollection, MotorInterfaceCollection
 from quadruped_spring.env.sensors.robot_sensors import SensorList
 from quadruped_spring.env.sensors.sensor_collection import SensorCollection
@@ -36,6 +36,7 @@ VIDEO_LOG_DIRECTORY = "videos/" + datetime.datetime.now().strftime("vid-%Y-%m-%d
 
 # NOTE:
 # TORQUE control mode actually works only if isRLGymInterface is setted to False.
+
 
 class QuadrupedGymEnv(gym.Env):
     """
@@ -158,12 +159,11 @@ class QuadrupedGymEnv(gym.Env):
 
     def _build_action_command_interface(self, motor_control_mode, action_space_mode):
         if motor_control_mode == "TORQUE" and self._isRLGymInterface:
-            raise ValueError(f"the motor control mode {motor_control_mode} not"
-                             "implemented yet for RL Gym interface.")
-        
+            raise ValueError(f"the motor control mode {motor_control_mode} not" "implemented yet for RL Gym interface.")
+
         motor_interface = MotorInterfaceCollection().get_el(motor_control_mode)
         motor_interface = motor_interface(self._robot_config)
-       
+
         ac_interface = ActionInterfaceCollection().get_el(action_space_mode)
         self._ac_interface = ac_interface(motor_interface)
 
@@ -632,13 +632,13 @@ class QuadrupedGymEnv(gym.Env):
     def get_init_pose(self):
         """Get the initial init pose for robot settling."""
         return self._ac_interface.get_init_pose()
-    
+
     def get_settling_action(self):
         """Get the settling action."""
         init_pose = self.get_init_pose()
         landing_action = self._ac_interface._transform_motor_command_to_action(init_pose)
         return landing_action
-    
+
     def get_landing_action(self):
         """Get the action the landing controller should apply."""
         landing_pose = self._ac_interface.get_landing_pose()
