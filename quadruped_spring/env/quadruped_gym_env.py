@@ -34,6 +34,8 @@ VIDEO_LOG_DIRECTORY = "videos/" + datetime.datetime.now().strftime("vid-%Y-%m-%d
 # Observation space implemented: DEFAULT
 # Action space implemented: DEFAULT, SYMMETRIC, SYMMETRIC_NO_HIP
 
+# NOTE:
+# TORQUE control mode actually works only if isRLGymInterface is setted to False.
 
 class QuadrupedGymEnv(gym.Env):
     """
