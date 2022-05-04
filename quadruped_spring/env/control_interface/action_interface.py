@@ -14,7 +14,7 @@ class DefaultActionWrapper(ActionWrapperBase):
     def _convert_to_default_action_space(self, action):
         return action
 
-    def _convert_to_default_action_space(self, action):
+    def _convert_to_actual_action_space(self, action):
         return action
 
 

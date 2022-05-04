@@ -157,9 +157,13 @@ class QuadrupedGymEnv(gym.Env):
         self.observation_space = spaces.Box(obs_low, obs_high, dtype=np.float32)
 
     def _build_action_command_interface(self, motor_control_mode, action_space_mode):
+        if motor_control_mode == "TORQUE" and self._isRLGymInterface:
+            raise ValueError(f"the motor control mode {motor_control_mode} not"
+                             "implemented yet for RL Gym interface.")
+        
         motor_interface = MotorInterfaceCollection().get_el(motor_control_mode)
         motor_interface = motor_interface(self._robot_config)
-        
+       
         ac_interface = ActionInterfaceCollection().get_el(action_space_mode)
         self._ac_interface = ac_interface(motor_interface)
 
@@ -628,6 +632,12 @@ class QuadrupedGymEnv(gym.Env):
     def get_init_pose(self):
         """Get the initial init pose for robot settling."""
         return self._ac_interface.get_init_pose()
+    
+    def get_landing_action(self):
+        """Get the action the landing controller should apply."""
+        landing_pose = self._ac_interface.get_landing_pose()
+        landing_action = self._ac_interface._transform_motor_command_to_action(landing_pose)
+        return landing_action
 
 
 def test_env():
@@ -635,7 +645,7 @@ def test_env():
     env_config = {
         "render": True,
         "on_rack": False,
-        "motor_control_mode": "CARTESIAN_PD",
+        "motor_control_mode": "PD",
         "action_repeat": 10,
         "enable_springs": True,
         "add_noise": False,
@@ -643,14 +653,13 @@ def test_env():
         "enable_action_filter": True,
         "task_env": "JUMPING_ON_PLACE_HEIGHT",
         "observation_space_mode": "DEFAULT",
-        "action_space_mode": "SYMMETRIC_NO_HIP",
+        "action_space_mode": "DEFAULT",
     }
 
     env = QuadrupedGymEnv(**env_config)
     env = ObsFlatteningWrapper(env)
     # env = RestWrapper(env)
     # env = LandingWrapper(env)
-
     sim_steps = 500
     action_dim = env.get_action_dim()
     obs = env.reset()

@@ -28,7 +28,7 @@ class MotorInterfaceBase:
 
     def get_landing_pose(self):
         """Get the pose you'd like the robot assume at landing."""
-        return self._robot_config.LANDING_POSE
+        pass
 
     def get_motor_control_mode(self):
         """Get the implemented motor control mode."""
@@ -126,3 +126,6 @@ class ActionWrapperBase(MotorInterfaceBase):
     def get_action_space_dim(self):
         """Get the action space dimension."""
         return self._action_dim
+    
+    def get_landing_pose(self):
+        return self._motor_interface.get_landing_pose()
