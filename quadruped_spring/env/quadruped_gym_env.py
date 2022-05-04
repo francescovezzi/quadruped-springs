@@ -633,6 +633,12 @@ class QuadrupedGymEnv(gym.Env):
         """Get the initial init pose for robot settling."""
         return self._ac_interface.get_init_pose()
     
+    def get_settling_action(self):
+        """Get the settling action."""
+        init_pose = self.get_init_pose()
+        landing_action = self._ac_interface._transform_motor_command_to_action(init_pose)
+        return landing_action
+    
     def get_landing_action(self):
         """Get the action the landing controller should apply."""
         landing_pose = self._ac_interface.get_landing_pose()
