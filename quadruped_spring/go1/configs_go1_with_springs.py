@@ -27,11 +27,11 @@ INIT_ORIENTATION = (0, 0, 0, 1)
 _, INIT_ORIENTATION_INV = pyb.invertTransform(position=[0, 0, 0], orientation=INIT_ORIENTATION)
 
 # default angles (for init)
-DEFAULT_HIP_ANGLE = 0  # anca
-DEFAULT_THIGH_ANGLE = np.pi / 4  # coscia
-DEFAULT_CALF_ANGLE = -np.pi / 2  # ginocchio
+DEFAULT_HIP_ANGLE = 0
+DEFAULT_THIGH_ANGLE = np.pi / 4
+DEFAULT_CALF_ANGLE = -np.pi / 2
 
-LANDING_POSE = np.array([DEFAULT_HIP_ANGLE, DEFAULT_THIGH_ANGLE, DEFAULT_CALF_ANGLE] * NUM_LEGS)
+ANGLE_LANDING_POSE = np.array([DEFAULT_HIP_ANGLE, DEFAULT_THIGH_ANGLE, DEFAULT_CALF_ANGLE] * NUM_LEGS)
 
 # Used to convert the robot SDK joint angles to URDF joint angles.
 JOINT_DIRECTIONS = np.array([1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1])
@@ -53,9 +53,13 @@ CALF_LINK_LENGTH = 0.213
 DEFAULT_X = 0
 DEFAULT_Y = HIP_LINK_LENGTH
 DEFAULT_Z = -0.32
+LANDING_Z = -0.29
 
 NOMINAL_FOOT_POS_LEG_FRAME = np.array(
     list(map(lambda sign: [DEFAULT_X, sign * DEFAULT_Y, DEFAULT_Z], [-1, 1, -1, 1]))
+).flatten()
+CARTESIAN_LANDING_POSE = np.array(
+    list(map(lambda sign: [DEFAULT_X, sign * DEFAULT_Y, LANDING_Z], [-1, 1, -1, 1]))
 ).flatten()
 
 ##################################################################################
