@@ -11,7 +11,7 @@ import numpy as np
 import pybullet
 import pybullet_data
 import pybullet_utils.bullet_client as bc
-import quadruped
+from quadruped_spring.env import quadruped
 from gym import spaces
 from gym.utils import seeding
 
@@ -157,6 +157,7 @@ class QuadrupedGymEnv(gym.Env):
     def _build_action_command_interface(self, motor_control_mode, action_space_mode):
         motor_interface = MotorInterfaceCollection().get_el(motor_control_mode)
         motor_interface = motor_interface(self._robot_config)
+        
         ac_interface = ActionInterfaceCollection().get_el(action_space_mode)
         self._ac_interface = ac_interface(motor_interface)
 

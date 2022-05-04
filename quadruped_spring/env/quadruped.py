@@ -6,7 +6,7 @@ import re
 import time
 
 import numpy as np
-import quadruped_motor
+from quadruped_spring.env import quadruped_motor
 
 
 class Quadruped(object):
