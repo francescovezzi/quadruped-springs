@@ -20,7 +20,7 @@ else:  # linux
 
 from matplotlib import pyplot as plt
 
-from env.quadruped_gym_env import QuadrupedGymEnv
+from quadruped_spring.env.quadruped_gym_env import QuadrupedGymEnv
 
 
 class HopfNetwork:
