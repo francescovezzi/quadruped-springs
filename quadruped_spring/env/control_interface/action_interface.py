@@ -27,10 +27,10 @@ class SymmetricActionWrapper(ActionWrapperBase):
         leg_FR = action[0:3]
         leg_RR = action[3:6]
 
-        leg_FL = leg_FR
+        leg_FL = np.copy(leg_FR)
         leg_FL[self._symm_idx] = -leg_FR[self._symm_idx]
-
-        leg_RL = leg_RR
+        # print(self._symm_idx)
+        leg_RL = np.copy(leg_RR)
         leg_RL[self._symm_idx] = -leg_RR[self._symm_idx]
 
         return np.concatenate((leg_FR, leg_FL, leg_RR, leg_RL))
