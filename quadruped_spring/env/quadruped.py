@@ -51,7 +51,7 @@ class Quadruped(object):
         self._enable_springs = enable_springs
 
         # motor control mode for accurate motor model, should only be torque or position at this low level
-        if motor_control_mode in ["INVKIN_CARTESIAN_PD", "PD"]:
+        if motor_control_mode == "PD":
             self._motor_control_mode = "PD"
         else:
             self._motor_control_mode = "TORQUE"
