@@ -69,9 +69,10 @@ class LandingWrapper(gym.Wrapper):
     def step(self, action):
         obs, reward, done, infos = self.env.step(action)
 
-        if self.is_flying():
+        if self.is_flying() and  not done:
             _, reward, done, infos = self.take_off_phase(action)
-            _, reward, done, infos = self.landing_phase()
+            if not done:
+                _, reward, done, infos = self.landing_phase()
 
         return obs, reward, done, infos
 
