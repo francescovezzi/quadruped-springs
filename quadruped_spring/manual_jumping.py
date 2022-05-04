@@ -22,8 +22,8 @@ from utils.timer import Timer
 class JumpingStateMachine(gym.Wrapper):
     def __init__(self, env):
         super().__init__(env)
-        self._settling_duration_time = 1  # seconds
-        self._couching_duration_time = 4  # seconds
+        self._settling_duration_time = 0.5  # seconds
+        self._couching_duration_time = 3  # seconds
         self._settling_duration_steps = self._settling_duration_time / self.env._env_time_step
         self._couching_duration_steps = self._couching_duration_time / self.env._env_time_step
         assert self._couching_duration_steps >= 1000, "couching duration steps number should be >= 1000"
@@ -134,7 +134,7 @@ def build_env(enable_springs=False):
         "action_space_mode": "DEFAULT",
         "task_env": "JUMPING_ON_PLACE_HEIGHT",
     }
-    # env_config["enable_springs"] = True
+    env_config["enable_springs"] = True
     if fill_line:
         env_config["render"] = False
     env = QuadrupedGymEnv(**env_config)
@@ -158,11 +158,12 @@ if __name__ == "__main__":
     env = RestWrapper(env)
     env = LandingWrapper(env)
     done = False
+    obs = env.reset()
     while not done:
         action = env.compute_action()
         # action = np.zeros(12)
         obs, reward, done, info = env.step(action)
-        # print(env.robot.GetMotorVelocities()-env.get_joint_velocity_estimation())
+
     # env.release_plots()
     print("******")
     print(f"reward -> {reward}")
