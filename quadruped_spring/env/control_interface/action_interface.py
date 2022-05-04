@@ -1,31 +1,6 @@
 import numpy as np
+from quadruped_spring.env.control_interface.interface_base import ActionWrapperBase
 
-MOTOR_CONTROL_MODE_SUPPORTED_LIST = ["PD", "CARTESIAN_PD"]
-
-class ActionWrapperBase():
-    """Wrapper for taking into account the action space."""
-    def __init__(self, motor_interface):
-        self._motor_interface = motor_interface
-        self._action_space_mode = "please give me a name"
-        self._action_dim = None
-        if self._motor_control_mode not in MOTOR_CONTROL_MODE_SUPPORTED_LIST:
-            raise ValueError("the motor control mode {self._motor_control_mode} is not "
-                             "implemented yet for gym interface.")
-        
-    def _convert_to_default_action_space(self, action):
-        """
-        Transform the action in the proper action of dimension 12 (NUM_LEGS)
-        before being processed to become the motor command.
-        """
-        pass
-    
-    def _convert_to_actual_action_space(self, action):
-        """
-        Transform the action in the proper action of dimension _action_dim
-        to help conversion from command to action.
-        """
-        pass
-    
 
 class DefaultActionWrapper(ActionWrapperBase):
     """Action Wrapper for default space."""
@@ -40,6 +15,7 @@ class DefaultActionWrapper(ActionWrapperBase):
     def _convert_to_default_action_space(self, action):
         return action
         
+
 class SymmetricActionWrapper(ActionWrapperBase):
     """Action Wrapper to assign symmetric action for the robot right and left side."""
     def __init__(self, motor_interface):
@@ -64,6 +40,7 @@ class SymmetricActionWrapper(ActionWrapperBase):
         leg_RR = action[6:9]
         return np.concatenate((leg_FR, leg_RR))
     
+
 class SymmetricNoHipActionWrapper(ActionWrapperBase):
     """
     Action Wrapper to assign symmetric action for the robot right and left side
