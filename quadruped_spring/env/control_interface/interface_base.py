@@ -75,7 +75,7 @@ class MotorInterfaceBase:
         return np.clip(action, -1, 1)
 
 
-MOTOR_CONTROL_MODE_SUPPORTED_LIST = ["PD", "CARTESIAN_PD"]
+MOTOR_CONTROL_MODE_SUPPORTED_LIST = ["TORQUE", "PD", "CARTESIAN_PD"]
 
 
 class ActionWrapperBase(MotorInterfaceBase):
