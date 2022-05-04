@@ -67,8 +67,6 @@ class QuadrupedGymEnv(gym.Env):
         enable_springs=False,
         enable_action_interpolation=False,
         enable_action_filter=False,
-        enable_action_clipping=False,
-        enable_joint_velocity_estimate=False,
         test_env=False,  # NOT ALLOWED FOR TRAINING!
     ):
         """Initialize the quadruped gym environment.
@@ -112,8 +110,6 @@ class QuadrupedGymEnv(gym.Env):
         self._sim_time_step = time_step
         self._action_repeat = action_repeat
         self._env_time_step = self._action_repeat * self._sim_time_step
-        self._motor_control_mode = motor_control_mode
-        self._action_space_mode = action_space_mode
         self._hard_reset = True  # must fully reset simulation at init
         self._on_rack = on_rack
         self._is_render = render
@@ -121,8 +117,6 @@ class QuadrupedGymEnv(gym.Env):
         self._add_noise = add_noise
         self._enable_action_interpolation = enable_action_interpolation
         self._enable_action_filter = enable_action_filter
-        self._enable_action_clipping = enable_action_clipping
-        self._enable_joint_velocity_estimate = enable_joint_velocity_estimate
         self._using_test_env = test_env
         if test_env:
             self._add_noise = True
@@ -135,11 +129,14 @@ class QuadrupedGymEnv(gym.Env):
         self._last_frame_time = 0.0  # for rendering
         self._MAX_EP_LEN = EPISODE_LENGTH  # max sim time in seconds, arbitrary
         self._action_bound = 1.0
+        
+        self._build_action_command_interface(motor_control_mode, action_space_mode)
+        self.setupActionSpace()
+
+        self._robot_sensors = SensorList(SensorCollection().get_el(observation_space_mode))
+        self.setupObservationSpace()
 
         self._task = TaskCollection().get_el(task_env)()
-        self._robot_sensors = SensorList(SensorCollection().get_el(observation_space_mode))
-        self.setupActionSpace()
-        self.setupObservationSpace()
 
         if self._enable_action_filter:
             self._action_filter = self._build_action_filter()
@@ -156,37 +153,28 @@ class QuadrupedGymEnv(gym.Env):
     ######################################################################################
     # RL Observation and Action spaces
     ######################################################################################
-    
     def setupObservationSpace(self):
         self._robot_sensors._init(robot_config=self._robot_config)
         obs_high = (self._robot_sensors._get_high_limits() + OBSERVATION_EPS)
         obs_low = (self._robot_sensors._get_low_limits() - OBSERVATION_EPS)
         self.observation_space = spaces.Box(obs_low, obs_high, dtype=np.float32)
 
+    def _build_action_command_interface(self, motor_control_mode, action_space_mode):
+        motor_interface = MotorInterfaceCollection().get_el(motor_control_mode)
+        motor_interface = motor_interface(self._robot_config)
+        ac_interface = ActionInterfaceCollection().get_el(action_space_mode)
+        self._ac_interface = ac_interface(motor_interface)
+        
+        self._motor_control_mode = motor_control_mode
+        self._action_space_mode = action_space_mode
+
     def setupActionSpace(self):
         """Set up action space for RL."""
-        if self._motor_control_mode not in ["PD", "TORQUE", "CARTESIAN_PD", "INVKIN_CARTESIAN_PD"]:
-            raise ValueError("motor control mode " + self._motor_control_mode + " not implemented yet.")
-
-        if self._action_space_mode == "DEFAULT":
-            action_dim = 12
-        elif self._action_space_mode == "SYMMETRIC":
-            action_dim = 6
-        elif self._action_space_mode == "SYMMETRIC_NO_HIP":
-            action_dim = 4
-        else:
-            raise ValueError(f"action space mode {self._action_space_mode} not implemented yet")
-
+        action_dim = self.get_action_dim()
+        self._action_dim = action_dim
         action_high = np.array([1] * action_dim)
         self.action_space = spaces.Box(-action_high, action_high, dtype=np.float32)
-        self._action_dim = action_dim
-
-    def get_action_dim(self):
-        return self._action_dim
-    
-    def get_observation(self):
-        return self._robot_sensors.get_obs()
-
+        
     ######################################################################################
     # Step simulation, map policy network actions to joint commands, etc.
     ######################################################################################
@@ -208,203 +196,29 @@ class QuadrupedGymEnv(gym.Env):
             interpolated_action = action
 
         return interpolated_action
-
-    def _transform_action_to_motor_command(self, action):
-        """Map actions from RL (i.e. in [-1,1]) to joint commands based on motor_control_mode."""
-        # clip actions to action bounds
-        action = np.clip(action, -self._action_bound - ACTION_EPS, self._action_bound + ACTION_EPS)
-        if self._motor_control_mode == "PD":
-            action = self._scale_helper(
-                action, self._robot_config.RL_LOWER_ANGLE_JOINT, self._robot_config.RL_UPPER_ANGLE_JOINT
-            )
-            action = np.clip(action, self._robot_config.RL_LOWER_ANGLE_JOINT, self._robot_config.RL_UPPER_ANGLE_JOINT)
-            if self._enable_action_clipping:
-                action = self._clip_motor_commands(action)
-        elif self._motor_control_mode == "CARTESIAN_PD":
-            action = self.ScaleActionToCartesianPos(action)
-            # Here the clipping happens inside ScaleActionToCartesianPos
-        elif self._motor_control_mode == "INVKIN_CARTESIAN_PD":
-            action = self._invkin_action_to_command(action)
-            action = np.clip(action, self._robot_config.RL_LOWER_ANGLE_JOINT, self._robot_config.RL_UPPER_ANGLE_JOINT)
+ 
+    def _sub_step(self, action, sub_step):
+        if self._isRLGymInterface:
+            if self._enable_action_interpolation:
+                action = self._interpolate_actions(action, sub_step)
+            proc_action = self._ac_interface._transform_action_to_motor_command(action)
         else:
-            raise ValueError("RL motor control mode" + self._motor_control_mode + "not implemented yet.")
-        return action
+            proc_action = action
+        self.robot.ApplyAction(proc_action)
+        self._pybullet_client.stepSimulation()
+        self._sim_step_counter += 1
 
-    def _invkin_action_to_command(self, actions):
-        u = np.clip(actions, -1, 1)
-        des_foot_pos = self._scale_helper(
-            u, self._robot_config.RL_LOWER_CARTESIAN_POS, self._robot_config.RL_UPPER_CARTESIAN_POS
-        )
-        q_des = np.array(
-            list(map(lambda i: self.robot.ComputeInverseKinematics(i, des_foot_pos[3 * i : 3 * (i + 1)]), range(4)))
-        )
-        return q_des.flatten()
-
-    def _compute_action_from_command(self, command, min_command, max_command):
-        """
-        Helper to linearly scale from [min_command, max_command] to [-1, 1].
-        """
-        return -1 + 2 * (command - min_command) / (max_command - min_command)
-
-    def _scale_helper(self, action, lower_lim, upper_lim):
-        """Helper to linearly scale from [-1,1] to lower/upper limits."""
-        new_a = lower_lim + 0.5 * (action + 1) * (upper_lim - lower_lim)
-        return np.clip(new_a, lower_lim, upper_lim)
-
-    def ScaleActionToCartesianPos(self, actions):
-        """Scale RL action to Cartesian PD ranges.
-        Edit ranges, limits etc., but make sure to use Cartesian PD to compute the torques.
-        """
-        # clip RL actions to be between -1 and 1 (standard RL technique)
-        # print(actions)
-        u = np.clip(actions, -1, 1)
-        # scale to corresponding desired foot positions (i.e. ranges in x,y,z we allow the agent to choose foot positions)
-        # [TODO: edit (do you think these should these be increased? How limiting is this?)]
-        # scale_array = np.array([0.2, 0.05, 0.15] * 4)  # [0.1, 0.05, 0.08]*4)
-        # add to nominal foot position in leg frame (what are the final ranges?)
-        # des_foot_pos = self._robot_config.NOMINAL_FOOT_POS_LEG_FRAME + scale_array * u
-        des_foot_pos = self._scale_helper(
-            u, self._robot_config.RL_LOWER_CARTESIAN_POS, self._robot_config.RL_UPPER_CARTESIAN_POS
-        )
-        # get Cartesian kp and kd gains (can be modified)
-        kpCartesian = self._robot_config.kpCartesian
-        kdCartesian = self._robot_config.kdCartesian
-        # get current motor velocities
-        dq = self.robot.GetMotorVelocities()
-
-        action = np.zeros(12)
-        for i in range(4):
-            # Get current Jacobian and foot position in leg frame (see ComputeJacobianAndPosition() in quadruped.py)
-            J, xyz = self.robot.ComputeJacobianAndPosition(i)
-            # Get current foot velocity in leg frame (Equation 2)
-            dxyz = J @ dq[3 * i : 3 * (i + 1)]
-            delta_foot_pos = xyz - des_foot_pos[3 * i : 3 * (i + 1)]
-
-            # clamp the motor command by the joint limit, in case weired things happens
-            if self._enable_action_clipping:
-                delta_foot_pos = np.clip(
-                    delta_foot_pos,
-                    -self._robot_config.MAX_CARTESIAN_FOOT_POS_CHANGE_PER_STEP,
-                    self._robot_config.MAX_CARTESIAN_FOOT_POS_CHANGE_PER_STEP,
-                )
-
-            F_foot = -kpCartesian @ delta_foot_pos - kdCartesian @ dxyz
-            # Calculate torque contribution from Cartesian PD (Equation 5) [Make sure you are using matrix multiplications]
-            tau = J.T @ F_foot
-            action[3 * i : 3 * (i + 1)] = tau  # TODO: add white noise
-        return action
-
-    def _clip_motor_commands(self, des_angles):
-        """Clips motor commands.
-
-        Args:
-        des_angles: np.array. They are the desired motor angles (for PD control only)
-
-        Returns:
-        Clipped motor commands.
-        """
-
-        # clamp the motor command by the joint limit, in case weired things happens
-        if self._motor_control_mode in ["INVKIN_CARTESIAN_PD", "PD"]:
-            max_angle_change = self._robot_config.MAX_MOTOR_ANGLE_CHANGE_PER_STEP
-            current_motor_angles = self.robot.GetMotorAngles()
-            motor_commands = np.clip(
-                des_angles, current_motor_angles - max_angle_change, current_motor_angles + max_angle_change
-            )
-            return motor_commands
-        else:
-            raise ValueError(f"Clipping angles available for PD control only, not in {self._motor_control_mode}")
-
-    def adapt_action_dim_for_robot(self, action):
-        """
-        In according to the selected action spaced the action is converted to have the
-        same dimension as the default one -> 12 in the properly way.
-        """
-        assert (
-            len(action) == self._action_dim
-        ), f"action dimension is {len(action)}, action space has dimension {self._action_dim} "
-        if self._action_space_mode == "DEFAULT":
-            return action
-        elif self._action_space_mode == "SYMMETRIC":
-            if self._motor_control_mode in ["TORQUE", "PD"]:
-                symm_idx = 0  #  hip angle
-            elif self._motor_control_mode in ["INVKIN_CARTESIAN_PD", "CARTESIAN_PD"]:
-                symm_idx = 1  #  y cartesian pos
-            else:
-                raise ValueError(f"motor control mode {self._motor_control_mode} not implemented yet")
-            leg_FR = action[0:3]
-            leg_RR = action[3:6]
-
-            leg_FL = np.copy(leg_FR)
-            leg_FL[symm_idx] = -leg_FR[symm_idx]
-
-            leg_RL = np.copy(leg_RR)
-            leg_RL[symm_idx] = -leg_RR[symm_idx]
-
-            leg = np.concatenate((leg_FR, leg_FL, leg_RR, leg_RL))
-
-        elif self._action_space_mode == "SYMMETRIC_NO_HIP":
-            if self._motor_control_mode == "PD":
-                leg_FR = action[0:2]
-                leg_RR = action[2:4]
-
-                leg_FL = leg_FR = np.concatenate(([0], leg_FR))
-                leg_RL = leg_RR = np.concatenate(([0], leg_RR))
-
-                leg = np.concatenate((leg_FR, leg_FL, leg_RR, leg_RL))
-
-            elif self._motor_control_mode in ["INVKIN_CARTESIAN_PD", "CARTESIAN_PD"]:
-                # no motion along y
-                leg_FL = leg_FR = np.array([action[0], 0, action[1]])
-                leg_RL = leg_RR = np.array([action[2], 0, action[3]])
-
-                leg = np.concatenate((leg_FR, leg_FL, leg_RR, leg_RL))
-
-        else:
-            raise ValueError(f"action space mode {self._action_space_mode} not implemented yet")
-
-        return leg
-
-    def adapt_command_to_action_dim(self, command):
-        """Given a command it's been converted to a command with the same dimension
-            of the Action Space. Actually used in LandingWrapper.
-
-        Args:
-            command (np.Array): the command you would like to apply to the robot
-        """
-        assert len(command) == 12, "command has not right dimensions. Should be (12,)"
-        if self._action_space_mode == "DEFAULT":
-            return command
-        elif self._action_space_mode == "SYMMETRIC":
-            leg_FR = command[0:3]
-            leg_RR = command[6:9]
-            return np.concatenate((leg_FR, leg_RR))
-        elif self._action_space_mode == "SYMMETRIC_NO_HIP":
-            leg_FR = command[1:3]
-            leg_RR = command[7:9]
-            return np.concatenate((leg_FR, leg_RR))
-        else:
-            raise ValueError(f"action space {self._action_space_mode} not supported yet")
+        if self._is_render:
+            self._render_step_helper()
 
     def step(self, action):
         """Step forward the simulation, given the action."""
         curr_act = action.copy()
         if self._enable_action_filter:
             curr_act = self._filter_action(curr_act)
-        curr_act = self.adapt_action_dim_for_robot(curr_act)
-        for sub_step in range(self._action_repeat):
-            if self._isRLGymInterface:
-                if self._enable_action_interpolation:
-                    curr_act = self._interpolate_actions(action, sub_step)
-                proc_action = self._transform_action_to_motor_command(curr_act)
-            else:
-                proc_action = curr_act
-            self.robot.ApplyAction(proc_action)
-            self._pybullet_client.stepSimulation()
-            self._sim_step_counter += 1
 
-            if self._is_render:
-                self._render_step_helper()
+        for sub_step in range(self._action_repeat):
+            self._sub_step(curr_act, sub_step)
 
         self._last_action = curr_act
         self._env_step_counter += 1
@@ -420,7 +234,7 @@ class QuadrupedGymEnv(gym.Env):
 
         # Update the actual reward at the end of the episode with bonus or malus
         if done:
-            reward += self._task._reward_end_episode(reward)
+            reward += self._task._reward_end_episode()
             
         self._robot_sensors._on_step()
         obs = self.get_observation()
@@ -434,8 +248,8 @@ class QuadrupedGymEnv(gym.Env):
         sampling_rate = 1 / self._env_time_step
         num_joints = self._action_dim
         a_filter = action_filter.ActionFilterButter(sampling_rate=sampling_rate, num_joints=num_joints)
-        if self._enable_springs:
-            a_filter.highcut = 2.5
+        # if self._enable_springs:
+        #     a_filter.highcut = 2.5
         return a_filter
 
     def _reset_action_filter(self):
@@ -449,21 +263,9 @@ class QuadrupedGymEnv(gym.Env):
         # initialize the filter history, since resetting the filter will fill
         # the history with zeros and this can cause sudden movements at the start
         # of each episode
-        default_action = self._compute_first_actions()
-        self._action_filter.init_history(default_action)
-
-    def _compute_first_actions(self):
-        if self._motor_control_mode == "PD":
-            # init_angles = self._robot_config.INIT_MOTOR_ANGLES + self._robot_config.JOINT_OFFSETS
-            # default_action = self._map_command_to_action(init_angles)
-            default_action = np.array([0] * self._action_dim)
-        elif self._motor_control_mode in ["INVKIN_CARTESIAN_PD", "CARTESIAN_PD"]:
-            # go toward NOMINAL_FOOT_POS_LEG_FRAME
-            default_action = np.array([0] * self._action_dim)
-        else:
-            raise ValueError(f"The motor control mode {self._motor_control_mode} is not implemented for RL")
-
-        return np.clip(default_action, -1, 1)
+        init_pose = self.get_init_pose()
+        init_action = self._ac_interface._transform_motor_command_to_action(init_pose)
+        self._action_filter.init_history(init_action)
 
     ######################################################################################
     # Reset
@@ -485,7 +287,7 @@ class QuadrupedGymEnv(gym.Env):
             self.robot = quadruped.Quadruped(
                 pybullet_client=self._pybullet_client,
                 robot_config=self._robot_config,
-                motor_control_mode=self._motor_control_mode,
+                motor_control_mode=self._ac_interface._motor_control_mode_ROB,
                 on_rack=self._on_rack,
                 render=self._is_render,
                 enable_springs=self._enable_springs,
@@ -508,8 +310,7 @@ class QuadrupedGymEnv(gym.Env):
         self._env_step_counter = 0
         self._sim_step_counter = 0
         self._last_base_position = [0, 0, 0]
-        self.init_action = self._compute_init_action()
-
+        
         if self._is_render:
             self._pybullet_client.resetDebugVisualizerCamera(self._cam_dist, self._cam_yaw, self._cam_pitch, [0, 0, 0])
 
@@ -517,6 +318,7 @@ class QuadrupedGymEnv(gym.Env):
             self._reset_action_filter()
             self._init_filter()
 
+        self._ac_interface._reset(self.robot)
         self._settle_robot()  # Settle robot after being spawned
         self._robot_sensors._reset(self.robot)  # Rsest sensors
         self._task._reset(self)  # Reset task internal state
@@ -532,9 +334,10 @@ class QuadrupedGymEnv(gym.Env):
         """Settle robot in according to the used motor control mode in RL interface"""
         if self._is_render:
             time.sleep(0.2)
+        reference = self.get_init_pose()
+        settling_command = self._ac_interface._convert_reference_to_command(reference)
         for _ in range(1500):
-            proc_action = self._transform_action_to_motor_command(self.init_action)
-            self.robot.ApplyAction(proc_action)
+            self.robot.ApplyAction(settling_command)
             if self._is_render:
                 time.sleep(0.001)
             self._pybullet_client.stepSimulation()
@@ -573,32 +376,6 @@ class QuadrupedGymEnv(gym.Env):
             self._settle_robot_by_action()
         else:
             self._settle_robot_by_PD()
-
-    def compute_action_from_command(self, command):
-        if self._motor_control_mode == "PD":
-            action = self._compute_action_from_command(
-                command, self._robot_config.RL_LOWER_ANGLE_JOINT, self._robot_config.RL_UPPER_ANGLE_JOINT
-            )
-        elif self._motor_control_mode in ["CARTESIAN_PD", "INVKIN_CARTESIAN_PD"]:
-            action = self._compute_action_from_command(
-                command, self._robot_config.RL_LOWER_CARTESIAN_POS, self._robot_config.RL_UPPER_CARTESIAN_POS
-            )
-        else:
-            raise ValueError(f"motor control mode {self._motor_control_mode} not supported yet in RLGymInterface.")
-        return action
-
-    def _compute_init_action(self):
-        if self._motor_control_mode == "PD":
-            command = self._robot_config.INIT_MOTOR_ANGLES
-            init_action = self.compute_action_from_command(command)
-        elif self._motor_control_mode in ["CARTESIAN_PD", "INVKIN_CARTESIAN_PD"]:
-            command = self._robot_config.NOMINAL_FOOT_POS_LEG_FRAME
-            init_action = self.compute_action_from_command(command)
-        elif self._motor_control_mode == 'TORQUE' and not self._isRLGymInterface:
-            init_action = None
-        else:
-            raise ValueError(f"motor control mode {self._motor_control_mode} not supported yet in RLGymInterface.")
-        return init_action
 
     ######################################################################################
     # Render, record videos, bookkeping, and misc pybullet helpers.
@@ -816,6 +593,12 @@ class QuadrupedGymEnv(gym.Env):
 ########################################################
 # Get methods
 ########################################################
+    def get_action_dim(self):
+        return self._ac_interface.get_action_space_dim()
+
+    def get_observation(self):
+        return self._robot_sensors.get_obs()
+
     def get_sim_time(self):
         """Get current simulation time."""
         return self._sim_step_counter * self._sim_time_step
@@ -844,23 +627,25 @@ class QuadrupedGymEnv(gym.Env):
         """Return bonus and malus to add to the reward at the end of the episode."""
         return self._task._reward_end_episode()
     
+    def get_init_pose(self):
+        """Get the initial init pose for robot settling."""
+        return self._ac_interface.get_init_pose()
+    
 
 def test_env():
 
     env_config = {
         "render": True,
         "on_rack": False,
-        "motor_control_mode": "INVKIN_CARTESIAN_PD",
+        "motor_control_mode": "CARTESIAN_PD",
         "action_repeat": 10,
         "enable_springs": True,
         "add_noise": False,
         "enable_action_interpolation": False,
-        "enable_action_clipping": False,
         "enable_action_filter": True,
         "task_env": "JUMPING_ON_PLACE_HEIGHT",
         "observation_space_mode": "DEFAULT",
-        "action_space_mode": "SYMMETRIC",
-        "enable_joint_velocity_estimate": True,
+        "action_space_mode": "SYMMETRIC_NO_HIP"
     }
 
     env = QuadrupedGymEnv(**env_config)
