@@ -14,31 +14,8 @@ class LandingWrapper(gym.Wrapper):
     def __init__(self, env):
         super().__init__(env)
         self._robot_config = self.env.get_robot_config()
-        self._landing_action = self._compute_landing_action()
+        self._landing_action = self.env.get_landing_action()
         self.timer_jumping = Timer(dt=self.env.get_env_time_step())
-
-    def _compute_landing_pose(self):
-        motor_control_mode = self.env.get_motor_control_mode()
-        if motor_control_mode in ["CARTESIAN_PD", "INVKIN_CARTESIAN_PD"]:
-            x = 0.0
-            y = self._robot_config.DEFAULT_Y
-            z = -0.28
-            landing_pose = np.array(list(map(lambda sign: [x, sign * y, z], [-1, 1, -1, 1]))).flatten()
-        elif motor_control_mode == "PD":
-            # hip = 0
-            # thigh = np.pi / 4
-            # calf = -np.pi / 2
-            # landing_pose = np.array([hip, thigh, calf] * self._robot_config.NUM_LEGS)
-            landing_pose = self._robot_config.INIT_MOTOR_ANGLES
-        else:
-            raise ValueError(f"motor control mode {motor_control_mode} not supported yet.")
-        return landing_pose
-
-    def _compute_landing_action(self):
-        landing_pose = self._compute_landing_pose()
-        landing_action = self.env.compute_action_from_command(landing_pose)
-        landing_action = self.env.adapt_command_to_action_dim(landing_action)
-        return landing_action
 
     def temporary_switch_motor_control_gain(foo):
         def wrapper(self, *args, **kwargs):
@@ -54,7 +31,6 @@ class LandingWrapper(gym.Wrapper):
                 self.env.robot._motor_model._kp = tmp_save_motor_kp
                 self.env.robot._motor_model._kd = tmp_save_motor_kd
             return ret
-
         return wrapper
 
     @temporary_switch_motor_control_gain
