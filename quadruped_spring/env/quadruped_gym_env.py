@@ -227,6 +227,7 @@ class QuadrupedGymEnv(gym.Env):
 
         self._last_action = curr_act
         self._env_step_counter += 1
+        self._task._on_step()
         reward = self._task._reward()
         done = False
         # infos = {"base_pos": self.robot.GetBasePosition()}
