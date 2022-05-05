@@ -9,7 +9,6 @@ from quadruped_spring.utils.base_collection import CollectionBase
 #   "CARTESIAN_ANGLE_NO_IMU": CARTESIAN_NO_IMU + ANGLE_NO_IMU
 
 
-
 class SensorCollection(CollectionBase):
     """Utility to collect all the implemented robot sensor equipments."""
 
@@ -18,6 +17,17 @@ class SensorCollection(CollectionBase):
         self._DEFAULT = [rs.IMU, rs.FeetPostion, rs.FeetVelocity, rs.GroundReactionForce]
         self._CARTESIAN_NO_IMU = [rs.FeetPostion, rs.FeetVelocity, rs.GroundReactionForce]
         self._ANGLE_NO_IMU = [rs.JointPosition, rs.JointVelocity, rs.GroundReactionForce]
-        self._CARTESIAN_ANGLE_NO_IMU = [rs.FeetPostion, rs.FeetVelocity, rs.JointPosition, rs.JointVelocity, rs.GroundReactionForce]
-        self._dict = {"DEFAULT": self._DEFAULT}
+        self._CARTESIAN_ANGLE_NO_IMU = [
+            rs.FeetPostion,
+            rs.FeetVelocity,
+            rs.JointPosition,
+            rs.JointVelocity,
+            rs.GroundReactionForce,
+        ]
+        self._dict = {
+            "DEFAULT": self._DEFAULT,
+            "CARTESIAN_NO_IMU": self._CARTESIAN_NO_IMU,
+            "ANGLE_NO_IMU": self._ANGLE_NO_IMU,
+            "CARTESIAN_ANGLE_NO_IMU": self._CARTESIAN_ANGLE_NO_IMU,
+        }
         self._element_type = "sensor package"

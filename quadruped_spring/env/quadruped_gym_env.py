@@ -661,8 +661,8 @@ def test_env():
         "add_noise": False,
         "enable_action_interpolation": False,
         "enable_action_filter": True,
-        "task_env": "JUMPING_ON_PLACE_HEIGHT",
-        "observation_space_mode": "DEFAULT",
+        "task_env": "JUMPING_FORWARD",
+        "observation_space_mode": "CARTESIAN_NO_IMU",
         "action_space_mode": "DEFAULT",
     }
 
