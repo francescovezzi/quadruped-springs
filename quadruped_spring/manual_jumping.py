@@ -14,7 +14,6 @@ from env.quadruped_gym_env import QuadrupedGymEnv
 from env.wrappers.landing_wrapper import LandingWrapper
 from env.wrappers.rest_wrapper import RestWrapper
 from utils.evaluate_metric import EvaluateMetricJumpOnPlace
-from utils.timer import Timer
 
 # from utils.monitor_state import MonitorState
 
@@ -24,9 +23,7 @@ class JumpingStateMachine(gym.Wrapper):
         super().__init__(env)
         self._settling_duration_time = 0.5  # seconds
         self._couching_duration_time = 3  # seconds
-        self._settling_duration_steps = self._settling_duration_time / self.env._env_time_step
-        self._couching_duration_steps = self._couching_duration_time / self.env._env_time_step
-        assert self._couching_duration_steps >= 1000, "couching duration steps number should be >= 1000"
+        assert self._couching_duration_time >= 0.5, "couching duration time number should be >= 0.5 seconds"
         self._states = {"settling": 0, "couching": 1, "jumping_ground": 2}
         self._state = self._states["settling"]
         self._flying_up_counter = 0
@@ -42,7 +39,6 @@ class JumpingStateMachine(gym.Wrapper):
         self._robot_config = self.env.get_robot_config()
         self._enable_springs = self.env._enable_springs
         self._jump_end = False
-        self._flight_timer = Timer(dt=self.env._sim_time_step)
 
         self._default_action = self.env.get_settling_action()
 
@@ -50,9 +46,10 @@ class JumpingStateMachine(gym.Wrapper):
         return self._actions[self._state]()
 
     def update_state(self):
-        if self._step_counter <= self._settling_duration_steps:
+        sim_time = self._step_counter * self.env._env_time_step
+        if sim_time <= self._settling_duration_time:
             actual_state = self._states["settling"]
-        elif self._step_counter <= self._settling_duration_steps + self._couching_duration_steps:
+        elif sim_time <= self._settling_duration_time + self._couching_duration_time:
             actual_state = self._states["couching"]
         else:
             actual_state = self._states["jumping_ground"]
@@ -74,11 +71,11 @@ class JumpingStateMachine(gym.Wrapper):
         min_action_calf = self._default_action[2]
         max_action_thigh = 0.9
         min_action_thigh = self._default_action[1]
-        i = self._step_counter
-        i_min = self._settling_duration_steps
-        i_max = i_min + self._couching_duration_steps - 500
-        action_thigh = self.generate_ramp(i, i_min, i_max, min_action_thigh, max_action_thigh)
-        action_calf = self.generate_ramp(i, i_min, i_max, min_action_calf, max_action_calf)
+        t = self._step_counter * self.env._env_time_step
+        t_min = self._settling_duration_time
+        t_max = t_min + self._couching_duration_time - 0.5
+        action_thigh = self.generate_ramp(t, t_min, t_max, min_action_thigh, max_action_thigh)
+        action_calf = self.generate_ramp(t, t_min, t_max, min_action_calf, max_action_calf)
         torques = np.array([0, action_thigh, action_calf] * 4)
         # torques = np.array([0, 0.5, 1] * 4)
         return torques
@@ -129,7 +126,7 @@ def build_env(enable_springs=False):
         "on_rack": False,
         "isRLGymInterface": True,
         "motor_control_mode": "PD",
-        "action_repeat": 1,
+        "action_repeat": 10,
         "record_video": False,
         "action_space_mode": "DEFAULT",
         "task_env": "JUMPING_ON_PLACE_HEIGHT",
@@ -159,13 +156,17 @@ if __name__ == "__main__":
     env = LandingWrapper(env)
     done = False
     obs = env.reset()
+    t_start = time.time()
     while not done:
         action = env.compute_action()
         # action = np.zeros(12)
         obs, reward, done, info = env.step(action)
+    t_end = time.time() - t_start
 
     # env.release_plots()
     print("******")
+    print(f"simulation in reality lasted for -> {t_end}")
+    print(f"simulation in simulation lasted for -> {env.get_sim_time()}")
     print(f"reward -> {reward}")
     print(f"min_height -> {env.get_metric().height_min}")
     print("******")
