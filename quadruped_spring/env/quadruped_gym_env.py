@@ -34,8 +34,9 @@ VIDEO_LOG_DIRECTORY = "videos/" + datetime.datetime.now().strftime("vid-%Y-%m-%d
 
 
 # Motor control mode implemented: TORQUE, PD, CARTESIAN_PD
-# Observation space implemented: DEFAULT
+# Observation space implemented: DEFAULT, CARTESIAN_NO_IMU, ANGLE_NO_IMU, CARTESIAN_ANGLE_NO_IMU
 # Action space implemented: DEFAULT, SYMMETRIC, SYMMETRIC_NO_HIP
+# Task implemented: JUMPING_ON_PLACE_HEIGHT, JUMPING_FORWARD
 
 # NOTE:
 # TORQUE control mode actually works only if isRLGymInterface is setted to False.
