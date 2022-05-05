@@ -50,29 +50,30 @@ class TaskJumping(TaskBase):
         self._relative_max_height = 0.0
 
     def _on_step(self):
-        if self._env.roobt._is_flying():
+        pos_abs = np.array(self._env.robot.GetBasePosition())
+        orient_rpy = np.array(self._env.robot.GetBasePosition())
+        if self._env.robot._is_flying():
             if not self._all_feet_in_the_air:
                 self._all_feet_in_the_air = True
                 self._time_take_off = self._env.get_sim_time()
-                self._robot_pose_take_off = np.array(self._env.robot.GetBasePosition())
-                self._robot_orientation_take_off = np.array(self._env.robot.GetBaseOrientationRollPitchYaw())
+                self._robot_pose_take_off = pos_abs
+                self._robot_orientation_take_off = orient_rpy
         else:
             if self._all_feet_in_the_air:
                 self._max_flight_time = max(self._env.get_sim_time() - self._time_take_off, self._max_flight_time)
                 # Compute forward distance according to local frame (starting at take off)
                 rotation_matrix = R.from_euler("z", -self._robot_orientation_take_off[2], degrees=False).as_matrix()
                 translation = -self._robot_pose_take_off
-                pos_abs = np.array(self.robot.GetBasePosition())
                 pos_relative = pos_abs + translation
                 pos_relative = pos_relative @ rotation_matrix
                 self._max_forward_distance = max(pos_relative[0], self._max_forward_distance)
             self._all_feet_in_the_air = False
 
-        _, pitch, yaw = self.robot.GetBaseOrientationRollPitchYaw()
-        self._max_yaw = max(np.abs(yaw), self._max_yaw)
-        self._max_pitch = max(np.abs(pitch), self._max_pitch)
-        delta_height = max(self.robot.GetBasePosition()[2] - self._init_height, 0.0)
+        delta_height = max(pos_abs[2] - self._init_height, 0.0)
         self._relative_max_height = max(self._relative_max_height, delta_height)
+        roll, _, yaw = orient_rpy
+        self._max_yaw = max(np.abs(yaw), self._max_yaw)
+        self._max_roll = max(np.abs(roll), self._max_roll)
 
     def is_fallen(self, dot_prod_min=0.85):
         """Decide whether the quadruped has fallen.
