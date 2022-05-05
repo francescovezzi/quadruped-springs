@@ -23,7 +23,7 @@ class JumpingOnPlaceHeight(TaskJumping):
             # Malus for crashing
             # Optionally: no reward in case of crash
             reward -= 0.08
-        max_height = 0.4
+        max_height = 0.7
         max_height_normalized = self._relative_max_height / max_height
         reward += max_height_normalized
         reward += max_height_normalized * 0.05 * np.exp(-self._max_yaw**2 / 0.01)  # orientation
