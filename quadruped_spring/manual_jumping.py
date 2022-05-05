@@ -129,7 +129,7 @@ def build_env(enable_springs=False):
         "action_repeat": 10,
         "record_video": False,
         "action_space_mode": "DEFAULT",
-        "task_env": "JUMPING_ON_PLACE_HEIGHT",
+        "task_env": "JUMPING_FORWARD",
     }
     env_config["enable_springs"] = True
     if fill_line:
