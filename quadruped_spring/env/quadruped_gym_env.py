@@ -121,9 +121,6 @@ class QuadrupedGymEnv(gym.Env):
         self._using_test_env = test_env
         if test_env:
             self._add_noise = True
-            self._observation_noise_stdev = 0.01  # TODO: check if increasing makes sense
-        else:
-            self._observation_noise_stdev = 0.01
 
         # other bookkeeping
         self._num_bullet_solver_iterations = int(300 / action_repeat)
@@ -603,7 +600,7 @@ class QuadrupedGymEnv(gym.Env):
         return self._ac_interface.get_action_space_dim()
 
     def get_observation(self):
-        return self._robot_sensors.get_obs()
+        return self._robot_sensors.get_noisy_obs()
 
     def get_sim_time(self):
         """Get current simulation time."""

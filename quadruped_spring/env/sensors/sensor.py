@@ -19,6 +19,9 @@ class Sensor:
         self._noise_std = noise_std
         self._dim = np.shape(self._high)
 
+    def _sample_noise(self):
+        self._add_obs_noise = np.random.normal(scale=self._noise_std)
+
     def _set_sensor(self, robot):
         """Call it at init"""
         self._robot = robot
@@ -31,8 +34,12 @@ class Sensor:
         pass
 
     def _read_data(self):
-        """Get Sensor data"""
-        pass
+        """Get Sensor data without noise"""
+        return self._data
+
+    def _read_dirty_data(self):
+        """Get Sensor data with noise"""
+        return self._data + self._add_obs_noise
 
     def _on_step(self):
         """Callback for step method"""

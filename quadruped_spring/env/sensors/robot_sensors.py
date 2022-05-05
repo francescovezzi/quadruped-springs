@@ -21,14 +21,13 @@ class BooleanContact(Sensor):
         _, _, _, feet_in_contact = self._robot.GetContactInfo()
         self._data = np.array(feet_in_contact)
 
-    def _read_data(self):
-        return self._data
-
     def _reset_sensor(self):
         self._get_data()
+        self._sample_noise()
 
     def _on_step(self):
         self._get_data()
+        self._sample_noise()
 
 
 class GroundReactionForce(Sensor):
@@ -49,14 +48,13 @@ class GroundReactionForce(Sensor):
         _, _, normal_force, _ = self._robot.GetContactInfo()
         self._data = np.array(normal_force)
 
-    def _read_data(self):
-        return self._data
-
     def _reset_sensor(self):
         self._get_data()
+        self._sample_noise()
 
     def _on_step(self):
         self._get_data()
+        self._sample_noise()
 
 
 class JointPosition(Sensor):
@@ -77,14 +75,13 @@ class JointPosition(Sensor):
         angles = self._robot.GetMotorAngles()
         self._data = angles
 
-    def _read_data(self):
-        return self._data
-
     def _reset_sensor(self):
         self._get_data()
+        self._sample_noise()
 
     def _on_step(self):
         self._get_data()
+        self._sample_noise()
 
 
 class JointVelocity(Sensor):
@@ -105,14 +102,13 @@ class JointVelocity(Sensor):
         velocities = self._robot.GetMotorVelocities()
         self._data = velocities
 
-    def _read_data(self):
-        return self._data
-
     def _reset_sensor(self):
         self._get_data()
+        self._sample_noise()
 
     def _on_step(self):
         self._get_data()
+        self._sample_noise()
 
 
 class FeetPostion(Sensor):
@@ -133,14 +129,13 @@ class FeetPostion(Sensor):
         feet_pos, _ = self._robot.ComputeFeetPosAndVel()
         self._data = feet_pos
 
-    def _read_data(self):
-        return self._data
-
     def _reset_sensor(self):
         self._get_data()
+        self._sample_noise()
 
     def _on_step(self):
         self._get_data()
+        self._sample_noise()
 
 
 class FeetVelocity(Sensor):
@@ -161,14 +156,13 @@ class FeetVelocity(Sensor):
         _, feet_vel = self._robot.ComputeFeetPosAndVel()
         self._data = feet_vel
 
-    def _read_data(self):
-        return self._data
-
     def _reset_sensor(self):
         self._get_data()
+        self._sample_noise()
 
     def _on_step(self):
         self._get_data()
+        self._sample_noise()
 
 
 class IMU(Sensor):
@@ -191,14 +185,13 @@ class IMU(Sensor):
         base_orientation = self._robot.GetBaseOrientationRollPitchYaw()
         self._data = np.concatenate((lin_vel, base_orientation, ang_vel))
 
-    def _read_data(self):
-        return self._data
-
     def _reset_sensor(self):
         self._get_data()
+        self._sample_noise()
 
     def _on_step(self):
         self._get_data()
+        self._sample_noise()
 
 
 class SensorList:
@@ -234,6 +227,12 @@ class SensorList:
         obs = {}
         for s in self._sensor_list:
             obs[s._name] = s._read_data()
+        return obs
+
+    def get_noisy_obs(self):
+        obs = {}
+        for s in self._sensor_list:
+            obs[s._name] = s._read_dirty_data()
         return obs
 
     def _on_step(self):
