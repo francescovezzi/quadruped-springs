@@ -660,7 +660,7 @@ def test_env():
         "enable_action_interpolation": False,
         "enable_action_filter": True,
         "task_env": "JUMPING_FORWARD",
-        "observation_space_mode": "CARTESIAN_NO_IMU",
+        "observation_space_mode": "DEFAULT",
         "action_space_mode": "DEFAULT",
     }
 
