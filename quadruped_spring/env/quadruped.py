@@ -664,3 +664,120 @@ class Quadruped(object):
     def GetTotalMassFromURDF(self):
         """Get the total mass from all links in the URDF."""
         return self._total_mass_urdf
+    
+    def get_offset_mass_value(self):
+        """Get offset mass attached to the robot."""
+        try:
+            return self._pybullet_client.getDynamicsInfo(self._base_block_ID, -1)[0]
+        except AttributeError:
+            print('offset mass not created')
+            
+    def get_offset_mass_position(self):
+        """Get offset mass attached to the robot."""
+        try:
+            dyn_infos = self._pybullet_client.getDynamicsInfo(self._base_block_ID, -1)
+            pos = np.asarray(dyn_infos[3])
+            base_pos = np.asarray(self.GetBasePosition())
+            rel_pos = base_pos - pos
+            orientation = self.GetBaseOrientation()
+            _, orientation_inversed = self._pybullet_client.invertTransform([0, 0, 0], orientation)
+        
+            rel_pos_local, _ = self._pybullet_client.multiplyTransforms(
+                [0, 0, 0], orientation_inversed, rel_pos, self._pybullet_client.getQuaternionFromEuler([0, 0, 0])
+            )
+            return rel_pos_local
+        except AttributeError:
+            print('offset mass not created')     
+
+    def SetBaseMasses(self, base_mass):
+        """Set the mass of quadruped's base.
+
+        Args:
+        base_mass: A list of masses of each body link in CHASIS_LINK_IDS. The
+            length of this list should be the same as the length of CHASIS_LINK_IDS.
+
+        Raises:
+        ValueError: It is raised when the length of base_mass is not the same as
+            the length of self._chassis_link_ids.
+        """
+        if len(base_mass) != len(self._chassis_link_ids):
+            raise ValueError(
+                "The length of base_mass {} and self._chassis_link_ids {} are not "
+                "the same.".format(len(base_mass), len(self._chassis_link_ids)))
+        for chassis_id, chassis_mass in zip(self._chassis_link_ids, base_mass):
+            self._pybullet_client.changeDynamics(self.quadruped,
+                                                chassis_id,
+                                                mass=chassis_mass)
+            
+    def SetLegMasses(self, leg_masses):
+        """Set the mass of the legs.
+
+        Args:
+        leg_masses: The leg masses for all the leg links.
+
+        Raises:
+        ValueError: It is raised when the length of masses is not equal to number
+            of links.
+        """
+        if len(leg_masses) != len(self._leg_link_ids):
+            raise ValueError("The number of values passed to SetLegMasses are "
+                            "different than number of leg links and motors.")
+        for leg_id, leg_mass in zip(self._leg_link_ids, leg_masses):
+            self._pybullet_client.changeDynamics(self.quadruped,
+                                                leg_id,
+                                                mass=leg_mass)
+        
+    def _scale_rand(self, num_rand, low, high):
+        """scale number of rand numbers between low and high"""
+        return low + np.random.random(num_rand) * (high - low)
+
+    def _add_base_mass_offset(self, spec_mass=None, spec_location=None):
+        """Attach mass to robot base."""
+        quad_base = np.array(self.GetBasePosition())
+        quad_ID = self.quadruped
+
+        offset_low = np.array([-0.15, -0.05, -0.05])
+        offset_upp = np.array([0.15, 0.05, 0.05])
+        if spec_location is None:
+            block_pos_delta_base_frame = self._scale_rand(3, offset_low, offset_upp)
+        else:
+            block_pos_delta_base_frame = np.array(spec_location)
+        if spec_mass is None:
+            base_mass = 8 * np.random.random()
+        else:
+            base_mass = spec_mass
+        if self._is_render:
+            print("=========================== Random Mass:")
+            print("Mass:", base_mass, "location:", block_pos_delta_base_frame)
+            # if rendering, also want to set the halfExtents accordingly
+            # 1 kg water is 0.001 cubic meters
+            boxSizeHalf = [(base_mass * 0.001) ** (1 / 3) / 2] * 3
+            translationalOffset = [0, 0, 0.1]
+        else:
+            boxSizeHalf = [0.05] * 3
+            translationalOffset = [0] * 3
+
+        sh_colBox = self._pybullet_client.createCollisionShape(
+            self._pybullet_client.GEOM_BOX, halfExtents=boxSizeHalf, collisionFramePosition=translationalOffset
+        )
+        base_block_ID = self._pybullet_client.createMultiBody(
+            baseMass=base_mass,
+            baseCollisionShapeIndex=sh_colBox,
+            basePosition=quad_base + block_pos_delta_base_frame,
+            baseOrientation=[0, 0, 0, 1],
+        )
+        self._base_block_ID = base_block_ID
+
+        cid = self._pybullet_client.createConstraint(
+            quad_ID,
+            -1,
+            base_block_ID,
+            -1,
+            self._pybullet_client.JOINT_FIXED,
+            [0, 0, 0],
+            [0, 0, 0],
+            -block_pos_delta_base_frame,
+        )
+        # disable self collision between box and each link
+        for i in range(-1, self._pybullet_client.getNumJoints(quad_ID)):
+            self._pybullet_client.setCollisionFilterPair(quad_ID, base_block_ID, i, -1, 0)
