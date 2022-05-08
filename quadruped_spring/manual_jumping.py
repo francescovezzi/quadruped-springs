@@ -122,7 +122,7 @@ class JumpingStateMachine(gym.Wrapper):
 def build_env(enable_springs=False):
     env_config = {
         "enable_springs": enable_springs,
-        "render": False,
+        "render": True,
         "on_rack": False,
         "isRLGymInterface": True,
         "motor_control_mode": "PD",
@@ -130,6 +130,8 @@ def build_env(enable_springs=False):
         "record_video": False,
         "action_space_mode": "DEFAULT",
         "task_env": "JUMPING_FORWARD",
+        "enable_env_randomization": True,
+        "env_randomizer_mode": "DISTURBANCE_RANDOMIZER"
     }
     env_config["enable_springs"] = True
     if fill_line:

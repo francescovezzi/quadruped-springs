@@ -333,6 +333,17 @@ class Quadruped(object):
                     self._SetMotorTorqueById(motor_id, 0)
             if self._enable_springs == False:
                 raise RuntimeError("check enable_springs")
+            
+    def apply_external_force(self, force):
+        """Apply an external force on the quadruped COM."""
+        trunk_id = self._chassis_link_ids[0]
+        quad_id = self.quadruped
+        pos = [0, 0, 0]
+        self._pybullet_client.applyExternalForce(quad_id,
+                                                 trunk_id,
+                                                 force,
+                                                 pos,
+                                                 self._pybullet_client.LINK_FRAME)
 
     ######################################################################################
     # Jacobian, IK, etc.
@@ -519,7 +530,7 @@ class Quadruped(object):
           ValueError: Unknown category of the joint name.
         """
         num_joints = self._pybullet_client.getNumJoints(self.quadruped)
-        self._chassis_link_ids = [-1]  # just base link
+        self._chassis_link_ids = []  # just base link
         self._leg_link_ids = []  # all leg links (hip, thigh, calf)
         self._motor_link_ids = []  # all leg links (hip, thigh, calf)
 
@@ -562,6 +573,8 @@ class Quadruped(object):
         self._thigh_ids.sort()
         self._calf_ids.sort()
         self._foot_link_ids.sort()
+        
+        self._leg_link_ids = self._joint_ids
 
         # print('joint ids', self._joint_ids)
         # print('hip ids', self._hip_ids)
@@ -689,7 +702,7 @@ class Quadruped(object):
         except AttributeError:
             print('offset mass not created')     
 
-    def SetBaseMasses(self, base_mass):
+    def SetBaseMass(self, base_mass):
         """Set the mass of quadruped's base.
 
         Args:
@@ -721,32 +734,20 @@ class Quadruped(object):
         """
         if len(leg_masses) != len(self._leg_link_ids):
             raise ValueError("The number of values passed to SetLegMasses are "
-                            "different than number of leg links and motors.")
+                            "different than number of leg links.")
         for leg_id, leg_mass in zip(self._leg_link_ids, leg_masses):
             self._pybullet_client.changeDynamics(self.quadruped,
                                                 leg_id,
                                                 mass=leg_mass)
-        
-    def _scale_rand(self, num_rand, low, high):
-        """scale number of rand numbers between low and high"""
-        return low + np.random.random(num_rand) * (high - low)
 
-    def _add_base_mass_offset(self, spec_mass=None, spec_location=None):
+    def _add_base_mass_offset(self, spec_mass, spec_location, is_render=False):
         """Attach mass to robot base."""
         quad_base = np.array(self.GetBasePosition())
         quad_ID = self.quadruped
 
-        offset_low = np.array([-0.15, -0.05, -0.05])
-        offset_upp = np.array([0.15, 0.05, 0.05])
-        if spec_location is None:
-            block_pos_delta_base_frame = self._scale_rand(3, offset_low, offset_upp)
-        else:
-            block_pos_delta_base_frame = np.array(spec_location)
-        if spec_mass is None:
-            base_mass = 8 * np.random.random()
-        else:
-            base_mass = spec_mass
-        if self._is_render:
+        block_pos_delta_base_frame = np.array(spec_location)
+        base_mass = spec_mass
+        if is_render:
             print("=========================== Random Mass:")
             print("Mass:", base_mass, "location:", block_pos_delta_base_frame)
             # if rendering, also want to set the halfExtents accordingly

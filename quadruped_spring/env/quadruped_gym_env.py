@@ -21,6 +21,7 @@ from quadruped_spring.env.control_interface.collection import ActionInterfaceCol
 from quadruped_spring.env.sensors.robot_sensors import SensorList
 from quadruped_spring.env.sensors.sensor_collection import SensorCollection
 from quadruped_spring.env.tasks.task_collection import TaskCollection
+from quadruped_spring.env.env_randomizers.env_randomizer_collection import EnvRandomizerCollection
 from quadruped_spring.env.wrappers.obs_flattening_wrapper import ObsFlatteningWrapper
 from quadruped_spring.utils import action_filter
 
@@ -37,6 +38,7 @@ VIDEO_LOG_DIRECTORY = "videos/" + datetime.datetime.now().strftime("vid-%Y-%m-%d
 # Observation space implemented: DEFAULT, CARTESIAN_NO_IMU, ANGLE_NO_IMU, CARTESIAN_ANGLE_NO_IMU
 # Action space implemented: DEFAULT, SYMMETRIC, SYMMETRIC_NO_HIP
 # Task implemented: JUMPING_ON_PLACE_HEIGHT, JUMPING_FORWARD
+# Env randomizer implemented: MASS_RANDOMIZER, DISTURBANCE_RANDOMIZER, SETTLING_RANDOMIZER
 
 # NOTE:
 # TORQUE control mode actually works only if isRLGymInterface is setted to False.
@@ -69,6 +71,8 @@ class QuadrupedGymEnv(gym.Env):
         enable_springs=False,
         enable_action_interpolation=False,
         enable_action_filter=False,
+        enable_env_randomization=True,
+        env_randomizer_mode="MASS_RANDOMIZER",
         test_env=False,  # NOT ALLOWED FOR TRAINING!
     ):
         """Initialize the quadruped gym environment.
@@ -101,6 +105,8 @@ class QuadrupedGymEnv(gym.Env):
           enable_joint_velocity_estimate: Boolean specifying if it's used the
             estimated or the true joint velocity. Actually it affects only real
             observations space modes.
+          enable_env_randomizer: Boolean specifying whether to enable env randomization.
+          env_randomizer_mode: String specifying which env randomizers to use.
         """
         self.seed()
         self._enable_springs = enable_springs
@@ -147,6 +153,12 @@ class QuadrupedGymEnv(gym.Env):
         self._configure_visualizer()
 
         self.videoLogID = None
+        self._enable_env_randomization = enable_env_randomization
+        if self._enable_env_randomization:
+            self._env_randomizer_mode = env_randomizer_mode
+            self._env_randomizers = EnvRandomizerCollection().get_el(self._env_randomizer_mode)
+            for idx, env_rnd in enumerate(self._env_randomizers):
+                self._env_randomizers[idx] = env_rnd(self)
         self.reset()
 
     ######################################################################################
@@ -208,6 +220,10 @@ class QuadrupedGymEnv(gym.Env):
         else:
             proc_action = action
         self.robot.ApplyAction(proc_action)
+        if self._enable_env_randomization:
+            for env_rnd in self._env_randomizers:
+                env_rnd.randomize_step()
+
         self._pybullet_client.stepSimulation()
         self._sim_step_counter += 1
 
@@ -323,14 +339,25 @@ class QuadrupedGymEnv(gym.Env):
             self._init_filter()
 
         self._ac_interface._reset(self.robot)
+        print(self.get_init_pose())
+        if self._enable_env_randomization:
+            for env_randomizer in self._env_randomizers:
+                env_randomizer.randomize_env()
+                # env_randomizer.get_changed_elements()
+        print(self.get_init_pose())
         self._settle_robot()  # Settle robot after being spawned
         self._robot_sensors._reset(self.robot)  # Rsest sensors
         self._task._reset(self)  # Reset task internal state
 
-        self._last_action = np.zeros(self._action_dim)
+        self._last_action = self.get_settling_action()
 
         if self._is_record_video:
             self.recordVideoHelper()
+            
+        if self._enable_env_randomization:
+            for env_randomizer in self._env_randomizers:
+                env_randomizer.randomize_env()
+                # env_randomizer.get_changed_elements()
 
         return self.get_observation()
 
@@ -560,7 +587,9 @@ def test_env():
         "enable_action_filter": True,
         "task_env": "JUMPING_FORWARD",
         "observation_space_mode": "DEFAULT",
-        "action_space_mode": "DEFAULT",
+        "action_space_mode": "SYMMETRIC",
+        "enable_env_randomization": True,
+        "env_randomizer_mode": "SETTLING_RANDOMIZER",
     }
 
     env = QuadrupedGymEnv(**env_config)
