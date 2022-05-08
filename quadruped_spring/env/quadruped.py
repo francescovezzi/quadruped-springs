@@ -333,17 +333,13 @@ class Quadruped(object):
                     self._SetMotorTorqueById(motor_id, 0)
             if self._enable_springs == False:
                 raise RuntimeError("check enable_springs")
-            
+
     def apply_external_force(self, force):
         """Apply an external force on the quadruped COM."""
         trunk_id = self._chassis_link_ids[0]
         quad_id = self.quadruped
         pos = [0, 0, 0]
-        self._pybullet_client.applyExternalForce(quad_id,
-                                                 trunk_id,
-                                                 force,
-                                                 pos,
-                                                 self._pybullet_client.LINK_FRAME)
+        self._pybullet_client.applyExternalForce(quad_id, trunk_id, force, pos, self._pybullet_client.LINK_FRAME)
 
     ######################################################################################
     # Jacobian, IK, etc.
@@ -573,7 +569,7 @@ class Quadruped(object):
         self._thigh_ids.sort()
         self._calf_ids.sort()
         self._foot_link_ids.sort()
-        
+
         self._leg_link_ids = self._joint_ids
 
         # print('joint ids', self._joint_ids)
@@ -677,14 +673,14 @@ class Quadruped(object):
     def GetTotalMassFromURDF(self):
         """Get the total mass from all links in the URDF."""
         return self._total_mass_urdf
-    
+
     def get_offset_mass_value(self):
         """Get offset mass attached to the robot."""
         try:
             return self._pybullet_client.getDynamicsInfo(self._base_block_ID, -1)[0]
         except AttributeError:
-            print('offset mass not created')
-            
+            print("offset mass not created")
+
     def get_offset_mass_position(self):
         """Get offset mass attached to the robot."""
         try:
@@ -694,13 +690,13 @@ class Quadruped(object):
             rel_pos = base_pos - pos
             orientation = self.GetBaseOrientation()
             _, orientation_inversed = self._pybullet_client.invertTransform([0, 0, 0], orientation)
-        
+
             rel_pos_local, _ = self._pybullet_client.multiplyTransforms(
                 [0, 0, 0], orientation_inversed, rel_pos, self._pybullet_client.getQuaternionFromEuler([0, 0, 0])
             )
             return rel_pos_local
         except AttributeError:
-            print('offset mass not created')     
+            print("offset mass not created")
 
     def SetBaseMass(self, base_mass):
         """Set the mass of quadruped's base.
@@ -716,12 +712,11 @@ class Quadruped(object):
         if len(base_mass) != len(self._chassis_link_ids):
             raise ValueError(
                 "The length of base_mass {} and self._chassis_link_ids {} are not "
-                "the same.".format(len(base_mass), len(self._chassis_link_ids)))
+                "the same.".format(len(base_mass), len(self._chassis_link_ids))
+            )
         for chassis_id, chassis_mass in zip(self._chassis_link_ids, base_mass):
-            self._pybullet_client.changeDynamics(self.quadruped,
-                                                chassis_id,
-                                                mass=chassis_mass)
-            
+            self._pybullet_client.changeDynamics(self.quadruped, chassis_id, mass=chassis_mass)
+
     def SetLegMasses(self, leg_masses):
         """Set the mass of the legs.
 
@@ -733,12 +728,9 @@ class Quadruped(object):
             of links.
         """
         if len(leg_masses) != len(self._leg_link_ids):
-            raise ValueError("The number of values passed to SetLegMasses are "
-                            "different than number of leg links.")
+            raise ValueError("The number of values passed to SetLegMasses are " "different than number of leg links.")
         for leg_id, leg_mass in zip(self._leg_link_ids, leg_masses):
-            self._pybullet_client.changeDynamics(self.quadruped,
-                                                leg_id,
-                                                mass=leg_mass)
+            self._pybullet_client.changeDynamics(self.quadruped, leg_id, mass=leg_mass)
 
     def _add_base_mass_offset(self, spec_mass, spec_location, is_render=False):
         """Attach mass to robot base."""

@@ -14,7 +14,7 @@ class MotorInterfacePD(MotorInterfaceBase):
         self._upper_lim = self._robot_config.RL_UPPER_ANGLE_JOINT
         self._init_pose = np.copy(self._robot_config.INIT_MOTOR_ANGLES)
         self._symm_idx = 0
-        
+
     def _reset(self, robot):
         super()._reset(robot)
         self._init_pose = np.copy(self._robot_config.INIT_MOTOR_ANGLES)
@@ -42,7 +42,7 @@ class MotorInterfaceCARTESIAN_PD(MotorInterfaceBase):
         self._upper_lim = self._robot_config.RL_UPPER_CARTESIAN_POS
         self._init_pose = np.copy(self._robot_config.NOMINAL_FOOT_POS_LEG_FRAME)
         self._symm_idx = 1
-        
+
     def _reset(self, robot):
         super()._reset(robot)
         self._init_pose = np.copy(self._robot_config.NOMINAL_FOOT_POS_LEG_FRAME)

@@ -1,11 +1,12 @@
 import numpy as np
 
 
-class EnvRandomizerBase():
+class EnvRandomizerBase:
     """
     Randomizes physical parameters of the objects in the simulation and adds
     perturbations to the stepping of the simulation.
     """
+
     def randomize_env(self):
         """Randomize the simulated_objects in the environment.
 
@@ -25,4 +26,5 @@ class EnvRandomizerBase():
         Args:
         env: The Minitaur gym environment to be randomized.
         """
+
     pass

@@ -18,10 +18,10 @@ import quadruped_spring.go1.configs_go1_with_springs as go1_config_with_springs
 import quadruped_spring.go1.configs_go1_without_springs as go1_config_without_springs
 from quadruped_spring.env import quadruped
 from quadruped_spring.env.control_interface.collection import ActionInterfaceCollection, MotorInterfaceCollection
+from quadruped_spring.env.env_randomizers.env_randomizer_collection import EnvRandomizerCollection
 from quadruped_spring.env.sensors.robot_sensors import SensorList
 from quadruped_spring.env.sensors.sensor_collection import SensorCollection
 from quadruped_spring.env.tasks.task_collection import TaskCollection
-from quadruped_spring.env.env_randomizers.env_randomizer_collection import EnvRandomizerCollection
 from quadruped_spring.env.wrappers.obs_flattening_wrapper import ObsFlatteningWrapper
 from quadruped_spring.utils import action_filter
 
@@ -339,12 +339,10 @@ class QuadrupedGymEnv(gym.Env):
             self._init_filter()
 
         self._ac_interface._reset(self.robot)
-        print(self.get_init_pose())
         if self._enable_env_randomization:
             for env_randomizer in self._env_randomizers:
                 env_randomizer.randomize_env()
                 # env_randomizer.get_changed_elements()
-        print(self.get_init_pose())
         self._settle_robot()  # Settle robot after being spawned
         self._robot_sensors._reset(self.robot)  # Rsest sensors
         self._task._reset(self)  # Reset task internal state
@@ -353,7 +351,7 @@ class QuadrupedGymEnv(gym.Env):
 
         if self._is_record_video:
             self.recordVideoHelper()
-            
+
         if self._enable_env_randomization:
             for env_randomizer in self._env_randomizers:
                 env_randomizer.randomize_env()

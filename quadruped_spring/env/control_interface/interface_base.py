@@ -21,7 +21,7 @@ class MotorInterfaceBase:
     def _reset(self, robot):
         """Reset interface"""
         self._robot = robot
-        
+
     def set_init_pose(self, init_pose):
         """Set the robot initial pose."""
         assert len(init_pose) == self._robot_config.NUM_MOTORS, "Wrong dimension for init pose."
@@ -134,7 +134,7 @@ class ActionWrapperBase(MotorInterfaceBase):
 
     def get_landing_pose(self):
         return self._motor_interface.get_landing_pose()
-    
+
     def get_init_pose(self):
         return self._motor_interface.get_init_pose()
 

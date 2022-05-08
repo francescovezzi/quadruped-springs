@@ -1,4 +1,8 @@
-from quadruped_spring.env.env_randomizers.env_randomizer import EnvRandomizerMasses, EnvRandomizerDisturbance, EnvRandomizerInitialConfiguration
+from quadruped_spring.env.env_randomizers.env_randomizer import (
+    EnvRandomizerDisturbance,
+    EnvRandomizerInitialConfiguration,
+    EnvRandomizerMasses,
+)
 from quadruped_spring.utils.base_collection import CollectionBase
 
 # Implemented observation spaces for deep reinforcement learning:

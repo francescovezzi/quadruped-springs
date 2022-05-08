@@ -131,7 +131,7 @@ def build_env(enable_springs=False):
         "action_space_mode": "DEFAULT",
         "task_env": "JUMPING_FORWARD",
         "enable_env_randomization": True,
-        "env_randomizer_mode": "DISTURBANCE_RANDOMIZER"
+        "env_randomizer_mode": "DISTURBANCE_RANDOMIZER",
     }
     env_config["enable_springs"] = True
     if fill_line:
