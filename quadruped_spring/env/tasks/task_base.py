@@ -48,7 +48,7 @@ class TaskJumping(TaskBase):
         self._max_yaw = 0.0
         self._max_roll = 0.0
         self._relative_max_height = 0.0
-        self._max_vel_err = 0.0
+        self._max_vel_err = 1.0
 
     def _on_step(self):
         pos_abs = np.array(self._env.robot.GetBasePosition())
@@ -69,6 +69,10 @@ class TaskJumping(TaskBase):
                 pos_relative = pos_abs + translation
                 pos_relative = pos_relative @ rotation_matrix
                 self._max_forward_distance = max(pos_relative[0], self._max_forward_distance)
+                vel_module = np.sqrt(np.dot(vel_abs, vel_abs))
+                if vel_module > 0.1:
+                    vel_err = 1 - np.dot(vel_abs / vel_module, np.array([0, 0, 1]))
+                    self._max_vel_err = max(vel_err, self._max_vel_err)
             self._all_feet_in_the_air = False
 
         delta_height = max(pos_abs[2] - self._init_height, 0.0)
@@ -76,10 +80,6 @@ class TaskJumping(TaskBase):
         roll, _, yaw = orient_rpy
         self._max_yaw = max(np.abs(yaw), self._max_yaw)
         self._max_roll = max(np.abs(roll), self._max_roll)
-        vel_module = np.dot(vel_abs, vel_abs)
-        if vel_module > 0.2:
-            vel_err = np.dot(vel_abs / vel_module, np.array([0,0,1]))
-            self._max_vel_err = max(vel_err, self._max_vel_err)
 
     def is_fallen(self, dot_prod_min=0.85):
         """Decide whether the quadruped has fallen.
