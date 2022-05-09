@@ -30,6 +30,8 @@ class JumpingOnPlaceHeight(TaskJumping):
         reward += max_height_normalized * 0.05 * np.exp(-self._max_roll**2 / 0.01)  # orientation
 
         reward += max_height_normalized * 0.1 * np.exp(-self._max_forward_distance**2 / 0.05)  # be on place
+        
+        reward += max_height_normalized * 0.1 * np.exp(self._max_vel_err**2 / 0.001)  # vel direction is similar to [0,0,1]
 
         if self._relative_max_height > 0 and not self._terminated():
             # Alive bonus proportional to the risk taken

@@ -38,20 +38,22 @@ class TaskJumping(TaskBase):
     def _reset(self, env):
         super()._reset(env)
         robot = self._env.robot
-        self._init_height = robot.GetBasePosition()[2]
         self._all_feet_in_the_air = False
         self._time_take_off = self._env.get_sim_time()
         self._robot_pose_take_off = robot.GetBasePosition()
+        self._init_height = self._robot_pose_take_off[2]
         self._robot_orientation_take_off = robot.GetBaseOrientationRollPitchYaw()
         self._max_flight_time = 0.0
         self._max_forward_distance = 0.0
         self._max_yaw = 0.0
         self._max_roll = 0.0
         self._relative_max_height = 0.0
+        self._max_vel_err = 0.0
 
     def _on_step(self):
         pos_abs = np.array(self._env.robot.GetBasePosition())
-        orient_rpy = np.array(self._env.robot.GetBasePosition())
+        vel_abs = self._env.robot.GetBaseLinearVelocity()
+        orient_rpy = np.array(self._env.robot.GetBaseOrientationRollPitchYaw())
         if self._env.robot._is_flying():
             if not self._all_feet_in_the_air:
                 self._all_feet_in_the_air = True
@@ -74,6 +76,10 @@ class TaskJumping(TaskBase):
         roll, _, yaw = orient_rpy
         self._max_yaw = max(np.abs(yaw), self._max_yaw)
         self._max_roll = max(np.abs(roll), self._max_roll)
+        vel_module = np.dot(vel_abs, vel_abs)
+        if vel_module > 0.2:
+            vel_err = np.dot(vel_abs / vel_module, np.array([0,0,1]))
+            self._max_vel_err = max(vel_err, self._max_vel_err)
 
     def is_fallen(self, dot_prod_min=0.85):
         """Decide whether the quadruped has fallen.
