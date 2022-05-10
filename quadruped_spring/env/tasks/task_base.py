@@ -41,7 +41,7 @@ class TaskJumping(TaskBase):
         self._all_feet_in_the_air = False
         self._time_take_off = self._env.get_sim_time()
         self._robot_pose_take_off = robot.GetBasePosition()
-        self._init_height = self._robot_pose_take_off[2]
+        self._init_height = robot._robot_config.INIT_HEIGHT
         self._robot_orientation_take_off = robot.GetBaseOrientationRollPitchYaw()
         self._max_flight_time = 0.0
         self._max_forward_distance = 0.0
@@ -113,3 +113,7 @@ class TaskJumping(TaskBase):
 
     def _terminated(self):
         return self.is_fallen() or self._not_allowed_contact()
+
+    def print_info(self):
+        print(f'max forward distance -> {self._max_forward_distance:.3f}')
+        print(f'max peak height -> {(self._init_height + self._relative_max_height):.3f}')
