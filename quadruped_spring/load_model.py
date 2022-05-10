@@ -18,7 +18,7 @@ from quadruped_spring.env.wrappers.landing_wrapper import LandingWrapper
 LEARNING_ALGS = {"ars": ARS}
 LEARNING_ALG = "ars"
 ENV_ID = "QuadrupedSpring-v0"
-ID = "4"
+ID = "8"
 
 def callable_env(env_id, wrappers, kwargs):
     def aux():
