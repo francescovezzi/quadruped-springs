@@ -60,6 +60,8 @@ NOMINAL_FOOT_POS_LEG_FRAME = np.array(
 ).flatten()
 CARTESIAN_LANDING_POSE = np.array(list(map(lambda sign: [DEFAULT_X, sign * DEFAULT_Y, LANDING_Z], [-1, 1, -1, 1]))).flatten()
 
+INIT_HEIGHT = 0.35  # Useful for jumping tasks
+
 ##################################################################################
 # Actuation limits/gains, position, and velocity limits
 ##################################################################################
