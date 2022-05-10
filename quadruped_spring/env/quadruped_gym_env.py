@@ -570,7 +570,7 @@ class QuadrupedGymEnv(gym.Env):
         landing_pose = self._ac_interface.get_landing_pose()
         landing_action = self._ac_interface._transform_motor_command_to_action(landing_pose)
         return landing_action
-    
+
     def print_task_info(self):
         """Print some info about the task performed."""
         self._task.print_info()

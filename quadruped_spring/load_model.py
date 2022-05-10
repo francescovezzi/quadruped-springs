@@ -5,6 +5,7 @@ currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentfram
 os.sys.path.insert(0, currentdir)
 
 from importlib import import_module
+
 import yaml
 from sb3_contrib import ARS
 from stable_baselines3.common.cmd_util import make_vec_env
@@ -12,13 +13,12 @@ from stable_baselines3.common.vec_env import VecNormalize
 
 from env.quadruped_gym_env import QuadrupedGymEnv
 from quadruped_spring.utils.evaluate_metric import EvaluateMetricJumpOnPlace
-from quadruped_spring.env.wrappers.obs_flattening_wrapper import ObsFlatteningWrapper
-from quadruped_spring.env.wrappers.landing_wrapper import LandingWrapper
 
 LEARNING_ALGS = {"ars": ARS}
 LEARNING_ALG = "ars"
 ENV_ID = "QuadrupedSpring-v0"
-ID = "8"
+ID = "9"
+
 
 def callable_env(env_id, wrappers, kwargs):
     def aux():
@@ -31,7 +31,9 @@ def callable_env(env_id, wrappers, kwargs):
             env = wrap(env)
         env = EvaluateMetricJumpOnPlace(env)
         return env
+
     return aux
+
 
 # define directories
 aux_dir = "logs/models"
@@ -48,7 +50,7 @@ if os.path.isfile(args_file):
         if loaded_args["env_kwargs"] is not None:
             env_kwargs = loaded_args["env_kwargs"]
 env_kwargs["render"] = True
-wrapper_list = loaded_args["hyperparams"]['env_wrapper']
+wrapper_list = loaded_args["hyperparams"]["env_wrapper"]
 
 # build env
 env = callable_env(QuadrupedGymEnv, wrapper_list, env_kwargs)

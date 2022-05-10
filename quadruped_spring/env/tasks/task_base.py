@@ -115,5 +115,5 @@ class TaskJumping(TaskBase):
         return self.is_fallen() or self._not_allowed_contact()
 
     def print_info(self):
-        print(f'max forward distance -> {self._max_forward_distance:.3f}')
-        print(f'max peak height -> {(self._init_height + self._relative_max_height):.3f}')
+        print(f"max forward distance -> {self._max_forward_distance:.3f}")
+        print(f"max peak height -> {(self._init_height + self._relative_max_height):.3f}")
