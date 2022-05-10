@@ -6,7 +6,8 @@ import re
 import time
 
 import numpy as np
-import quadruped_motor
+
+from quadruped_spring.env import quadruped_motor
 
 
 class Quadruped(object):
@@ -67,9 +68,10 @@ class Quadruped(object):
                 kd=self._kd,
                 torque_limits=self._robot_config.TORQUE_LIMITS,
             )
-            self._motor_model._setSpringStiffness(self._robot_config.SPRINGS_STIFFNESS)
-            self._motor_model._setSpringRestAngle(self._robot_config.SPRINGS_REST_ANGLE)
-            self._motor_model._setSpringDumping(self._robot_config.SPRINGS_DAMPING)
+            if self._enable_springs:
+                self._motor_model._setSpringStiffness(self._robot_config.SPRINGS_STIFFNESS)
+                self._motor_model._setSpringRestAngle(self._robot_config.SPRINGS_REST_ANGLE)
+                self._motor_model._setSpringDumping(self._robot_config.SPRINGS_DAMPING)
         else:
             raise ValueError("Must use accurate motor model")
 
@@ -256,6 +258,10 @@ class Quadruped(object):
                 feetInContactBool[footIndex] = 1
         return numValidContacts, numInvalidContacts, feetNormalForces, feetInContactBool
 
+    def _is_flying(self):
+        _, _, _, feet_in_contact = self.GetContactInfo()
+        return np.all(1 - np.array(feet_in_contact))
+
     ######################################################################################
     # INPUTS: set torques, ApplyAction, etc.
     ######################################################################################
@@ -417,6 +423,17 @@ class Quadruped(object):
         )
         joint_angles = np.array([-shoulder_angle, elbow_angle, wrist_angle])
         return joint_angles
+
+    def ComputeFeetPosAndVel(self):
+        dq = self.GetMotorVelocities()
+        foot_pos = np.zeros(12)
+        foot_vel = np.zeros(12)
+        for i in range(4):
+            dq_i = dq[3 * i : 3 * (i + 1)]
+            J, xyz = self.ComputeJacobianAndPosition(i)
+            foot_pos[3 * i : 3 * (i + 1)] = xyz
+            foot_vel[3 * i : 3 * (i + 1)] = J @ dq_i
+        return foot_pos, foot_vel
 
     ######################################################################################
     # RESET related

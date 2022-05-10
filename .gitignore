@@ -1,4 +1,7 @@
 .DS_Store
 *.egg-info
 __pycache__/
-logs/
+quadruped_spring/logs/
+test_control.py
+make_performance_report.sh
+quadruped_spring/evaluate_all_models.py
