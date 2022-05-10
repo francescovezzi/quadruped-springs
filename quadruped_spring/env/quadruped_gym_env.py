@@ -18,8 +18,8 @@ import quadruped_spring.go1.configs_go1_with_springs as go1_config_with_springs
 import quadruped_spring.go1.configs_go1_without_springs as go1_config_without_springs
 from quadruped_spring.env import quadruped
 from quadruped_spring.env.control_interface.collection import ActionInterfaceCollection, MotorInterfaceCollection
-from quadruped_spring.env.env_randomizers.env_randomizer_collection import EnvRandomizerCollection
 from quadruped_spring.env.env_randomizers.env_randomizer import EnvRandomizerInitialConfiguration as ERIC
+from quadruped_spring.env.env_randomizers.env_randomizer_collection import EnvRandomizerCollection
 from quadruped_spring.env.sensors.robot_sensors import SensorList
 from quadruped_spring.env.sensors.sensor_collection import SensorCollection
 from quadruped_spring.env.tasks.task_collection import TaskCollection
@@ -370,7 +370,7 @@ class QuadrupedGymEnv(gym.Env):
             if self._is_render:
                 time.sleep(0.001)
             self._pybullet_client.stepSimulation()
-    
+
     def _settle_with_randomizer(self):
         n_steps = 800
         self._settle_robot_by_reference(self.get_init_pose(), n_steps)
