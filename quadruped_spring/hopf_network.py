@@ -190,6 +190,7 @@ if __name__ == "__main__":
         add_noise=False,  # start in ideal conditions
         record_video=False,
         enable_springs=False,
+        enable_env_randomization=False,
     )
 
     # initialize Hopf Network, supply gait
