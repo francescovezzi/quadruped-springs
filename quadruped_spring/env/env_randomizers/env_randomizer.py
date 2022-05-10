@@ -144,7 +144,7 @@ class EnvRandomizerInitialConfiguration(EnvRandomizerBase):
     def randomize_env(self):
         # change init config ac_interface
         self._compute_new_init_config()
-        self._aci.set_init_pose(self._new_init_config)
+        # self._aci.set_init_pose(self._new_init_config)
 
     def randomize_step(self):
         pass

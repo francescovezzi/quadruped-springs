@@ -53,6 +53,8 @@ env_kwargs["render"] = True
 wrapper_list = loaded_args["hyperparams"]["env_wrapper"]
 
 # build env
+env_kwargs["enable_env_randomization"] = True
+env_kwargs["env_randomizer_mode"] = "SETTLING_RANDOMIZER"
 env = callable_env(QuadrupedGymEnv, wrapper_list, env_kwargs)
 env = make_vec_env(env, n_envs=1)
 env = VecNormalize.load(stats_file, env)
