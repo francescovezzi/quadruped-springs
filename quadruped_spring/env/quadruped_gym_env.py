@@ -284,8 +284,7 @@ class QuadrupedGymEnv(gym.Env):
         # initialize the filter history, since resetting the filter will fill
         # the history with zeros and this can cause sudden movements at the start
         # of each episode
-        init_pose = self.get_init_pose()
-        init_action = self._ac_interface._transform_motor_command_to_action(init_pose)
+        init_action = self._settling_action
         self._action_filter.init_history(init_action)
 
     ######################################################################################
@@ -335,28 +334,21 @@ class QuadrupedGymEnv(gym.Env):
         if self._is_render:
             self._pybullet_client.resetDebugVisualizerCamera(self._cam_dist, self._cam_yaw, self._cam_pitch, [0, 0, 0])
 
-        if self._enable_action_filter:
-            self._reset_action_filter()
-            self._init_filter()
-
         self._ac_interface._reset(self.robot)
         if self._enable_env_randomization:
             for env_randomizer in self._env_randomizers:
                 env_randomizer.randomize_env()
-                # env_randomizer.get_changed_elements()
+
         self._settle_robot()  # Settle robot after being spawned
         self._robot_sensors._reset(self.robot)  # Rsest sensors
         self._task._reset(self)  # Reset task internal state
 
-        self._last_action = self.get_settling_action()
+        if self._enable_action_filter:
+            self._reset_action_filter()
+            self._init_filter()
 
         if self._is_record_video:
             self.recordVideoHelper()
-
-        if self._enable_env_randomization:
-            for env_randomizer in self._env_randomizers:
-                env_randomizer.randomize_env()
-                # env_randomizer.get_changed_elements()
 
         return self.get_observation()
 
@@ -365,6 +357,7 @@ class QuadrupedGymEnv(gym.Env):
         if self._is_render:
             time.sleep(0.2)
         settling_command = self._ac_interface._convert_reference_to_command(reference)
+        self._settling_action = self._ac_interface._transform_motor_command_to_action(settling_command)
         for _ in range(n_steps):
             self.robot.ApplyAction(settling_command)
             if self._is_render:
@@ -571,9 +564,7 @@ class QuadrupedGymEnv(gym.Env):
 
     def get_settling_action(self):
         """Get the settling action."""
-        init_pose = self.get_init_pose()
-        landing_action = self._ac_interface._transform_motor_command_to_action(init_pose)
-        return landing_action
+        return self._settling_action
 
     def get_landing_action(self):
         """Get the action the landing controller should apply."""
@@ -593,7 +584,7 @@ def test_env():
         "on_rack": False,
         "motor_control_mode": "PD",
         "action_repeat": 10,
-        "enable_springs": True,
+        "enable_springs": False,
         "add_noise": False,
         "enable_action_interpolation": False,
         "enable_action_filter": True,
@@ -601,7 +592,7 @@ def test_env():
         "observation_space_mode": "DEFAULT",
         "action_space_mode": "SYMMETRIC",
         "enable_env_randomization": True,
-        "env_randomizer_mode": "SETTLING_RANDOMIZER",
+        "env_randomizer_mode": "MASS_RANDOMIZER",
     }
 
     env = QuadrupedGymEnv(**env_config)
@@ -615,7 +606,7 @@ def test_env():
         action = np.random.rand(action_dim) * 2 - 1
         # action = np.full(action_dim, 0)
         obs, reward, done, info = env.step(action)
-    env.print_task_info()
+    # env.print_task_info()
     env.close()
     print("end")
 

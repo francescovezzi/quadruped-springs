@@ -577,6 +577,7 @@ class Quadruped(object):
         # print('_thigh_ids', self._thigh_ids)
         # print('_calf_ids', self._calf_ids)
         # print('_foot_link_ids', self._foot_link_ids)
+        # print('_leg_link_ids', self._leg_link_ids)
 
     def _RecordMassAndInertiaInfoFromURDF(self):
         """Records the mass information from the URDF file.

@@ -11,7 +11,7 @@ LEG_MASS_ERROR_RANGE = (-0.2, 0.2)  # 0.2 means 20%
 MAX_SETTLING_ACTION_DISTURBANCE = (0.05, 0.05, 0.05)  # Hip, thigh, calf
 
 # Absolute range.
-MAX_POS_MASS_OFFSET = (0.15, 0.05, 0.05)  # meters
+MAX_POS_MASS_OFFSET = (0.1, 0.0, 0.05)  # meters
 MAX_MASS_OFFSET = 0.5  # kg
 MAX_FORCE_DISTURBE = [15, 15, 15]  # N
 MAX_TEMPORAL_DURATION = 1  # seconds
@@ -76,13 +76,16 @@ class EnvRandomizerMasses(EnvRandomizerBase):
         robot.SetBaseMass([randomized_base_mass])
 
     def _randomize_leg_masses(self):
+        """Randomize leg masses. Each leg in the same way."""
         robot = self._env.robot
         leg_masses = robot.GetLegMassesFromURDF()
         leg_masses_lower_bound = np.array(leg_masses) * (1.0 + self._leg_mass_err_range[0])
         leg_masses_upper_bound = np.array(leg_masses) * (1.0 + self._leg_mass_err_range[1])
-        randomized_leg_masses = [
-            np.random.uniform(leg_masses_lower_bound[i], leg_masses_upper_bound[i]) for i in range(len(leg_masses))
-        ]
+        randomized_leg_mass = np.random.uniform(leg_masses_lower_bound[0:3], leg_masses_upper_bound[0:3])
+        randomized_leg_masses = np.asarray(list(randomized_leg_mass) * robot._robot_config.NUM_LEGS)
+        # randomized_leg_masses = [
+        #     np.random.uniform(leg_masses_lower_bound[i], leg_masses_upper_bound[i]) for i in range(len(leg_masses))
+        # ]
         robot.SetLegMasses(randomized_leg_masses)
 
     def _add_mass_offset(self):
