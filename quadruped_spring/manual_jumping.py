@@ -51,6 +51,7 @@ class JumpingStateMachine(gym.Wrapper):
             actual_state = self._states["settling"]
         elif sim_time <= self._settling_duration_time + self._couching_duration_time:
             actual_state = self._states["couching"]
+            print(self.env.robot.GetMotorAngles())
         else:
             actual_state = self._states["jumping_ground"]
 

@@ -606,6 +606,10 @@ def test_env():
         action = np.random.rand(action_dim) * 2 - 1
         # action = np.full(action_dim, 0)
         obs, reward, done, info = env.step(action)
+        if done:
+            print(f'reward -> {reward}')
+            break
+
     # env.print_task_info()
     env.close()
     print("end")

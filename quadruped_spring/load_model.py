@@ -17,7 +17,7 @@ from quadruped_spring.utils.evaluate_metric import EvaluateMetricJumpOnPlace
 LEARNING_ALGS = {"ars": ARS}
 LEARNING_ALG = "ars"
 ENV_ID = "QuadrupedSpring-v0"
-ID = "9"
+ID = "7"
 
 
 def callable_env(env_id, wrappers, kwargs):
@@ -49,11 +49,13 @@ if os.path.isfile(args_file):
         loaded_args = yaml.load(f, Loader=yaml.UnsafeLoader)  # pytype: disable=module-attr
         if loaded_args["env_kwargs"] is not None:
             env_kwargs = loaded_args["env_kwargs"]
+            print(env_kwargs)
 env_kwargs["render"] = True
 wrapper_list = loaded_args["hyperparams"]["env_wrapper"]
+print(wrapper_list)
 
 # build env
-env_kwargs["enable_env_randomization"] = True
+env_kwargs["enable_env_randomization"] = False
 env_kwargs["env_randomizer_mode"] = "SETTLING_RANDOMIZER"
 env = callable_env(QuadrupedGymEnv, wrapper_list, env_kwargs)
 env = make_vec_env(env, n_envs=1)
@@ -77,6 +79,6 @@ for i in range(sim_steps):
         episode_reward = 0
         break
         # obs = env.reset()
-env.env_method("print_metric", indices=0)
+# env.env_method("print_metric", indices=0)
 env.close()
 print("end")
