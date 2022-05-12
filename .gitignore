@@ -5,3 +5,5 @@ quadruped_spring/logs/
 test_control.py
 make_performance_report.sh
 quadruped_spring/evaluate_all_models.py
+quadruped_spring/store_params_from_model.py
+quadruped_spring/print_params_from_model.py
