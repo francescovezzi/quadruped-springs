@@ -32,7 +32,7 @@ DEFAULT_THIGH_ANGLE = np.pi / 4
 DEFAULT_CALF_ANGLE = -np.pi / 2
 
 ANGLE_LANDING_POSE = np.array([DEFAULT_HIP_ANGLE, DEFAULT_THIGH_ANGLE, DEFAULT_CALF_ANGLE] * NUM_LEGS)
-
+ANGLE_SETTLING_POSE = np.array([0, 1.14, -2.19] * NUM_LEGS)
 # Used to convert the robot SDK joint angles to URDF joint angles.
 JOINT_DIRECTIONS = np.array([1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1])
 
@@ -59,7 +59,7 @@ NOMINAL_FOOT_POS_LEG_FRAME = np.array(
     list(map(lambda sign: [DEFAULT_X, sign * DEFAULT_Y, DEFAULT_Z], [-1, 1, -1, 1]))
 ).flatten()
 CARTESIAN_LANDING_POSE = np.array(list(map(lambda sign: [DEFAULT_X, sign * DEFAULT_Y, LANDING_Z], [-1, 1, -1, 1]))).flatten()
-
+CARTESIAN_SETTLING_POSE = np.array(list(map(lambda sign: [-0.02, sign * DEFAULT_Y, -0.15], [-1, 1, -1, 1]))).flatten()
 INIT_HEIGHT = 0.35  # Useful for jumping tasks
 
 ##################################################################################
