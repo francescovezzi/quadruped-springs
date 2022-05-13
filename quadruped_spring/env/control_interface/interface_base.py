@@ -38,6 +38,10 @@ class MotorInterfaceBase:
     def get_motor_control_mode(self):
         """Get the implemented motor control mode."""
         return self._motor_control_mode
+    
+    def get_robot_pose(self):
+        """Get the robot pose."""
+        pass
 
     def _transform_action_to_motor_command(self, action):
         """Convert the action to the properly motor command."""
@@ -140,3 +144,6 @@ class ActionWrapperBase(MotorInterfaceBase):
 
     def set_init_pose(self, init_pose):
         self._motor_interface.set_init_pose(init_pose)
+        
+    def get_robot_pose(self):
+        return self._motor_interface.get_robot_pose()

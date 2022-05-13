@@ -369,7 +369,7 @@ class QuadrupedGymEnv(gym.Env):
         self._settle_robot_by_reference(self.get_init_pose(), n_steps)
         for env_rnd in self._env_randomizers:
             if isinstance(env_rnd, ERIC):
-                self._settle_robot_by_reference(env_rnd.get_new_init_config(), n_steps)
+                self._settle_robot_by_reference(env_rnd.get_noised_config(), n_steps)
 
     def _settle_robot_by_PD(self):
         """Settle robot and add noise to init configuration."""
@@ -584,7 +584,7 @@ def test_env():
         "on_rack": False,
         "motor_control_mode": "PD",
         "action_repeat": 10,
-        "enable_springs": False,
+        "enable_springs": True,
         "add_noise": False,
         "enable_action_interpolation": False,
         "enable_action_filter": True,
@@ -592,7 +592,7 @@ def test_env():
         "observation_space_mode": "DEFAULT",
         "action_space_mode": "SYMMETRIC",
         "enable_env_randomization": True,
-        "env_randomizer_mode": "MASS_RANDOMIZER",
+        "env_randomizer_mode": "SETTLING_RANDOMIZER",
     }
 
     env = QuadrupedGymEnv(**env_config)

@@ -152,6 +152,14 @@ class EnvRandomizerInitialConfiguration(EnvRandomizerBase):
     def randomize_step(self):
         pass
 
+    def _add_noise_to_actual_config(self):
+        """Return the config with noise."""
+        sample_disturbe = np.random.uniform(np.zeros(self._env._robot_config.NUM_MOTORS), np.array(self._max_disturbe))
+        action =  self._aci._scale_helper_motor_command_to_action(self._aci.get_robot_pose())
+        new_action = action + sample_disturbe
+        noised_config = self._aci._scale_helper_action_to_motor_command(new_action)
+        return noised_config
+
     def _compute_new_init_config(self):
         # sample disturbance and get the new init config
         sample_disturbe = np.random.uniform(np.zeros(self._env._robot_config.NUM_MOTORS), np.array(self._max_disturbe))
@@ -161,6 +169,9 @@ class EnvRandomizerInitialConfiguration(EnvRandomizerBase):
 
     def get_new_init_config(self):
         return self._new_init_config
+    
+    def get_noised_config(self):
+        return self._add_noise_to_actual_config()
 
 
 class Disturbe:

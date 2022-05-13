@@ -17,7 +17,9 @@ from quadruped_spring.utils.evaluate_metric import EvaluateMetricJumpOnPlace
 LEARNING_ALGS = {"ars": ARS}
 LEARNING_ALG = "ars"
 ENV_ID = "QuadrupedSpring-v0"
-ID = "7"
+ID = "12"
+
+REC_VIDEO = True
 
 
 def callable_env(env_id, wrappers, kwargs):
@@ -51,6 +53,7 @@ if os.path.isfile(args_file):
             env_kwargs = loaded_args["env_kwargs"]
             print(env_kwargs)
 env_kwargs["render"] = True
+env_kwargs["record_video"] = REC_VIDEO
 wrapper_list = loaded_args["hyperparams"]["env_wrapper"]
 print(wrapper_list)
 
