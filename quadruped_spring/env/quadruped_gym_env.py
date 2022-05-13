@@ -73,6 +73,7 @@ class QuadrupedGymEnv(gym.Env):
         enable_action_interpolation=False,
         enable_action_filter=False,
         enable_env_randomization=True,
+        preload_springs=False,
         env_randomizer_mode="MASS_RANDOMIZER",
         test_env=False,  # NOT ALLOWED FOR TRAINING!
     ):
@@ -108,6 +109,7 @@ class QuadrupedGymEnv(gym.Env):
             observations space modes.
           enable_env_randomizer: Boolean specifying whether to enable env randomization.
           env_randomizer_mode: String specifying which env randomizers to use.
+          preload_springs: Boolean specifying whether 
         """
         self.seed()
         self._enable_springs = enable_springs
@@ -127,6 +129,7 @@ class QuadrupedGymEnv(gym.Env):
         self._enable_action_interpolation = enable_action_interpolation
         self._enable_action_filter = enable_action_filter
         self._using_test_env = test_env
+        self._preload_springs = preload_springs
         if test_env:
             self._add_noise = True
 
@@ -366,7 +369,6 @@ class QuadrupedGymEnv(gym.Env):
 
     def _settle_with_randomizer(self):
         n_steps = 800
-        self._settle_robot_by_reference(self.get_init_pose(), n_steps)
         for env_rnd in self._env_randomizers:
             if isinstance(env_rnd, ERIC):
                 self._settle_robot_by_reference(env_rnd.get_noised_config(), n_steps)
@@ -399,16 +401,33 @@ class QuadrupedGymEnv(gym.Env):
             self.robot._motor_model._motor_control_mode = tmp_save_motor_control_mode_MOT
         except:
             pass
+        
+    def _load_springs(self):
+        """Settle the robot to an initial config."""
+        if self._is_render:
+            time.sleep(0.2)
+        n_steps_tot = 900
+        n_steps_ramp = max(n_steps_tot - 100, 1)
+        for i in range(n_steps_tot):
+            reference = self._ac_interface.smooth_settling(i, 0, n_steps_ramp)
+            settling_command = self._ac_interface._convert_reference_to_command(reference)
+            self.robot.ApplyAction(settling_command)
+            if self._is_render:
+                time.sleep(0.001)
+            self._pybullet_client.stepSimulation()
+        print(settling_command)
+        self._settling_action = self._ac_interface._transform_motor_command_to_action(settling_command)
 
     def _settle_robot(self):
         if self._isRLGymInterface:
+            self._settle_robot_by_reference(self.get_init_pose(), n_steps=1200)
+            if self._preload_springs:
+                self._load_springs()
             if self._enable_env_randomization:
                 self._settle_with_randomizer()
-            else:
-                self._settle_robot_by_reference(self.get_init_pose(), n_steps=1200)
         else:
             self._settle_robot_by_PD()
-
+    
     ######################################################################################
     # Render, record videos, bookkeping, and misc pybullet helpers.
     ######################################################################################
@@ -593,6 +612,7 @@ def test_env():
         "action_space_mode": "SYMMETRIC",
         "enable_env_randomization": True,
         "env_randomizer_mode": "SETTLING_RANDOMIZER",
+        "preload_springs": True
     }
 
     env = QuadrupedGymEnv(**env_config)
