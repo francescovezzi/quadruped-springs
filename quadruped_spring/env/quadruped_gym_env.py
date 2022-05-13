@@ -109,7 +109,7 @@ class QuadrupedGymEnv(gym.Env):
             observations space modes.
           enable_env_randomizer: Boolean specifying whether to enable env randomization.
           env_randomizer_mode: String specifying which env randomizers to use.
-          preload_springs: Boolean specifying whether 
+          preload_springs: Boolean specifying whether
         """
         self.seed()
         self._enable_springs = enable_springs
@@ -401,7 +401,7 @@ class QuadrupedGymEnv(gym.Env):
             self.robot._motor_model._motor_control_mode = tmp_save_motor_control_mode_MOT
         except:
             pass
-        
+
     def _load_springs(self):
         """Settle the robot to an initial config."""
         if self._is_render:
@@ -427,7 +427,7 @@ class QuadrupedGymEnv(gym.Env):
                 self._settle_with_randomizer()
         else:
             self._settle_robot_by_PD()
-    
+
     ######################################################################################
     # Render, record videos, bookkeping, and misc pybullet helpers.
     ######################################################################################
@@ -612,7 +612,7 @@ def test_env():
         "action_space_mode": "SYMMETRIC",
         "enable_env_randomization": True,
         "env_randomizer_mode": "SETTLING_RANDOMIZER",
-        "preload_springs": True
+        "preload_springs": True,
     }
 
     env = QuadrupedGymEnv(**env_config)

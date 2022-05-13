@@ -77,7 +77,7 @@ class MotorInterfaceCARTESIAN_PD(MotorInterfaceBase):
     def get_robot_pose(self):
         feet_pos, _ = self._robot.ComputeFeetPosAndVel()
         return feet_pos
-    
+
     def get_settling_pose(self):
         return self._settling_pose
 

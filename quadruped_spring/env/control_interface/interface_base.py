@@ -38,7 +38,7 @@ class MotorInterfaceBase:
     def get_settling_pose(self):
         """Get the settling pose you want the robot to achieve."""
         pass
-    
+
     def get_motor_control_mode(self):
         """Get the implemented motor control mode."""
         return self._motor_control_mode
@@ -86,7 +86,7 @@ class MotorInterfaceBase:
         command = np.clip(command, lower_lim, upper_lim)
         action = -1 + 2 * (command - lower_lim) / (upper_lim - lower_lim)
         return np.clip(action, -1, 1)
-    
+
     @staticmethod
     def generate_ramp(i, i_min, i_max, u_min, u_max) -> float:
         """Return the output from a ramp function."""
@@ -96,14 +96,10 @@ class MotorInterfaceBase:
             return u_max
         else:
             return u_min + (u_max - u_min) * (i - i_min) / (i_max - i_min)
-        
+
     def smooth_settling(self, i, i_min, i_max):
         """Return the output from a ramp going from the init pose to the settling pose."""
-        return self.generate_ramp(i,
-                                  i_min,
-                                  i_max,
-                                  self.get_init_pose(),
-                                  self.get_settling_pose())
+        return self.generate_ramp(i, i_min, i_max, self.get_init_pose(), self.get_settling_pose())
 
 
 MOTOR_CONTROL_MODE_SUPPORTED_LIST = ["TORQUE", "PD", "CARTESIAN_PD"]
@@ -169,7 +165,7 @@ class ActionWrapperBase(MotorInterfaceBase):
 
     def get_robot_pose(self):
         return self._motor_interface.get_robot_pose()
-    
+
     def get_settling_pose(self):
         return self._motor_interface.get_settling_pose()
 
