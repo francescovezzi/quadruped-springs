@@ -29,7 +29,7 @@ class MotorInterfacePD(MotorInterfaceBase):
 
     def get_landing_pose(self):
         return self._robot_config.ANGLE_LANDING_POSE
-    
+
     def get_robot_pose(self):
         return self._robot.GetMotorAngles()
 
@@ -68,7 +68,7 @@ class MotorInterfaceCARTESIAN_PD(MotorInterfaceBase):
 
     def get_landing_pose(self):
         return self._robot_config.CARTESIAN_LANDING_POSE
-    
+
     def get_robot_pose(self):
         feet_pos, _ = self._robot.ComputeFeetPosAndVel()
         return feet_pos
