@@ -99,7 +99,10 @@ class QuadrupedMotorModel(object):
         k = self._kpSprings
         b = self._kdSprings
         rest_angles = self._restSprings
-        spring_torques = -k * (motor_angles - rest_angles) - b * motor_velocities
+        if motor_angles > rest_angles:
+            spring_torques = -k * (motor_angles - rest_angles) - b * motor_velocities
+        else:
+            spring_torques = 0
 
         return spring_torques
 
