@@ -26,9 +26,11 @@ class QuadrupedMotorModel(object):
 
     """
 
-    def __init__(self, robot_config, kp=60, kd=1, torque_limits=None, motor_control_mode="PD"):
+    def __init__(self, robot_config, enable_springs=False, kp=60, kd=1, torque_limits=None, motor_control_mode="PD"):
         # add springs to motor !
-        self._springs = Springs(robot_config)
+        self._enable_springs = enable_springs
+        if self._enable_springs:
+            self._springs = Springs(robot_config)
         self._kp = kp
         self._kd = kd
         self._torque_limits = torque_limits
