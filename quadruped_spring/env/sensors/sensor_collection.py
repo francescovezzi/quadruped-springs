@@ -30,6 +30,7 @@ class SensorCollection(CollectionBase):
         self._dict = {
             "DEFAULT": self._DEFAULT,
             "ENCODER": self._ENCODER,
+            "ENCODER_2": self._ENCODER_2,
             "CARTESIAN_NO_IMU": self._CARTESIAN_NO_IMU,
             "ANGLE_NO_IMU": self._ANGLE_NO_IMU,
             "CARTESIAN_ANGLE_NO_IMU": self._CARTESIAN_ANGLE_NO_IMU,

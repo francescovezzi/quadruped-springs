@@ -607,7 +607,7 @@ def test_env():
         "enable_action_interpolation": False,
         "enable_action_filter": True,
         "task_env": "JUMPING_FORWARD",
-        "observation_space_mode": "ENCODER",
+        "observation_space_mode": "ENCODER_2",
         "action_space_mode": "SYMMETRIC",
         "enable_env_randomization": False,
         "env_randomizer_mode": "SPRING_RANDOMIZER",
