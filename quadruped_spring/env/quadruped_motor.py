@@ -121,5 +121,5 @@ class QuadrupedMotorModel(object):
     def _setSpringRestAngle(self, rest_springs):
         self._springs.set_rest_angles(rest_springs)
 
-    def get_real_spring_params(self):
-        self._springs.get_spring_real_params()
+    def get_real_spring_params(self, motor_angles):
+        return self._springs.get_spring_real_params(motor_angles)
