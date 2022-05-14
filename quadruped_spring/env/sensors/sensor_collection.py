@@ -17,6 +17,7 @@ class SensorCollection(CollectionBase):
         super().__init__()
         self._DEFAULT = [rs.IMU, rs.FeetPostion, rs.FeetVelocity, rs.GroundReactionForce]
         self._ENCODER = [rs.IMU, rs.JointPosition, rs.JointVelocity, rs.GroundReactionForce]
+        self._ENCODER_2 = [rs.LinearVelocity, rs.AngularVelocity, rs.JointPosition, rs.JointVelocity]
         self._CARTESIAN_NO_IMU = [rs.FeetPostion, rs.FeetVelocity, rs.GroundReactionForce]
         self._ANGLE_NO_IMU = [rs.JointPosition, rs.JointVelocity, rs.GroundReactionForce]
         self._CARTESIAN_ANGLE_NO_IMU = [
