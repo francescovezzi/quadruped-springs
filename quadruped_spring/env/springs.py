@@ -1,20 +1,21 @@
 import numpy as np
 
 
-class Springs():
+class Springs:
     """Define the joint level springs in parallel with motors."""
+
     def __init__(self, robot_config):
         self._robot_config = robot_config
         self._init_springs()
-        
+
     def _init_springs(self):
         self._stiffness_nominal = self._robot_config.SPRINGS_STIFFNESS
         self._damping_nominal = self._robot_config.SPRINGS_DAMPING
         self._rest_angles = self._robot_config.SPRINGS_REST_ANGLE
-        
+
     def set_stiffness(self, new_stiffness):
         self._stiffness_nominal = new_stiffness
-    
+
     def set_damping(self, new_damping):
         self._damping_nominal = new_damping
 
@@ -23,7 +24,7 @@ class Springs():
 
     def get_spring_nominal_params(self):
         return self._stiffness_nominal, self._damping_nominal, self._rest_angles
-    
+
     def get_spring_real_params(self, motor_angles):
         """Get the spring params: stiffness, damping, rest_angles."""
         k, b = self.get_real_stiffness_and_damping(motor_angles)
@@ -39,9 +40,9 @@ class Springs():
         k_hip, k_thigh, k_calf = self._stiffness_nominal.copy()
         b_hip, b_thigh, b_calf = self._damping_nominal.copy()
         hip_rest, thigh_rest, calf_rest = self._rest_angles
-        if robot_side == 'left':
+        if robot_side == "left":
             hip_cond = hip_angle < hip_rest
-        elif robot_side == 'right':
+        elif robot_side == "right":
             hip_cond = hip_angle > hip_rest
         else:
             raise ValueError(f'robot sides should "right" or "left". not {robot_side}')
@@ -58,7 +59,7 @@ class Springs():
         k_real = [k_hip, k_thigh, k_calf]
         b_real = [b_hip, b_thigh, b_calf]
         return k_real, b_real
-        
+
     def get_real_stiffness_and_damping(self, motor_angles):
         """Get the real stiffness for all the joint level springs."""
         side_map = ["right", "left"] * 2
@@ -71,10 +72,8 @@ class Springs():
             real_stiffness[3 * i : 3 * (i + 1)] = k_real_leg
             real_damping[3 * i : 3 * (i + 1)] = b_real_leg
         return real_stiffness, real_damping
-            
+
     def compute_spring_torques(self, motor_angles, motor_velocities):
         k, b = self.get_real_stiffness_and_damping(motor_angles)
         spring_torques = -k * (motor_angles - self._rest_angles) - b * motor_velocities
         return spring_torques
-    
-    

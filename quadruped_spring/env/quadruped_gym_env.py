@@ -164,8 +164,6 @@ class QuadrupedGymEnv(gym.Env):
             for idx, env_rnd in enumerate(self._env_randomizers):
                 self._env_randomizers[idx] = env_rnd(self)
         self.reset()
-        print(self.robot._motor_model.getSpringStiffness())
-        print(self.robot._motor_model.getSpringDumping())
 
     ######################################################################################
     # RL Observation and Action spaces

@@ -178,18 +178,20 @@ class EnvRandomizerInitialConfiguration(EnvRandomizerBase):
 
 class EnvRandomizerSprings(EnvRandomizerBase):
     """Change the springs stiffness and damping coefficients."""
-    def __init__(self,
-                 env,
-                 max_err_stiffness = SPRING_STIFFNESS_MAX_ERROR_RANGE,
-                 max_err_damping = SPRING_DAMPING_MAX_ERROR_RANGE,
-                 ):
+
+    def __init__(
+        self,
+        env,
+        max_err_stiffness=SPRING_STIFFNESS_MAX_ERROR_RANGE,
+        max_err_damping=SPRING_DAMPING_MAX_ERROR_RANGE,
+    ):
         self._max_err_stiffness = max_err_stiffness
         self._max_err_damping = max_err_damping
         self._env = env
-        
+
     def randomize_env(self):
         self._randomize_springs()
-    
+
     def get_new_stiffness(self):
         stiffness, _, _ = self._env.robot.get_spring_nominal_params()
         stiffness_lower_bound = np.array(stiffness) * (1.0 - np.array(self._max_err_stiffness))
@@ -203,10 +205,11 @@ class EnvRandomizerSprings(EnvRandomizerBase):
         damping_upper_bound = np.array(damping) * (1.0 + np.array(self._max_err_damping))
         new_damping = np.random.uniform(damping_lower_bound, damping_upper_bound)
         return list(new_damping)
-    
+
     def _randomize_springs(self):
         self._env.robot.set_spring_stiffness(self.get_new_stiffness())
         self._env.robot.set_spring_damping(self.get_new_damping())
+
 
 class Disturbe:
     """

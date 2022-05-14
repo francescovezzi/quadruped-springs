@@ -695,22 +695,22 @@ class Quadruped(object):
             return rel_pos_local
         except AttributeError:
             print("offset mass not created")
-    
+
     def get_spring_nominal_params(self):
         """Get spring stiffness, dumping and rest angles."""
         spring_stiffness = self._motor_model.getSpringStiffness()
         spring_dumping = self._motor_model.getSpringDumping()
         spring_rest_angles = self._motor_model.getSpringRestAngles()
         return spring_stiffness, spring_dumping, spring_rest_angles
-    
+
     def set_spring_stiffness(self, stiffness):
         """Set springs stiffness."""
         self._motor_model._setSpringStiffness(stiffness)
-    
+
     def set_spring_damping(self, damping):
         """Set springs damping."""
         self._motor_model._setSpringDumping(damping)
-        
+
     def set_spring_rest_angles(self, rest_angles):
         """Set spring rest angles."""
         self._motor_model._setSpringRestAngle(rest_angles)

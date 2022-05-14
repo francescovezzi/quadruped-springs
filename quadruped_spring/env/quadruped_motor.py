@@ -1,9 +1,10 @@
 """Motor model for quadrupeds."""
 
 import collections
-from quadruped_spring.env.springs import Springs
 
 import numpy as np
+
+from quadruped_spring.env.springs import Springs
 
 NUM_MOTORS = 12
 NUM_LEGS = 4
