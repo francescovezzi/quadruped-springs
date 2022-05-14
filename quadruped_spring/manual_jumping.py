@@ -51,7 +51,6 @@ class JumpingStateMachine(gym.Wrapper):
             actual_state = self._states["settling"]
         elif sim_time <= self._settling_duration_time + self._couching_duration_time:
             actual_state = self._states["couching"]
-            print(self.env.robot.GetMotorAngles())
         else:
             actual_state = self._states["jumping_ground"]
 
@@ -134,7 +133,7 @@ def build_env(enable_springs=False):
         "enable_env_randomization": True,
         "env_randomizer_mode": "DISTURBANCE_RANDOMIZER",
     }
-    env_config["enable_springs"] = True
+    env_config["enable_springs"] = False
     if fill_line:
         env_config["render"] = False
     env = QuadrupedGymEnv(**env_config)
