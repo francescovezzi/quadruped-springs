@@ -39,7 +39,7 @@ VIDEO_LOG_DIRECTORY = "videos/" + datetime.datetime.now().strftime("vid-%Y-%m-%d
 # Observation space implemented: DEFAULT, ENCODER, CARTESIAN_NO_IMU, ANGLE_NO_IMU, CARTESIAN_ANGLE_NO_IMU
 # Action space implemented: DEFAULT, SYMMETRIC, SYMMETRIC_NO_HIP
 # Task implemented: JUMPING_ON_PLACE_HEIGHT, JUMPING_FORWARD
-# Env randomizer implemented: MASS_RANDOMIZER, DISTURBANCE_RANDOMIZER, SETTLING_RANDOMIZER
+# Env randomizer implemented: MASS_RANDOMIZER, DISTURBANCE_RANDOMIZER, SETTLING_RANDOMIZER, SPRING_RANDOMIZER
 
 # NOTE:
 # TORQUE control mode actually works only if isRLGymInterface is setted to False.
@@ -164,6 +164,8 @@ class QuadrupedGymEnv(gym.Env):
             for idx, env_rnd in enumerate(self._env_randomizers):
                 self._env_randomizers[idx] = env_rnd(self)
         self.reset()
+        print(self.robot._motor_model.getSpringStiffness())
+        print(self.robot._motor_model.getSpringDumping())
 
     ######################################################################################
     # RL Observation and Action spaces
@@ -415,7 +417,6 @@ class QuadrupedGymEnv(gym.Env):
             if self._is_render:
                 time.sleep(0.001)
             self._pybullet_client.stepSimulation()
-        print(settling_command)
         self._settling_action = self._ac_interface._transform_motor_command_to_action(settling_command)
 
     def _settle_robot(self):
@@ -611,7 +612,7 @@ def test_env():
         "observation_space_mode": "DEFAULT",
         "action_space_mode": "SYMMETRIC",
         "enable_env_randomization": True,
-        "env_randomizer_mode": "SETTLING_RANDOMIZER",
+        "env_randomizer_mode": "SPRING_RANDOMIZER",
         "preload_springs": True,
     }
 
