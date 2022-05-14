@@ -164,22 +164,25 @@ class FeetVelocity(Sensor):
         self._get_data()
         self._sample_noise()
 
+
 class LinearVelocity(Sensor):
     """Base linear velocity."""
+
     def __init__(self):
         super().__init__()
-        self._name = 'Base Linear Velocity'
-    
+        self._name = "Base Linear Velocity"
+
     def _update_sensor_info(self):
-        return super()._update_sensor_info(high=self._robot_config.VEL_LIN_HIGH,
-                                           low = self._robot_config.VEL_LIN_LOW,
-                                           noise_std=self._robot_config.VEL_LIN_NOISE,
-                                           )
+        return super()._update_sensor_info(
+            high=self._robot_config.VEL_LIN_HIGH,
+            low=self._robot_config.VEL_LIN_LOW,
+            noise_std=self._robot_config.VEL_LIN_NOISE,
+        )
 
     def _get_data(self):
         lin_vel = self._robot.GetBaseLinearVelocity()
         self._data = lin_vel
-    
+
     def _reset_sensor(self):
         self._get_data()
         self._sample_noise()
@@ -187,23 +190,26 @@ class LinearVelocity(Sensor):
     def _on_step(self):
         self._get_data()
         self._sample_noise()
-        
+
+
 class AngularVelocity(Sensor):
     """Base angular velocity."""
+
     def __init__(self):
         super().__init__()
-        self._name = 'Base Angular Velocity'
-    
+        self._name = "Base Angular Velocity"
+
     def _update_sensor_info(self):
-        return super()._update_sensor_info(high=self._robot_config.VEL_ANG_HIGH,
-                                           low = self._robot_config.VEL_ANG_LOW,
-                                           noise_std=self._robot_config.VEL_ANG_NOISE,
-                                           )
+        return super()._update_sensor_info(
+            high=self._robot_config.VEL_ANG_HIGH,
+            low=self._robot_config.VEL_ANG_LOW,
+            noise_std=self._robot_config.VEL_ANG_NOISE,
+        )
 
     def _get_data(self):
         ang_vel = self._robot.GetBaseAngularVelocity()
         self._data = ang_vel
-    
+
     def _reset_sensor(self):
         self._get_data()
         self._sample_noise()
@@ -211,7 +217,7 @@ class AngularVelocity(Sensor):
     def _on_step(self):
         self._get_data()
         self._sample_noise()
-        
+
 
 class IMU(Sensor):
     """base linear velocity + base_orientation (rpy) + base orientation rate (rpy)"""

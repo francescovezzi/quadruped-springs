@@ -2,6 +2,7 @@
 This file implements the functionalities of a quadruped using pybullet.
 """
 import os
+
 import numpy as np
 
 from quadruped_spring.env import quadruped_motor
