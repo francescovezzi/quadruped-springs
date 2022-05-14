@@ -91,8 +91,11 @@ VELOCITY_LIMITS = 1.0 * np.asarray([30.1, 30.1, 30.1] * NUM_LEGS)
 RL_VELOCITY_LIMITS = 1.0 * np.asarray([10, 10, 10] * NUM_LEGS)  #  Used for noise observation calculation
 
 # Sample Joint Gains
-MOTOR_KP = [100.0, 100.0, 100.0] * NUM_LEGS
-MOTOR_KD = [1.0, 2.0, 2.0] * NUM_LEGS
+# MOTOR_KP = [80.0, 80.0, 80.0] * NUM_LEGS
+# MOTOR_KD = [0.8, 0.8, 0.8] * NUM_LEGS
+
+MOTOR_KP = [55, 55, 55] * NUM_LEGS
+MOTOR_KD = [0.8, 0.8, 0.8] * NUM_LEGS
 
 # Sample Cartesian Gains
 kpCartesian = np.diag([1200, 2000, 2000])
@@ -159,6 +162,7 @@ MAX_CARTESIAN_FOOT_POS_CHANGE_PER_STEP = np.array([0.1, 0.02, 0.08])
 ################################################
 
 VEL_LIN_HIGH = np.array([5.0] * 3)
+VEL_ANG_HIGH = np.array([3.0] * 3)
 ORIENT_RPY_HIGH = np.array([np.pi] * 3)
 ORIENT_RATE_HIGH = np.array([5.0] * 3)
 IMU_HIGH = np.concatenate((VEL_LIN_HIGH, ORIENT_RPY_HIGH, ORIENT_RATE_HIGH))
@@ -173,6 +177,8 @@ FEET_VEL_HIGH = np.array([10.0] * NUM_MOTORS)
 # Sensor Low Limits
 ################################################
 
+VEL_LIN_LOW = -VEL_LIN_HIGH
+VEL_ANG_LOW = -VEL_ANG_HIGH
 IMU_LOW = -IMU_HIGH
 JOINT_ANGLES_LOW = RL_LOWER_ANGLE_JOINT
 JOINT_VELOCITIES_LOW = -JOINT_VELOCITIES_HIGH
@@ -188,6 +194,7 @@ FEET_VEL_LOW = -FEET_POS_HIGH
 STD_COEFF = 0.01
 
 VEL_LIN_NOISE = VEL_LIN_HIGH * STD_COEFF
+VEL_ANG_NOISE = VEL_ANG_HIGH * STD_COEFF
 ORIENT_RPY_NOISE = ORIENT_RPY_HIGH * STD_COEFF
 ORIENT_RATE_NOISE = ORIENT_RATE_HIGH * STD_COEFF
 IMU_NOISE = np.concatenate((VEL_LIN_NOISE, ORIENT_RPY_NOISE, ORIENT_RATE_NOISE))
