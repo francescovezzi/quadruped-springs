@@ -343,8 +343,6 @@ class QuadrupedGymEnv(gym.Env):
                 env_randomizer.randomize_env()
 
         self._settle_robot()  # Settle robot after being spawned
-        self._last_action = self._settling_action
-        print(self.robot.GetBasePosition()[2])
         self._robot_sensors._reset(self.robot)  # Rsest sensors
         self._task._reset(self)  # Reset task internal state
 
@@ -368,6 +366,7 @@ class QuadrupedGymEnv(gym.Env):
             if self._is_render:
                 time.sleep(0.001)
             self._pybullet_client.stepSimulation()
+        self._last_action = self._settling_action
 
     def _settle_with_randomizer(self):
         n_steps = 800
