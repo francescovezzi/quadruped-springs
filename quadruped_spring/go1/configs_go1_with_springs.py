@@ -31,8 +31,8 @@ DEFAULT_HIP_ANGLE = 0
 DEFAULT_THIGH_ANGLE = np.pi / 4
 DEFAULT_CALF_ANGLE = -np.pi / 2
 
-ANGLE_LANDING_POSE = np.array([DEFAULT_HIP_ANGLE, DEFAULT_THIGH_ANGLE, DEFAULT_CALF_ANGLE] * NUM_LEGS)
-ANGLE_SETTLING_POSE = np.array([0, 1.14, -2.19] * NUM_LEGS)
+ANGLE_LANDING_POSE = np.array([0.0, 1.1, -2.1] * NUM_LEGS)
+ANGLE_SETTLING_POSE = np.array([0.0, 1.30, -2.5] * NUM_LEGS)
 # Used to convert the robot SDK joint angles to URDF joint angles.
 JOINT_DIRECTIONS = np.array([1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1])
 
@@ -72,7 +72,7 @@ REAL_LOWER_ANGLE_JOINT = np.array([-1.0471975512, -0.663225115758, -2.7227136331
 # modified range in simulation (min observation space for RL)
 RL_UPPER_ANGLE_JOINT = np.array([0.2, DEFAULT_THIGH_ANGLE + 0.5, -0.95] * NUM_LEGS)
 RL_LOWER_ANGLE_JOINT = np.array(
-    [-0.2, DEFAULT_THIGH_ANGLE - 0.5, -2.42] * NUM_LEGS
+    [-0.2, DEFAULT_THIGH_ANGLE - 0.5, -2.5] * NUM_LEGS
 )  # if calf angle=-2.42 the robot height is 0.15
 # RL_LOWER_ANGLE_JOINT = np.array([-0.2, DEFAULT_THIGH_ANGLE - 0.4, DEFAULT_CALF_ANGLE - 0.85] * NUM_LEGS)
 
@@ -91,11 +91,11 @@ VELOCITY_LIMITS = 1.0 * np.asarray([30.1, 30.1, 30.1] * NUM_LEGS)
 RL_VELOCITY_LIMITS = 1.0 * np.asarray([10, 10, 10] * NUM_LEGS)  #  Used for noise observation calculation
 
 # Sample Joint Gains
-# MOTOR_KP = [80.0, 80.0, 80.0] * NUM_LEGS
-# MOTOR_KD = [0.8, 0.8, 0.8] * NUM_LEGS
-
-MOTOR_KP = [55, 55, 55] * NUM_LEGS
+MOTOR_KP = [75.0, 75.0, 75.0] * NUM_LEGS
 MOTOR_KD = [0.8, 0.8, 0.8] * NUM_LEGS
+
+# MOTOR_KP = [55, 55, 55] * NUM_LEGS
+# MOTOR_KD = [0.8, 0.8, 0.8] * NUM_LEGS
 
 # Sample Cartesian Gains
 kpCartesian = np.diag([1200, 2000, 2000])
