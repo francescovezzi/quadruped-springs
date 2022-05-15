@@ -287,7 +287,7 @@ class QuadrupedGymEnv(gym.Env):
         # initialize the filter history, since resetting the filter will fill
         # the history with zeros and this can cause sudden movements at the start
         # of each episode
-        init_action = self._settling_action
+        init_action = self._last_action
         self._action_filter.init_history(init_action)
 
     ######################################################################################
@@ -343,6 +343,8 @@ class QuadrupedGymEnv(gym.Env):
                 env_randomizer.randomize_env()
 
         self._settle_robot()  # Settle robot after being spawned
+        self._last_action = self._settling_action
+        print(self.robot.GetBasePosition()[2])
         self._robot_sensors._reset(self.robot)  # Rsest sensors
         self._task._reset(self)  # Reset task internal state
 
