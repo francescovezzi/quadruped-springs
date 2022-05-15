@@ -21,15 +21,18 @@ class LandingWrapper(gym.Wrapper):
         def wrapper(self, *args, **kwargs):
             """Temporary switch motor control gain"""
             if self.env.are_springs_enabled():
-                ret = foo(self, *args, **kwargs)
+                kp = 60.0
+                kd = 2.0
             else:
-                tmp_save_motor_kp = self.env.robot._motor_model._kp
-                tmp_save_motor_kd = self.env.robot._motor_model._kd
-                self.env.robot._motor_model._kp = 60.0
-                self.env.robot._motor_model._kd = 3.0
-                ret = foo(self, *args, **kwargs)
-                self.env.robot._motor_model._kp = tmp_save_motor_kp
-                self.env.robot._motor_model._kd = tmp_save_motor_kd
+                kp = 60.0
+                kd = 2.0
+            tmp_save_motor_kp = self.env.robot._motor_model._kp
+            tmp_save_motor_kd = self.env.robot._motor_model._kd
+            self.env.robot._motor_model._kp = kp
+            self.env.robot._motor_model._kd = kd
+            ret = foo(self, *args, **kwargs)
+            self.env.robot._motor_model._kp = tmp_save_motor_kp
+            self.env.robot._motor_model._kd = tmp_save_motor_kd
             return ret
 
         return wrapper
