@@ -246,6 +246,32 @@ class IMU(Sensor):
     def _on_step(self):
         self._get_data()
         self._sample_noise()
+        
+class HEIGHT(Sensor):
+    """robot height."""
+
+    def __init__(self):
+        super().__init__()
+        self._name = "HEIGHT"
+
+    def _update_sensor_info(self):
+        return super()._update_sensor_info(
+            high=self._robot_config.HEIGHT_HIGH,
+            low=self._robot_config.HEIGHT_LOW,
+            noise_std=self._robot_config.HEIGHT_NOISE,
+        )
+
+    def _get_data(self):
+        height = self._robot.GetBasePosition()[2]
+        self._data = height
+
+    def _reset_sensor(self):
+        self._get_data()
+        self._sample_noise()
+
+    def _on_step(self):
+        self._get_data()
+        self._sample_noise()
 
 
 class SensorList:
