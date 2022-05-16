@@ -20,18 +20,22 @@ class SensorCollection(CollectionBase):
         self._ENCODER_2 = [rs.LinearVelocity, rs.AngularVelocity, rs.JointPosition, rs.JointVelocity]
         self._CARTESIAN_NO_IMU = [rs.FeetPostion, rs.FeetVelocity, rs.GroundReactionForce]
         self._ANGLE_NO_IMU = [rs.JointPosition, rs.JointVelocity, rs.GroundReactionForce]
-        self._CUSTOM_3D = [rs.Quaternion,
-                          rs.DesiredBaseLinearVelocityYZ,
-                          rs.AngularVelocity,
-                          rs.LinearVelocity,
-                          rs.JointPosition,
-                          rs.JointVelocity]
-        self._CUSTOM_2D = [rs.Pitch,
-                          rs.PitchRate,
-                          rs.DesiredBaseLinearVelocityYZ,
-                          rs.LinearVelocity2D,
-                          rs.JointPosition,
-                          rs.JointVelocity]
+        self._CUSTOM_3D = [
+            rs.Quaternion,
+            rs.DesiredBaseLinearVelocityYZ,
+            rs.AngularVelocity,
+            rs.LinearVelocity,
+            rs.JointPosition,
+            rs.JointVelocity,
+        ]
+        self._CUSTOM_2D = [
+            rs.Pitch,
+            rs.PitchRate,
+            rs.DesiredBaseLinearVelocityYZ,
+            rs.LinearVelocity2D,
+            rs.JointPosition,
+            rs.JointVelocity,
+        ]
         self._dict = {
             "DEFAULT": self._DEFAULT,
             "ENCODER": self._ENCODER,

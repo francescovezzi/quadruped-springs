@@ -246,7 +246,8 @@ class IMU(Sensor):
     def _on_step(self):
         self._get_data()
         self._sample_noise()
-        
+
+
 class Height(Sensor):
     """robot height."""
 
@@ -300,6 +301,7 @@ class DesiredBaseLinearVelocityYZ(Sensor):
         self._get_data()
         self._sample_noise()
 
+
 class Quaternion(Sensor):
     """base_orientation (quaternion)"""
 
@@ -325,7 +327,7 @@ class Quaternion(Sensor):
     def _on_step(self):
         self._get_data()
         self._sample_noise()
-        
+
 
 class Pitch(Sensor):
     """pitch angle."""
@@ -406,6 +408,7 @@ class LinearVelocity2D(Sensor):
     def _on_step(self):
         self._get_data()
         self._sample_noise()
+
 
 class SensorList:
     """Manage all the robot sensors"""
