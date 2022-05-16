@@ -36,7 +36,7 @@ VIDEO_LOG_DIRECTORY = "videos/" + datetime.datetime.now().strftime("vid-%Y-%m-%d
 
 
 # Motor control mode implemented: TORQUE, PD, CARTESIAN_PD
-# Observation space implemented: DEFAULT, ENCODER, CARTESIAN_NO_IMU, ANGLE_NO_IMU, CARTESIAN_ANGLE_NO_IMU
+# Observation space implemented: DEFAULT, ENCODER, CARTESIAN_NO_IMU, ANGLE_NO_IMU
 # Action space implemented: DEFAULT, SYMMETRIC, SYMMETRIC_NO_HIP
 # Task implemented: JUMPING_ON_PLACE_HEIGHT, JUMPING_FORWARD
 # Env randomizer implemented: MASS_RANDOMIZER, DISTURBANCE_RANDOMIZER, SETTLING_RANDOMIZER, SPRING_RANDOMIZER
@@ -608,11 +608,11 @@ def test_env():
         "enable_action_interpolation": False,
         "enable_action_filter": True,
         "task_env": "JUMPING_FORWARD",
-        "observation_space_mode": "ENCODER_2",
+        "observation_space_mode": "CUSTOM_3D",
         "action_space_mode": "SYMMETRIC",
         "enable_env_randomization": False,
         "env_randomizer_mode": "SPRING_RANDOMIZER",
-        "preload_springs": True,
+        "preload_springs": False,
     }
 
     env = QuadrupedGymEnv(**env_config)

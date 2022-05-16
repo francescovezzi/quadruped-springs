@@ -20,7 +20,12 @@ class Sensor:
         self._dim = np.shape(self._high)
 
     def _sample_noise(self):
-        self._add_obs_noise = np.random.normal(scale=self._noise_std)
+        if np.all(self._noise_std > 0.0):
+            self._add_obs_noise = np.random.normal(scale=self._noise_std)
+        elif np.all(self._noise_std == 0.0):
+            self._add_obs_noise = np.zeros(np.shape(self._noise_std))
+        else:
+            raise ValueError(f"Noise standard deviation should be >= 0.0. not {self._noise_std}")
 
     def _set_sensor(self, robot):
         """Call it at init"""

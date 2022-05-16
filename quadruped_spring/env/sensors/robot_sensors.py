@@ -247,12 +247,12 @@ class IMU(Sensor):
         self._get_data()
         self._sample_noise()
         
-class HEIGHT(Sensor):
+class Height(Sensor):
     """robot height."""
 
     def __init__(self):
         super().__init__()
-        self._name = "HEIGHT"
+        self._name = "Height"
 
     def _update_sensor_info(self):
         return super()._update_sensor_info(
@@ -273,6 +273,139 @@ class HEIGHT(Sensor):
         self._get_data()
         self._sample_noise()
 
+
+class DesiredBaseLinearVelocityYZ(Sensor):
+    """robot height."""
+
+    def __init__(self):
+        super().__init__()
+        self._name = "Desired base linear velocity yz plane"
+        self._desired_velocity = np.array([0.0, 1.0])
+
+    def _update_sensor_info(self):
+        return super()._update_sensor_info(
+            high=np.array([0.0, 0.0]),
+            low=np.array([0.0, 0.0]),
+            noise_std=np.array([0.0, 0.0]),
+        )
+
+    def _get_data(self):
+        self._data = self._desired_velocity
+
+    def _reset_sensor(self):
+        self._get_data()
+        self._sample_noise()
+
+    def _on_step(self):
+        self._get_data()
+        self._sample_noise()
+
+class Quaternion(Sensor):
+    """base_orientation (quaternion)"""
+
+    def __init__(self):
+        super().__init__()
+        self._name = "Quaternion"
+
+    def _update_sensor_info(self):
+        return super()._update_sensor_info(
+            high=self._robot_config.QUATERNION_HIGH,
+            low=self._robot_config.QUATERNION_LOW,
+            noise_std=self._robot_config.QUATERNION_NOISE,
+        )
+
+    def _get_data(self):
+        base_orientation = self._robot.GetBaseOrientation()
+        self._data = base_orientation
+
+    def _reset_sensor(self):
+        self._get_data()
+        self._sample_noise()
+
+    def _on_step(self):
+        self._get_data()
+        self._sample_noise()
+        
+
+class Pitch(Sensor):
+    """pitch angle."""
+
+    def __init__(self):
+        super().__init__()
+        self._name = "Pitch"
+
+    def _update_sensor_info(self):
+        return super()._update_sensor_info(
+            high=self._robot_config.PITCH_HIGH,
+            low=self._robot_config.PITCH_LOW,
+            noise_std=self._robot_config.PITCH_NOISE,
+        )
+
+    def _get_data(self):
+        pitch_orientation = self._robot.GetBaseOrientationRollPitchYaw()[1]
+        self._data = pitch_orientation
+
+    def _reset_sensor(self):
+        self._get_data()
+        self._sample_noise()
+
+    def _on_step(self):
+        self._get_data()
+        self._sample_noise()
+
+
+class PitchRate(Sensor):
+    """pitch orientation rate."""
+
+    def __init__(self):
+        super().__init__()
+        self._name = "Pitch rate"
+
+    def _update_sensor_info(self):
+        return super()._update_sensor_info(
+            high=self._robot_config.PITCH_RATE_HIGH,
+            low=self._robot_config.PITCH_RATE_LOW,
+            noise_std=self._robot_config.PITCH_RATE_NOISE,
+        )
+
+    def _get_data(self):
+        pitch_orientation_rate = self._robot.GetTrueBaseRollPitchYawRate()[1]
+        self._data = pitch_orientation_rate
+
+    def _reset_sensor(self):
+        self._get_data()
+        self._sample_noise()
+
+    def _on_step(self):
+        self._get_data()
+        self._sample_noise()
+
+
+class LinearVelocity2D(Sensor):
+    """Base linear velocity."""
+
+    def __init__(self):
+        super().__init__()
+        self._name = "Base Linear Velocity yz plane"
+
+    def _update_sensor_info(self):
+        return super()._update_sensor_info(
+            high=self._robot_config.VEL_LIN_HIGH[1:],
+            low=self._robot_config.VEL_LIN_LOW[1:],
+            noise_std=self._robot_config.VEL_LIN_NOISE[1:],
+        )
+
+    def _get_data(self):
+        lin_vel = self._robot.GetBaseLinearVelocity()[1:]
+        self._data = lin_vel
+
+    def _reset_sensor(self):
+        self._get_data()
+        self._sample_noise()
+
+    def _on_step(self):
+        self._get_data()
+        self._sample_noise()
 
 class SensorList:
     """Manage all the robot sensors"""

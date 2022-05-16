@@ -148,6 +148,7 @@ MAX_CARTESIAN_FOOT_POS_CHANGE_PER_STEP = np.array([0.1, 0.02, 0.08])
 # Sensor High Limits
 ################################################
 
+HEIHGT_HIGH = np.array([0.4])
 VEL_LIN_HIGH = np.array([5.0] * 3)
 VEL_ANG_HIGH = np.array([3.0] * 3)
 ORIENT_RPY_HIGH = np.array([np.pi] * 3)
@@ -159,11 +160,15 @@ CONTACT_FORCE_HIGH = np.array([5.0] * NUM_LEGS)
 CONTACT_BOOL_HIGH = np.array([1.0] * NUM_LEGS)
 FEET_POS_HIGH = RL_UPPER_CARTESIAN_POS
 FEET_VEL_HIGH = np.array([10.0] * NUM_MOTORS)
+QUATERNION_HIGH = np.array([1.0, 1.0, 1.0, 1.0])
+PITCH_HIGH = np.array([np.pi])
+PITCH_RATE_HIGH = np.array([5.0])
 
 ################################################
 # Sensor Low Limits
 ################################################
 
+HEIGHT_LOW = np.array([0.1])
 VEL_LIN_LOW = -VEL_LIN_HIGH
 VEL_ANG_LOW = -VEL_ANG_HIGH
 IMU_LOW = -IMU_HIGH
@@ -173,6 +178,9 @@ CONTACT_FORCE_LOW = -CONTACT_FORCE_HIGH
 CONTACT_BOOL_LOW = np.array([0.0] * NUM_LEGS)
 FEET_POS_LOW = RL_LOWER_CARTESIAN_POS
 FEET_VEL_LOW = -FEET_POS_HIGH
+QUATERNION_LOW = np.array([0.0, 0.0, 0.0, 0.0])
+PITCH_LOW = -PITCH_HIGH
+PITCH_RATE_LOW = -PITCH_RATE_HIGH
 
 ################################################
 # Sensor Noise std
@@ -180,6 +188,7 @@ FEET_VEL_LOW = -FEET_POS_HIGH
 
 STD_COEFF = 0.01
 
+HEIGHT_NOISE = HEIHGT_HIGH * STD_COEFF
 VEL_LIN_NOISE = VEL_LIN_HIGH * STD_COEFF
 VEL_ANG_NOISE = VEL_ANG_HIGH * STD_COEFF
 ORIENT_RPY_NOISE = ORIENT_RPY_HIGH * STD_COEFF
@@ -191,3 +200,6 @@ CONTACT_FORCE_NOISE = CONTACT_FORCE_HIGH * STD_COEFF
 CONTACT_BOOL_NOISE = np.array([0] * NUM_LEGS)
 FEET_POS_NOISE = np.array([0.1, 0.05, 0.1] * NUM_LEGS) * STD_COEFF
 FEET_VEL_NOISE = FEET_VEL_HIGH * STD_COEFF
+QUATERNION_NOISE = QUATERNION_HIGH * STD_COEFF
+PITCH_NOISE = PITCH_HIGH * STD_COEFF
+PITCH_RATE_NOISE = PITCH_RATE_HIGH * STD_COEFF
