@@ -590,6 +590,10 @@ class QuadrupedGymEnv(gym.Env):
         landing_pose = self._ac_interface.get_landing_pose()
         landing_action = self._ac_interface._transform_motor_command_to_action(landing_pose)
         return landing_action
+    
+    def get_last_action(self):
+        """Get the last action applied."""
+        return self._last_action
 
     def print_task_info(self):
         """Print some info about the task performed."""
@@ -607,8 +611,8 @@ def test_env():
         "add_noise": False,
         "enable_action_interpolation": False,
         "enable_action_filter": True,
-        "task_env": "JUMPING_FORWARD",
-        "observation_space_mode": "CUSTOM_3D",
+        "task_env": "JUMPING_IN_PLACE_DENSE",
+        "observation_space_mode": "CUSTOM_2D",
         "action_space_mode": "SYMMETRIC",
         "enable_env_randomization": False,
         "env_randomizer_mode": "SPRING_RANDOMIZER",

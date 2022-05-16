@@ -49,8 +49,16 @@ class TaskJumping(TaskBase):
         self._max_roll = 0.0
         self._relative_max_height = 0.0
         self._max_vel_err = 1.0
+        self._base_acc = np.zeros(3)
+        self._new_action = self._old_action = self._env.get_last_action()
+        self._base_velocity_new = self._base_velocity_old = robot.GetBaseLinearVelocity()
 
     def _on_step(self):
+        self._update_actions()
+        self._update_base_velocities()
+        self._compute_jumping_info()
+        
+    def _compute_jumping_info(self):
         pos_abs = np.array(self._env.robot.GetBasePosition())
         vel_abs = self._env.robot.GetBaseLinearVelocity()
         orient_rpy = np.array(self._env.robot.GetBaseOrientationRollPitchYaw())
@@ -117,3 +125,17 @@ class TaskJumping(TaskBase):
     def print_info(self):
         print(f"max forward distance -> {self._max_forward_distance:.3f}")
         print(f"max peak height -> {(self._init_height + self._relative_max_height):.3f}")
+
+    def _compute_base_acc(self):
+        return (self._base_velocity_new - self._base_velocity_old) / self._env.get_env_time_step()
+    
+    def _update_base_velocities(self):
+        self._base_velocity_old = self._base_velocity_new
+        self._base_velocity_new = self._env.robot.GetBaseLinearVelocity()
+        
+    def _update_actions(self):
+        self._old_action = self._new_action
+        self._new_action = self._env.get_last_action()
+        
+    def _compute_delta_action(self):
+        return self._new_action - self._old_action

@@ -21,5 +21,6 @@ class TaskCollection(CollectionBase):
         super().__init__()
         self.JUMPING_ON_PLACE_HEIGHT = rt.JumpingOnPlaceHeight
         self.JUMPING_FORWARD = rt.JumpingForward
+        self.JUMPING_IN_PLACE_DENSE = rt.JumpingInPlaceDense
         self._element_type = "task"
-        self._dict = {"JUMPING_ON_PLACE_HEIGHT": self.JUMPING_ON_PLACE_HEIGHT, "JUMPING_FORWARD": self.JUMPING_FORWARD}
+        self._dict = {"JUMPING_ON_PLACE_HEIGHT": self.JUMPING_ON_PLACE_HEIGHT, "JUMPING_FORWARD": self.JUMPING_FORWARD, "JUMPING_IN_PLACE_DENSE": self.JUMPING_IN_PLACE_DENSE}
