@@ -275,12 +275,12 @@ class Height(Sensor):
         self._sample_noise()
 
 
-class DesiredBaseLinearVelocityYZ(Sensor):
+class DesiredBaseLinearVelocityXZ(Sensor):
     """robot height."""
 
     def __init__(self):
         super().__init__()
-        self._name = "Desired base linear velocity yz plane"
+        self._name = "Desired base linear velocity xz plane"
         self._desired_velocity = np.array([0.0, 1.0])
 
     def _update_sensor_info(self):

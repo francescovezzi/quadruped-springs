@@ -22,7 +22,7 @@ class SensorCollection(CollectionBase):
         self._ANGLE_NO_IMU = [rs.JointPosition, rs.JointVelocity, rs.GroundReactionForce]
         self._CUSTOM_3D = [
             rs.Quaternion,
-            rs.DesiredBaseLinearVelocityYZ,
+            rs.DesiredBaseLinearVelocityXZ,
             rs.AngularVelocity,
             rs.LinearVelocity,
             rs.JointPosition,
@@ -31,7 +31,7 @@ class SensorCollection(CollectionBase):
         self._CUSTOM_2D = [
             rs.Pitch,
             rs.PitchRate,
-            rs.DesiredBaseLinearVelocityYZ,
+            rs.DesiredBaseLinearVelocityXZ,
             rs.LinearVelocity2D,
             rs.JointPosition,
             rs.JointVelocity,
