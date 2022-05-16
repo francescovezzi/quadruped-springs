@@ -388,17 +388,17 @@ class LinearVelocity2D(Sensor):
 
     def __init__(self):
         super().__init__()
-        self._name = "Base Linear Velocity yz plane"
+        self._name = "Base Linear Velocity xz plane"
 
     def _update_sensor_info(self):
         return super()._update_sensor_info(
-            high=self._robot_config.VEL_LIN_HIGH[1:],
-            low=self._robot_config.VEL_LIN_LOW[1:],
-            noise_std=self._robot_config.VEL_LIN_NOISE[1:],
+            high=self._robot_config.VEL_LIN_HIGH[0, 2],
+            low=self._robot_config.VEL_LIN_LOW[0, 2],
+            noise_std=self._robot_config.VEL_LIN_NOISE[0, 2],
         )
 
     def _get_data(self):
-        lin_vel = self._robot.GetBaseLinearVelocity()[1:]
+        lin_vel = self._robot.GetBaseLinearVelocity()[0, 2]
         self._data = lin_vel
 
     def _reset_sensor(self):
