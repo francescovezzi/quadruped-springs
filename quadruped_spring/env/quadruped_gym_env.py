@@ -590,7 +590,7 @@ class QuadrupedGymEnv(gym.Env):
         landing_pose = self._ac_interface.get_landing_pose()
         landing_action = self._ac_interface._transform_motor_command_to_action(landing_pose)
         return landing_action
-    
+
     def get_last_action(self):
         """Get the last action applied."""
         return self._last_action
@@ -598,6 +598,7 @@ class QuadrupedGymEnv(gym.Env):
     def print_task_info(self):
         """Print some info about the task performed."""
         self._task.print_info()
+
 
 def build_env():
     env_config = {
@@ -621,6 +622,7 @@ def build_env():
     # env = RestWrapper(env)
     # env = LandingWrapper(env)
     return env
+
 
 def test_env():
     env = build_env()

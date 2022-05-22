@@ -56,7 +56,7 @@ class VideoRec(gym.Wrapper):
 
         self._increase_video()
         time.sleep(0.005)
-            
+
         return obs, reward, done, infos
 
     def render(self, mode="rgb_array", **kwargs):

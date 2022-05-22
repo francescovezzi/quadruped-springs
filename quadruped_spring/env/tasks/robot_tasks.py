@@ -91,17 +91,17 @@ class JumpingInPlaceDense(TaskJumping):
         lin_vel = self._env.robot.GetBaseLinearVelocity()[[0, 2]]
         _, pitch_rate, _ = self._env.robot.GetTrueBaseRollPitchYawRate()
         vel_ref = np.array([0.0, 1.0])
-        track_err = (lin_vel - vel_ref)
+        track_err = lin_vel - vel_ref
         acc = self._compute_base_acc()
         delta_action = self._compute_delta_action()
-        
+
         pitch_rate_reward = -0.02 * np.abs(pitch_rate)
         err_reward = 1.0 * np.exp(-np.dot(track_err, track_err) / 0.1)
         acc_reward = -0.0005 * np.dot(acc, acc)
         action_reward = -0.00002 * np.dot(delta_action, delta_action)
-        
+
         reward = pitch_rate_reward + err_reward + acc_reward + action_reward
-        
+
         return reward
 
     def _reward_end_episode(self):

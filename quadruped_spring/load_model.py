@@ -12,10 +12,10 @@ from stable_baselines3.common.cmd_util import make_vec_env
 from stable_baselines3.common.vec_env import VecNormalize
 
 from env.quadruped_gym_env import QuadrupedGymEnv
-from quadruped_spring.utils.evaluate_metric import EvaluateMetricJumpOnPlace
-from quadruped_spring.utils.video_recording import VideoRec
 from quadruped_spring.env.wrappers.rest_wrapper import RestWrapper
+from quadruped_spring.utils.evaluate_metric import EvaluateMetricJumpOnPlace
 from quadruped_spring.utils.monitor_state import MonitorState
+from quadruped_spring.utils.video_recording import VideoRec
 
 LEARNING_ALGS = {"ars": ARS}
 LEARNING_ALG = "ars"
@@ -32,11 +32,11 @@ def callable_env(env_id, wrappers, kwargs):
         env = env_id(**kwargs)
         env = RestWrapper(env)
         if SAVE_PLOTS:
-            plot_folder = f'logs/plots/{LEARNING_ALG}_{ENV_ID}_{ID}'
+            plot_folder = f"logs/plots/{LEARNING_ALG}_{ENV_ID}_{ID}"
             env = MonitorState(env, path=plot_folder, n_episode=2)
         if REC_VIDEO:
             video_folder = "logs/videos/"
-            video_name = f'{LEARNING_ALG}_{ENV_ID}_{ID}'
+            video_name = f"{LEARNING_ALG}_{ENV_ID}_{ID}"
             env = VideoRec(env, video_folder, video_name)
         for wrapper in wrappers:
             module = ".".join(wrapper.split(".")[:-1])
@@ -46,6 +46,7 @@ def callable_env(env_id, wrappers, kwargs):
             env = wrap(env)
         env = EvaluateMetricJumpOnPlace(env)
         return env
+
     return aux
 
 
