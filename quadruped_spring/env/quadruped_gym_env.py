@@ -599,15 +599,13 @@ class QuadrupedGymEnv(gym.Env):
         """Print some info about the task performed."""
         self._task.print_info()
 
-
-def test_env():
-
+def build_env():
     env_config = {
         "render": True,
-        "on_rack": False,
+        "on_rack": True,
         "motor_control_mode": "PD",
         "action_repeat": 10,
-        "enable_springs": True,
+        "enable_springs": False,
         "add_noise": False,
         "enable_action_interpolation": False,
         "enable_action_filter": True,
@@ -618,17 +616,21 @@ def test_env():
         "env_randomizer_mode": "SPRING_RANDOMIZER",
         "preload_springs": False,
     }
-
     env = QuadrupedGymEnv(**env_config)
     env = ObsFlatteningWrapper(env)
     # env = RestWrapper(env)
     # env = LandingWrapper(env)
+    return env
+
+def test_env():
+    env = build_env()
     sim_steps = 500
     action_dim = env.get_action_dim()
     obs = env.reset()
     for i in range(sim_steps):
         action = np.random.rand(action_dim) * 2 - 1
         # action = np.full(action_dim, 0)
+        # action = env.get_settling_action()
         obs, reward, done, info = env.step(action)
     # env.print_task_info()
     env.close()
