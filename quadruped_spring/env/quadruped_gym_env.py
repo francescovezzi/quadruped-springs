@@ -31,7 +31,7 @@ from quadruped_spring.utils import action_filter
 
 ACTION_EPS = 0.01
 OBSERVATION_EPS = 0.01
-EPISODE_LENGTH = 5  # max episode length for RL (seconds)
+EPISODE_LENGTH = 10  # max episode length for RL (seconds)
 VIDEO_LOG_DIRECTORY = "videos/" + datetime.datetime.now().strftime("vid-%Y-%m-%d-%H-%M-%S-%f")
 
 
