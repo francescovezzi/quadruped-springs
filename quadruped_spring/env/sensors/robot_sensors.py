@@ -282,6 +282,9 @@ class DesiredBaseLinearVelocityXZ(Sensor):
         super().__init__()
         self._name = "Desired base linear velocity xz plane"
         self._desired_velocity = np.array([0.0, 0.4])
+        
+    def get_desired_velocity(self):
+        return self._desired_velocity
 
     def _update_sensor_info(self):
         return super()._update_sensor_info(
@@ -471,3 +474,9 @@ class SensorList:
     def _turn_on(self, robot):
         for s in self._sensor_list:
             s._set_sensor(robot)
+
+    def get_desired_velocity(self):
+        for s in self._sensor_list:
+            if isinstance(s, DesiredBaseLinearVelocityXZ):
+                return s.get_desired_velocity()
+        raise ValueError("Desired Velocity not specified.")
