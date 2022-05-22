@@ -13,18 +13,31 @@ from stable_baselines3.common.vec_env import VecNormalize
 
 from env.quadruped_gym_env import QuadrupedGymEnv
 from quadruped_spring.utils.evaluate_metric import EvaluateMetricJumpOnPlace
+from quadruped_spring.utils.video_recording import VideoRec
+from quadruped_spring.env.wrappers.rest_wrapper import RestWrapper
+from quadruped_spring.utils.monitor_state import MonitorState
 
 LEARNING_ALGS = {"ars": ARS}
 LEARNING_ALG = "ars"
 ENV_ID = "QuadrupedSpring-v0"
-ID = "7"
+ID = "5"
 
 REC_VIDEO = False
+SAVE_PLOTS = True
+RENDER = False
 
 
 def callable_env(env_id, wrappers, kwargs):
     def aux():
         env = env_id(**kwargs)
+        env = RestWrapper(env)
+        if SAVE_PLOTS:
+            plot_folder = f'logs/plots/{LEARNING_ALG}_{ENV_ID}_{ID}'
+            env = MonitorState(env, path=plot_folder, n_episode=2)
+        if REC_VIDEO:
+            video_folder = "logs/videos/"
+            video_name = f'{LEARNING_ALG}_{ENV_ID}_{ID}'
+            env = VideoRec(env, video_folder, video_name)
         for wrapper in wrappers:
             module = ".".join(wrapper.split(".")[:-1])
             class_name = wrapper.split(".")[-1]
@@ -33,7 +46,6 @@ def callable_env(env_id, wrappers, kwargs):
             env = wrap(env)
         env = EvaluateMetricJumpOnPlace(env)
         return env
-
     return aux
 
 
@@ -51,11 +63,9 @@ if os.path.isfile(args_file):
         loaded_args = yaml.load(f, Loader=yaml.UnsafeLoader)  # pytype: disable=module-attr
         if loaded_args["env_kwargs"] is not None:
             env_kwargs = loaded_args["env_kwargs"]
-            print(env_kwargs)
-env_kwargs["render"] = True
-env_kwargs["record_video"] = REC_VIDEO
+if RENDER:
+    env_kwargs["render"] = True
 wrapper_list = loaded_args["hyperparams"]["env_wrapper"]
-print(wrapper_list)
 
 # build env
 env_kwargs["enable_env_randomization"] = False
@@ -70,18 +80,16 @@ env.norm_reward = False  # reward normalization is not needed at test time
 model = LEARNING_ALGS[LEARNING_ALG].load(model_file, env)
 print(f"\nLoaded model: {model_file}\n")
 
-sim_steps = 1200
 obs = env.reset()
-episode_reward = 0
-for i in range(sim_steps):
-    action, _states = model.predict(obs, deterministic=True)
-    obs, rewards, dones, info = env.step(action)
-    episode_reward += rewards
-    if dones:
-        print(f"episode_reward: {episode_reward}")
-        episode_reward = 0
-        break
-        # obs = env.reset()
+n_episodes = 3
+for _ in range(n_episodes):
+    done = False
+    while not done:
+        action, _states = model.predict(obs, deterministic=True)
+        obs, rewards, done, info = env.step(action)
+
 # env.env_method("print_metric", indices=0)
+# env.env_method("release_video", indices=0)
+
 env.close()
 print("end")
