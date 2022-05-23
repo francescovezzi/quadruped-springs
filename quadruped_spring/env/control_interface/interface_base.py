@@ -107,9 +107,9 @@ class MotorInterfaceBase:
         else:
             return u_min + (u_max - u_min) * (i - i_min) / (i_max - i_min)
 
-    def smooth_settling(self, i, i_min, i_max):
+    def smooth_settling(self, i, i_min, i_max, j=1):
         """Return the output from a ramp going from the init pose to the settling pose."""
-        return self.generate_ramp(i, i_min, i_max, self.get_init_pose(), self.get_settling_pose())
+        return self.generate_ramp(i, i_min, i_max, self.get_init_pose(), self.get_parametrized_settling_pose(j))
 
 
 MOTOR_CONTROL_MODE_SUPPORTED_LIST = ["TORQUE", "PD", "CARTESIAN_PD"]
@@ -182,8 +182,8 @@ class ActionWrapperBase(MotorInterfaceBase):
     def get_settling_pose(self):
         return self._motor_interface.get_settling_pose()
 
-    def smooth_settling(self, i, i_min, i_max):
-        return self._motor_interface.smooth_settling(i, i_min, i_max)
+    def smooth_settling(self, i, i_min, i_max, j=1):
+        return self._motor_interface.smooth_settling(i, i_min, i_max, j)
 
     def get_parametrized_settling_pose(self, i):
         return self._motor_interface.get_parametrized_settling_pose(i)

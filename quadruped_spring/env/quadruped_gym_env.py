@@ -403,14 +403,14 @@ class QuadrupedGymEnv(gym.Env):
         except:
             pass
 
-    def _load_springs(self):
+    def _load_springs(self, j=0.3):
         """Settle the robot to an initial config."""
         if self._is_render:
             time.sleep(0.2)
         n_steps_tot = 900
         n_steps_ramp = max(n_steps_tot - 100, 1)
         for i in range(n_steps_tot):
-            reference = self._ac_interface.smooth_settling(i, 0, n_steps_ramp)
+            reference = self._ac_interface.smooth_settling(i, 0, n_steps_ramp, j)
             settling_command = self._ac_interface._convert_reference_to_command(reference)
             self.robot.ApplyAction(settling_command)
             if self._is_render:
@@ -615,7 +615,7 @@ def build_env():
         "action_space_mode": "SYMMETRIC",
         "enable_env_randomization": False,
         "env_randomizer_mode": "SPRING_RANDOMIZER",
-        "preload_springs": False,
+        "preload_springs": True,
     }
     env = QuadrupedGymEnv(**env_config)
     env = ObsFlatteningWrapper(env)
