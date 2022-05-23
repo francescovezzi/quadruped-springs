@@ -36,8 +36,13 @@ class JumpingOnPlaceHeight(TaskJumping):
         else:
             # Malus for crashing
             # Optionally: no reward in case of crash
-            reward -= 0.8
+            reward -= 0.8 * (1 + 0.1 * max_height_normalized)
         return reward
+    
+    def _reset(self, env):
+        super()._reset(env)
+        landing_pose = self._env._robot_config.INIT_MOTOR_ANGLES
+        self._env._ac_interface.set_landing_pose(landing_pose)
 
 
 class JumpingForward(TaskJumping):
