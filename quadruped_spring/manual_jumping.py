@@ -59,7 +59,7 @@ def build_env(enable_springs=False):
         "action_repeat": 10,
         "record_video": False,
         "action_space_mode": "DEFAULT",
-        "task_env": "JUMPING_FORWARD",
+        "task_env": "JUMPING_ON_PLACE_HEIGHT",
         "enable_env_randomization": False,
         "env_randomizer_mode": "DISTURBANCE_RANDOMIZER",
         "preload_springs": True,
@@ -94,6 +94,7 @@ if __name__ == "__main__":
         action = env.jumping_explosive_action()
         # action = np.zeros(12)
         obs, reward, done, info = env.step(action)
+    print(env.robot.GetMotorAngles())
     t_end = time.time() - t_start
 
     # env.release_plots()
