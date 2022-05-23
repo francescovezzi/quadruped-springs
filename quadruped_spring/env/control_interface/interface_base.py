@@ -86,7 +86,7 @@ class MotorInterfaceBase:
         command = np.clip(command, lower_lim, upper_lim)
         action = -1 + 2 * (command - lower_lim) / (upper_lim - lower_lim)
         return np.clip(action, -1, 1)
-    
+
     def get_parametrized_settling_pose(self, i):
         """
         Get a pose that is the result of an interpolation between
