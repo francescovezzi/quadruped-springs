@@ -49,7 +49,7 @@ class Springs:
         if hip_cond:
             k_hip = 0
             b_hip = 0
-        if thigh_angle < thigh_rest:
+        if thigh_angle < thigh_rest: # I think the real robot should have different sign -> '<'
             k_thigh = 0
             b_thigh = 0
         if calf_angle > calf_rest:
