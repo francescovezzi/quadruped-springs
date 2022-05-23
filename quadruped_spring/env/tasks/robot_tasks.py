@@ -64,7 +64,7 @@ class JumpingForward(TaskJumping):
         if self._terminated():
             # Malus for crashing
             # Optionally: no reward in case of crash
-            reward -= 0.08
+            reward -= 0.08 * (1 + 0.1 * self._max_flight_time)
 
         max_distance = 0.2
         max_fwd_distance_normalized = self._max_forward_distance / max_distance
