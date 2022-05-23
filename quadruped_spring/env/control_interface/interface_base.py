@@ -86,6 +86,16 @@ class MotorInterfaceBase:
         command = np.clip(command, lower_lim, upper_lim)
         action = -1 + 2 * (command - lower_lim) / (upper_lim - lower_lim)
         return np.clip(action, -1, 1)
+    
+    def get_parametrized_settling_pose(self, i):
+        """
+        Get a pose that is the result of an interpolation between
+        the initial pose and the seeling pose. The parameter i belongs to [0, 1].
+        """
+        assert i >= 0 and i <= 1, "the interpolation parameter should belongs to [0, 1]."
+        init_pose = self.get_init_pose()
+        end_pose = self.get_settling_pose()
+        return init_pose * (1 - i) + i * end_pose
 
     @staticmethod
     def generate_ramp(i, i_min, i_max, u_min, u_max) -> float:
@@ -174,3 +184,6 @@ class ActionWrapperBase(MotorInterfaceBase):
 
     def smooth_settling(self, i, i_min, i_max):
         return self._motor_interface.smooth_settling(i, i_min, i_max)
+
+    def get_parametrized_settling_pose(self, i):
+        return self._motor_interface.get_parametrized_settling_pose(i)
