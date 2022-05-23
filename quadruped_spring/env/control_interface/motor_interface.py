@@ -31,7 +31,7 @@ class MotorInterfacePD(MotorInterfaceBase):
 
     def get_landing_pose(self):
         return self._landing_pose
-    
+
     def set_landing_pose(self, land_pose):
         self._landing_pose = land_pose
 
@@ -78,7 +78,7 @@ class MotorInterfaceCARTESIAN_PD(MotorInterfaceBase):
 
     def get_landing_pose(self):
         return self._landing_pose
-    
+
     def set_landing_pose(self, land_pose):
         self._landing_pose = land_pose
 
