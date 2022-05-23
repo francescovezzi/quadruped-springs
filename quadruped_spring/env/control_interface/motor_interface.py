@@ -14,6 +14,7 @@ class MotorInterfacePD(MotorInterfaceBase):
         self._upper_lim = self._robot_config.RL_UPPER_ANGLE_JOINT
         self._init_pose = np.copy(self._robot_config.INIT_MOTOR_ANGLES)
         self._settling_pose = self._robot_config.ANGLE_SETTLING_POSE
+        self._landing_pose = self._robot_config.ANGLE_LANDING_POSE
         self._symm_idx = 0
 
     def _reset(self, robot):
@@ -29,7 +30,10 @@ class MotorInterfacePD(MotorInterfaceBase):
         return action
 
     def get_landing_pose(self):
-        return self._robot_config.ANGLE_LANDING_POSE
+        return self._landing_pose
+    
+    def set_landing_pose(self, land_pose):
+        self._landing_pose = land_pose
 
     def get_robot_pose(self):
         return self._robot.GetMotorAngles()
@@ -49,6 +53,7 @@ class MotorInterfaceCARTESIAN_PD(MotorInterfaceBase):
         self._upper_lim = self._robot_config.RL_UPPER_CARTESIAN_POS
         self._init_pose = np.copy(self._robot_config.NOMINAL_FOOT_POS_LEG_FRAME)
         self._settling_pose = self._robot_config.CARTESIAN_SETTLING_POSE
+        self._landing_pose = self._robot_config.CARTESIAN_LANDING_POSE
         self._symm_idx = 1
 
     def _reset(self, robot):
@@ -72,7 +77,10 @@ class MotorInterfaceCARTESIAN_PD(MotorInterfaceBase):
         return action
 
     def get_landing_pose(self):
-        return self._robot_config.CARTESIAN_LANDING_POSE
+        return self._landing_pose
+    
+    def set_landing_pose(self, land_pose):
+        self._landing_pose = land_pose
 
     def get_robot_pose(self):
         feet_pos, _ = self._robot.ComputeFeetPosAndVel()

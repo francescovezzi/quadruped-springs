@@ -162,6 +162,9 @@ class ActionWrapperBase(MotorInterfaceBase):
 
     def set_init_pose(self, init_pose):
         self._motor_interface.set_init_pose(init_pose)
+    
+    def set_landing_pose(self, land_pose):
+        self._motor_interface.set_landing_pose(land_pose)
 
     def get_robot_pose(self):
         return self._motor_interface.get_robot_pose()
