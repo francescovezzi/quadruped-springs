@@ -15,7 +15,7 @@ Your command prompt should now look like:
 
 `(venv_name) user@pc:path$`
 
-The repository depends on recent versions of pybullet, numpy, etc., which you can install inside your virtual environment with: 
+Install all dependencies:
 
 `pip install -r requirements.txt `
 
