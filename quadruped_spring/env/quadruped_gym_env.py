@@ -237,13 +237,14 @@ class QuadrupedGymEnv(gym.Env):
     def step(self, action):
         """Step forward the simulation, given the action."""
         curr_act = action.copy()
+        self._last_action = curr_act
+
         if self._enable_action_filter:
             curr_act = self._filter_action(curr_act)
 
         for sub_step in range(self._action_repeat):
             self._sub_step(curr_act, sub_step)
 
-        self._last_action = curr_act
         self._env_step_counter += 1
         self._task._on_step()
         reward = self._task._reward()
@@ -403,7 +404,7 @@ class QuadrupedGymEnv(gym.Env):
         except:
             pass
 
-    def _load_springs(self, j=0.3):
+    def _load_springs(self, j=1.0):
         """Settle the robot to an initial config."""
         if self._is_render:
             time.sleep(0.2)
@@ -610,7 +611,7 @@ def build_env():
         "add_noise": False,
         "enable_action_interpolation": False,
         "enable_action_filter": True,
-        "task_env": "JUMPING_IN_PLACE_DENSE",
+        "task_env": "JUMPING_ON_PLACE_HEIGHT",
         "observation_space_mode": "CUSTOM_2D",
         "action_space_mode": "SYMMETRIC",
         "enable_env_randomization": False,
@@ -633,6 +634,7 @@ def test_env():
         action = np.random.rand(action_dim) * 2 - 1
         # action = np.full(action_dim, 0)
         # action = env.get_settling_action()
+        print(action)
         obs, reward, done, info = env.step(action)
     # env.print_task_info()
     env.close()
