@@ -14,8 +14,8 @@ class HeightWrapper(gym.Wrapper):
             self._enable_wrapper = False
         
         self._update_height()
-        if self._enable_wrapper and self._is_height_decreasing():
-            done = True
+        if self._enable_wrapper and self._is_height_decreasing() and not done:
+            reward -= 0.005
 
         return obs, reward, done, infos
 
