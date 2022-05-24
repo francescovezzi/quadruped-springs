@@ -404,7 +404,7 @@ class QuadrupedGymEnv(gym.Env):
         except:
             pass
 
-    def _load_springs(self, j=1.0):
+    def _load_springs(self, j=0.5):
         """Settle the robot to an initial config."""
         if self._is_render:
             time.sleep(0.2)
@@ -418,6 +418,7 @@ class QuadrupedGymEnv(gym.Env):
                 time.sleep(0.001)
             self._pybullet_client.stepSimulation()
         self._settling_action = self._ac_interface._transform_motor_command_to_action(settling_command)
+        self._last_action = self._settling_action
 
     def _settle_robot(self):
         if self._isRLGymInterface:
@@ -634,7 +635,6 @@ def test_env():
         action = np.random.rand(action_dim) * 2 - 1
         # action = np.full(action_dim, 0)
         # action = env.get_settling_action()
-        print(action)
         obs, reward, done, info = env.step(action)
     # env.print_task_info()
     env.close()
