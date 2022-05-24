@@ -20,8 +20,12 @@ class JumpingOnPlaceHeight(TaskJumping):
         """Compute bonus and malus to add to reward at the end of the episode"""
         reward = 0
 
-        max_height = 0.5
-        max_height_normalized = self._relative_max_height / max_height
+        max_height = 0.1
+        # max_height_normalized = self._relative_max_height / max_height
+        if self._relative_max_height > max_height:
+            max_height_normalized = 1.0
+        else:
+            max_height_normalized = self._relative_max_height / max_height
         reward += max_height_normalized
         reward += max_height_normalized * 0.03 * np.exp(-self._max_yaw**2 / 0.01)  # orientation
         reward += max_height_normalized * 0.03 * np.exp(-self._max_roll**2 / 0.01)  # orientation
@@ -36,7 +40,7 @@ class JumpingOnPlaceHeight(TaskJumping):
         else:
             # Malus for crashing
             # Optionally: no reward in case of crash
-            reward -= 0.8 * (1 + 0.1 * max_height_normalized)
+            reward -= 0.08 * (1 + 0.1 * max_height_normalized)
         return reward
 
     def _reset(self, env):

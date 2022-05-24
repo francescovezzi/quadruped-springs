@@ -121,9 +121,6 @@ class TaskJumping(TaskBase):
         return num_invalid_contacts
 
     def _terminated(self):
-        # return (
-        #     self.is_fallen() or self._not_allowed_contact() or (self._is_height_decreased() and not self._robot_has_jumped())
-        # )
         return self.is_fallen() or self._not_allowed_contact()
 
     def print_info(self):
@@ -143,14 +140,3 @@ class TaskJumping(TaskBase):
 
     def _compute_delta_action(self):
         return self._new_action - self._old_action
-
-    def _is_height_decreased(self):
-        return self._env.robot.GetBasePosition()[2] - self._init_height < -0.02
-
-    def _robot_has_jumped(self):
-        return self._env.robot._is_flying() and self._compute_time_for_peak_heihgt() > 0.06
-
-    def _compute_time_for_peak_heihgt(self):
-        """Compute the time the robot needs to reach the maximum height"""
-        _, _, vz = self._env.robot.GetBaseLinearVelocity()
-        return vz / 9.81
