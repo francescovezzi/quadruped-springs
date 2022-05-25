@@ -52,6 +52,7 @@ class TaskJumping(TaskBase):
         self._max_vel_err = 1.0
         self._base_acc = np.zeros(3)
         self._new_action = self._old_action = self._env.get_last_action()
+        self._max_delta_action = 0.0
         self._base_velocity_new = self._base_velocity_old = robot.GetBaseLinearVelocity()
 
     def _on_step(self):
@@ -82,10 +83,10 @@ class TaskJumping(TaskBase):
                 if vel_module > 0.1:
                     vel_err = 1 - np.dot(vel_abs / vel_module, np.array([0, 0, 1]))
                     self._max_vel_err = max(vel_err, self._max_vel_err)
+                delta_height = max(pos_abs[2] - self._init_height, 0.0)
+                self._relative_max_height = max(self._relative_max_height, delta_height)
             self._all_feet_in_the_air = False
 
-        delta_height = max(pos_abs[2] - self._init_height, 0.0)
-        self._relative_max_height = max(self._relative_max_height, delta_height)
         roll, _, yaw = orient_rpy
         self._max_yaw = max(np.abs(yaw), self._max_yaw)
         self._max_roll = max(np.abs(roll), self._max_roll)
@@ -137,6 +138,6 @@ class TaskJumping(TaskBase):
     def _update_actions(self):
         self._old_action = self._new_action
         self._new_action = self._env.get_last_action()
-
-    def _compute_delta_action(self):
-        return self._new_action - self._old_action
+        self._delta_action = np.abs(self._new_action - self._old_action)
+        if not self._env.robot._is_flying():
+            self._max_delta_action = max(self._max_delta_action, np.amax(self._delta_action))
