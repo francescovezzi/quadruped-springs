@@ -6,8 +6,8 @@ from quadruped_spring.env.control_interface.interface_base import MotorInterface
 class MotorInterfacePD(MotorInterfaceBase):
     """Command Action interface for PD motor control mode."""
 
-    def __init__(self, robot_config):
-        super().__init__(robot_config)
+    def __init__(self, env):
+        super().__init__(env)
         self._motor_control_mode = "PD"
         self._motor_control_mode_ROB = "PD"
         self._lower_lim = self._robot_config.RL_LOWER_ANGLE_JOINT
@@ -45,8 +45,8 @@ class MotorInterfacePD(MotorInterfaceBase):
 class MotorInterfaceCARTESIAN_PD(MotorInterfaceBase):
     """Command Action interface for CARTESIAN_PD motor control mode."""
 
-    def __init__(self, robot_config):
-        super().__init__(robot_config)
+    def __init__(self, env):
+        super().__init__(env)
         self._motor_control_mode = "CARTESIAN_PD"
         self._motor_control_mode_ROB = "PD"
         self._lower_lim = self._robot_config.RL_LOWER_CARTESIAN_POS
@@ -93,8 +93,8 @@ class MotorInterfaceCARTESIAN_PD(MotorInterfaceBase):
 class MotorInterfaceTORQUE(MotorInterfaceBase):
     """In order to supply pure torque to motors"""
 
-    def __init__(self, robot_config):
-        super().__init__(robot_config)
+    def __init__(self, env):
+        super().__init__(env)
         self._motor_control_mode = "TORQUE"
         self._motor_control_mode_ROB = "TORQUE"
         self._lower_lim = -self._robot_config.TORQUE_LIMITS

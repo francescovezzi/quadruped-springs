@@ -147,9 +147,8 @@ class EnvRandomizerInitialConfiguration(EnvRandomizerBase):
         self._max_disturbe = np.array(max_disturbe * self._env._robot_config.NUM_LEGS)
 
     def randomize_env(self):
-        # change init config ac_interface
-        self._compute_new_init_config()
-        # self._aci.set_init_pose(self._new_init_config)
+        noised_config = self._add_noise_to_actual_config()
+        self._env._last_action = self._env._ac_interface._settle_robot_by_reference(noised_config, n_steps=1000)
 
     def randomize_step(self):
         pass
@@ -162,12 +161,12 @@ class EnvRandomizerInitialConfiguration(EnvRandomizerBase):
         noised_config = self._aci._scale_helper_action_to_motor_command(new_action)
         return noised_config
 
-    def _compute_new_init_config(self):
-        # sample disturbance and get the new init config
-        sample_disturbe = np.random.uniform(np.zeros(self._env._robot_config.NUM_MOTORS), np.array(self._max_disturbe))
-        init_action = self._aci._scale_helper_motor_command_to_action(self._aci.get_init_pose())
-        new_init_action = init_action + sample_disturbe
-        self._new_init_config = self._aci._scale_helper_action_to_motor_command(new_init_action)
+    # def _compute_new_init_config(self):
+    #     # sample disturbance and get the new init config
+    #     sample_disturbe = np.random.uniform(np.zeros(self._env._robot_config.NUM_MOTORS), np.array(self._max_disturbe))
+    #     init_action = self._aci._scale_helper_motor_command_to_action(self._aci.get_init_pose())
+    #     new_init_action = init_action + sample_disturbe
+    #     self._new_init_config = self._aci._scale_helper_action_to_motor_command(new_init_action)
 
     def get_new_init_config(self):
         return self._new_init_configdamping

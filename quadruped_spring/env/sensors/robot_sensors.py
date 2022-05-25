@@ -418,7 +418,7 @@ class SensorList:
 
     def __init__(self, sensor_list):
         if not isinstance(sensor_list, list):
-            raise ValueError("Please use a list of sensors. Also if it is just one")
+            raise ValueError("Please use a list of sensors. Also if it is just one.")
         self._sensor_list = sensor_list
 
     def _compute_obs_dim(self):
