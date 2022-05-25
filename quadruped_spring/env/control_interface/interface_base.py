@@ -13,6 +13,8 @@ class MotorInterfaceBase:
         self._lower_lim = None
         self._upper_lim = None
         self._init_pose = None
+        self._settling_pose = None
+        self._landing_pose = None
         self._action_bound = 1.0
         self._init(env)
 
@@ -29,6 +31,9 @@ class MotorInterfaceBase:
         """Set the robot initial pose."""
         assert len(init_pose) == self._robot_config.NUM_MOTORS, "Wrong dimension for init pose."
         self._init_pose = np.copy(init_pose)
+        
+    def set_landing_pose(self, land_pose):
+        self._landing_pose = land_pose
 
     def get_init_pose(self):
         """Get the initial pose robot should be settled at reset."""
@@ -36,11 +41,11 @@ class MotorInterfaceBase:
 
     def get_landing_pose(self):
         """Get the pose you'd like the robot assume at landing."""
-        pass
+        return self._landing_pose
 
     def get_settling_pose(self):
         """Get the settling pose you want the robot to achieve."""
-        pass
+        return self._settling_pose
 
     def get_motor_control_mode(self):
         """Get the implemented motor control mode."""
