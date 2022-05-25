@@ -45,8 +45,7 @@ class JumpingOnPlaceHeight(TaskJumping):
     def _reset(self, env):
         super()._reset(env)
         landing_pose = self._env._robot_config.INIT_MOTOR_ANGLES
-        if self._env._isRLGymInterface:
-            self._env._ac_interface.set_landing_pose(landing_pose)
+        self._env._ac_interface.set_landing_pose(landing_pose)
 
 
 class JumpingForward(TaskJumping):
