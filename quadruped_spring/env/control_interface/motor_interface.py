@@ -29,12 +29,6 @@ class MotorInterfacePD(MotorInterfaceBase):
         action = self._scale_helper_motor_command_to_action(command)
         return action
 
-    def get_landing_pose(self):
-        return self._landing_pose
-
-    def set_landing_pose(self, land_pose):
-        self._landing_pose = land_pose
-
     def get_robot_pose(self):
         return self._robot.GetMotorAngles()
 
@@ -75,12 +69,6 @@ class MotorInterfaceCARTESIAN_PD(MotorInterfaceBase):
     def _transform_motor_command_to_action(self, command):
         action = self._scale_helper_motor_command_to_action(command)
         return action
-
-    def get_landing_pose(self):
-        return self._landing_pose
-
-    def set_landing_pose(self, land_pose):
-        self._landing_pose = land_pose
 
     def get_robot_pose(self):
         feet_pos, _ = self._robot.ComputeFeetPosAndVel()
