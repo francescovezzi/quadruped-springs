@@ -2,7 +2,6 @@ import numpy as np
 
 from quadruped_spring.env.control_interface.interface_base import ActionWrapperBase
 
-
 class DefaultActionWrapper(ActionWrapperBase):
     """Action Wrapper for default space."""
 

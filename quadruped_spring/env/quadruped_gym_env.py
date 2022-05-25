@@ -18,8 +18,9 @@ import quadruped_spring.go1.configs_go1_with_springs as go1_config_with_springs
 import quadruped_spring.go1.configs_go1_without_springs as go1_config_without_springs
 from quadruped_spring.env import quadruped
 from quadruped_spring.env.control_interface.collection import ActionInterfaceCollection, MotorInterfaceCollection
-from quadruped_spring.env.env_randomizers.env_randomizer import EnvRandomizerInitialConfiguration as ERIC
+from quadruped_spring.env.control_interface.utils import settle_robot_by_PD
 from quadruped_spring.env.env_randomizers.env_randomizer_collection import EnvRandomizerCollection
+from quadruped_spring.env.env_randomizers.env_randomizer_list import EnvRandomizerList
 from quadruped_spring.env.sensors.robot_sensors import SensorList
 from quadruped_spring.env.sensors.sensor_collection import SensorCollection
 from quadruped_spring.env.tasks.task_collection import TaskCollection
@@ -160,9 +161,8 @@ class QuadrupedGymEnv(gym.Env):
         self._enable_env_randomization = enable_env_randomization
         if self._enable_env_randomization:
             self._env_randomizer_mode = env_randomizer_mode
-            self._env_randomizers = EnvRandomizerCollection().get_el(self._env_randomizer_mode)
-            for idx, env_rnd in enumerate(self._env_randomizers):
-                self._env_randomizers[idx] = env_rnd(self)
+            self._env_randomizers = EnvRandomizerList(EnvRandomizerCollection().get_el(self._env_randomizer_mode))
+            self._env_randomizers._init(self)
         self.reset()
 
     ######################################################################################
@@ -179,7 +179,7 @@ class QuadrupedGymEnv(gym.Env):
             raise ValueError(f"the motor control mode {motor_control_mode} not" "implemented yet for RL Gym interface.")
 
         motor_interface = MotorInterfaceCollection().get_el(motor_control_mode)
-        motor_interface = motor_interface(self._robot_config)
+        motor_interface = motor_interface(self)
 
         ac_interface = ActionInterfaceCollection().get_el(action_space_mode)
         self._ac_interface = ac_interface(motor_interface)
@@ -189,10 +189,10 @@ class QuadrupedGymEnv(gym.Env):
 
     def setupActionSpace(self):
         """Set up action space for RL."""
-        action_dim = self.get_action_dim()
-        self._action_dim = action_dim
-        action_high = np.array([1] * action_dim)
+        self._action_dim = self.get_action_dim()
+        action_high = np.array([1] * self._action_dim)
         self.action_space = spaces.Box(-action_high, action_high, dtype=np.float32)
+        self._last_action = np.zeros(self._action_dim)
 
     ######################################################################################
     # Step simulation, map policy network actions to joint commands, etc.
@@ -225,8 +225,7 @@ class QuadrupedGymEnv(gym.Env):
             proc_action = action
         self.robot.ApplyAction(proc_action)
         if self._enable_env_randomization:
-            for env_rnd in self._env_randomizers:
-                env_rnd.randomize_step()
+            self._env_randomizers.randomize_step()
 
         self._pybullet_client.stepSimulation()
         self._sim_step_counter += 1
@@ -339,11 +338,11 @@ class QuadrupedGymEnv(gym.Env):
             self._pybullet_client.resetDebugVisualizerCamera(self._cam_dist, self._cam_yaw, self._cam_pitch, [0, 0, 0])
 
         self._ac_interface._reset(self.robot)
-        if self._enable_env_randomization:
-            for env_randomizer in self._env_randomizers:
-                env_randomizer.randomize_env()
-
         self._settle_robot()  # Settle robot after being spawned
+        
+        if self._enable_env_randomization:
+            self._env_randomizers.randomize_env()
+
         self._robot_sensors._reset(self.robot)  # Rsest sensors
         self._task._reset(self)  # Reset task internal state
 
@@ -356,79 +355,13 @@ class QuadrupedGymEnv(gym.Env):
 
         return self.get_observation()
 
-    def _settle_robot_by_reference(self, reference, n_steps):
-        """Settle robot in according to the used motor control mode in RL interface"""
-        if self._is_render:
-            time.sleep(0.2)
-        settling_command = self._ac_interface._convert_reference_to_command(reference)
-        self._settling_action = self._ac_interface._transform_motor_command_to_action(settling_command)
-        for _ in range(n_steps):
-            self.robot.ApplyAction(settling_command)
-            if self._is_render:
-                time.sleep(0.001)
-            self._pybullet_client.stepSimulation()
-        self._last_action = self._settling_action
-
-    def _settle_with_randomizer(self):
-        n_steps = 800
-        for env_rnd in self._env_randomizers:
-            if isinstance(env_rnd, ERIC):
-                self._settle_robot_by_reference(env_rnd.get_noised_config(), n_steps)
-
-    def _settle_robot_by_PD(self):
-        """Settle robot and add noise to init configuration."""
-        # change to PD control mode to set initial position, then set back..
-        tmp_save_motor_control_mode_ENV = self._motor_control_mode
-        tmp_save_motor_control_mode_ROB = self.robot._motor_control_mode
-        self._motor_control_mode = "PD"
-        self.robot._motor_control_mode = "PD"
-        try:
-            tmp_save_motor_control_mode_MOT = self.robot._motor_model._motor_control_mode
-            self.robot._motor_model._motor_control_mode = "PD"
-        except:
-            pass
-        init_motor_angles = self._robot_config.INIT_MOTOR_ANGLES + self._robot_config.JOINT_OFFSETS
-        if self._is_render:
-            time.sleep(0.2)
-        for _ in range(1500):
-            self.robot.ApplyAction(init_motor_angles)
-            if self._is_render:
-                time.sleep(0.001)
-            self._pybullet_client.stepSimulation()
-
-        # set control mode back
-        self._motor_control_mode = tmp_save_motor_control_mode_ENV
-        self.robot._motor_control_mode = tmp_save_motor_control_mode_ROB
-        try:
-            self.robot._motor_model._motor_control_mode = tmp_save_motor_control_mode_MOT
-        except:
-            pass
-
-    def _load_springs(self, j=0.5):
-        """Settle the robot to an initial config."""
-        if self._is_render:
-            time.sleep(0.2)
-        n_steps_tot = 900
-        n_steps_ramp = max(n_steps_tot - 100, 1)
-        for i in range(n_steps_tot):
-            reference = self._ac_interface.smooth_settling(i, 0, n_steps_ramp, j)
-            settling_command = self._ac_interface._convert_reference_to_command(reference)
-            self.robot.ApplyAction(settling_command)
-            if self._is_render:
-                time.sleep(0.001)
-            self._pybullet_client.stepSimulation()
-        self._settling_action = self._ac_interface._transform_motor_command_to_action(settling_command)
-        self._last_action = self._settling_action
-
     def _settle_robot(self):
         if self._isRLGymInterface:
-            self._settle_robot_by_reference(self.get_init_pose(), n_steps=1200)
+            self._last_action = self._ac_interface._settle_robot_by_reference(self.get_init_pose(), n_steps=1200)
             if self._preload_springs:
-                self._load_springs()
-            if self._enable_env_randomization:
-                self._settle_with_randomizer()
+                self._last_action = self._ac_interface._load_springs()
         else:
-            self._settle_robot_by_PD()
+            settle_robot_by_PD(self)
 
     ######################################################################################
     # Render, record videos, bookkeping, and misc pybullet helpers.
@@ -615,8 +548,8 @@ def build_env():
         "task_env": "JUMPING_ON_PLACE_HEIGHT",
         "observation_space_mode": "CUSTOM_2D",
         "action_space_mode": "SYMMETRIC",
-        "enable_env_randomization": False,
-        "env_randomizer_mode": "SPRING_RANDOMIZER",
+        "enable_env_randomization": True,
+        "env_randomizer_mode": "SETTLING_RANDOMIZER",
         "preload_springs": True,
     }
     env = QuadrupedGymEnv(**env_config)

@@ -1,10 +1,11 @@
 import numpy as np
+import time
 
 
 class MotorInterfaceBase:
     """Prototype class for a generic command-action interface"""
 
-    def __init__(self, robot_config):
+    def __init__(self, env):
         self._robot = None
         self._motor_control_mode = None
         self._motor_control_mode_ROB = None
@@ -12,11 +13,12 @@ class MotorInterfaceBase:
         self._upper_lim = None
         self._init_pose = None
         self._action_bound = 1.0
-        self._init(robot_config)
+        self._init(env)
 
-    def _init(self, robot_config):
+    def _init(self, env):
         """Initialize the interface"""
-        self._robot_config = robot_config
+        self._env = env
+        self._robot_config = self._env._robot_config
 
     def _reset(self, robot):
         """Reset interface"""
@@ -187,3 +189,36 @@ class ActionWrapperBase(MotorInterfaceBase):
 
     def get_parametrized_settling_pose(self, i):
         return self._motor_interface.get_parametrized_settling_pose(i)
+
+    def _settle_robot_by_reference(self, reference, n_steps):
+        """
+        Settle robot in according to the used motor control mode in RL interface.
+        Return the last action utilized.
+        """
+        env = self._motor_interface._env
+        if env._is_render:
+            time.sleep(0.2)
+        settling_command = self._convert_reference_to_command(reference)
+        settling_action = self._transform_motor_command_to_action(settling_command)
+        for _ in range(n_steps):
+            env.robot.ApplyAction(settling_command)
+            if env._is_render:
+                time.sleep(0.001)
+            env._pybullet_client.stepSimulation()
+        return settling_action
+    
+    def _load_springs(self, j=0.5):
+        """Settle the robot to an initial config. Return last action used."""
+        env = self._motor_interface._env
+        if env._is_render:
+            time.sleep(0.2)
+        n_steps_tot = 900
+        n_steps_ramp = max(n_steps_tot - 100, 1)
+        for i in range(n_steps_tot):
+            reference = self.smooth_settling(i, 0, n_steps_ramp, j)
+            settling_command = self._convert_reference_to_command(reference)
+            env.robot.ApplyAction(settling_command)
+            if env._is_render:
+                time.sleep(0.001)
+            env._pybullet_client.stepSimulation()
+        return self._transform_motor_command_to_action(settling_command)

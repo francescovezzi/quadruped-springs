@@ -1,6 +1,3 @@
-import numpy as np
-
-
 class EnvRandomizerBase:
     """
     Randomizes physical parameters of the objects in the simulation and adds
@@ -26,5 +23,4 @@ class EnvRandomizerBase:
         Args:
         env: The Minitaur gym environment to be randomized.
         """
-
-    pass
+        pass
