@@ -22,6 +22,11 @@ class MotorInterfaceBase:
         """Reset interface"""
         self._robot = robot
 
+    def set_init_pose(self, init_pose):
+        """Set the robot initial pose."""
+        assert len(init_pose) == self._robot_config.NUM_MOTORS, "Wrong dimension for init pose."
+        self._init_pose = np.copy(init_pose)
+
     def get_init_pose(self):
         """Get the initial pose robot should be settled at reset."""
         return self._init_pose
@@ -33,6 +38,10 @@ class MotorInterfaceBase:
     def get_motor_control_mode(self):
         """Get the implemented motor control mode."""
         return self._motor_control_mode
+
+    def get_robot_pose(self):
+        """Get the robot pose."""
+        pass
 
     def _transform_action_to_motor_command(self, action):
         """Convert the action to the properly motor command."""
@@ -95,7 +104,7 @@ class ActionWrapperBase(MotorInterfaceBase):
         return getattr(self._motor_interface, name)
 
     def _reset(self, robot):
-        self._motor_interface._robot = robot
+        self._motor_interface._reset(robot)
 
     def _convert_to_default_action_space(self, action):
         """
@@ -129,3 +138,12 @@ class ActionWrapperBase(MotorInterfaceBase):
 
     def get_landing_pose(self):
         return self._motor_interface.get_landing_pose()
+
+    def get_init_pose(self):
+        return self._motor_interface.get_init_pose()
+
+    def set_init_pose(self, init_pose):
+        self._motor_interface.set_init_pose(init_pose)
+
+    def get_robot_pose(self):
+        return self._motor_interface.get_robot_pose()

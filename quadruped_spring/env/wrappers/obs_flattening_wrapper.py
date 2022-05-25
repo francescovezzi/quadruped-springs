@@ -3,7 +3,7 @@ import numpy as np
 
 
 class ObsFlatteningWrapper(gym.Wrapper):
-    """Wrapper for flattening observation dicitonary. It should be the first wrapper."""
+    """Wrapper for flattening observation dicitonary."""
 
     def __init__(self, env):
         super().__init__(env)

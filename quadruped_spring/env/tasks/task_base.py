@@ -38,20 +38,22 @@ class TaskJumping(TaskBase):
     def _reset(self, env):
         super()._reset(env)
         robot = self._env.robot
-        self._init_height = robot.GetBasePosition()[2]
         self._all_feet_in_the_air = False
         self._time_take_off = self._env.get_sim_time()
         self._robot_pose_take_off = robot.GetBasePosition()
+        self._init_height = robot._robot_config.INIT_HEIGHT
         self._robot_orientation_take_off = robot.GetBaseOrientationRollPitchYaw()
         self._max_flight_time = 0.0
         self._max_forward_distance = 0.0
         self._max_yaw = 0.0
         self._max_roll = 0.0
         self._relative_max_height = 0.0
+        self._max_vel_err = 1.0
 
     def _on_step(self):
         pos_abs = np.array(self._env.robot.GetBasePosition())
-        orient_rpy = np.array(self._env.robot.GetBasePosition())
+        vel_abs = self._env.robot.GetBaseLinearVelocity()
+        orient_rpy = np.array(self._env.robot.GetBaseOrientationRollPitchYaw())
         if self._env.robot._is_flying():
             if not self._all_feet_in_the_air:
                 self._all_feet_in_the_air = True
@@ -67,6 +69,10 @@ class TaskJumping(TaskBase):
                 pos_relative = pos_abs + translation
                 pos_relative = pos_relative @ rotation_matrix
                 self._max_forward_distance = max(pos_relative[0], self._max_forward_distance)
+                vel_module = np.sqrt(np.dot(vel_abs, vel_abs))
+                if vel_module > 0.1:
+                    vel_err = 1 - np.dot(vel_abs / vel_module, np.array([0, 0, 1]))
+                    self._max_vel_err = max(vel_err, self._max_vel_err)
             self._all_feet_in_the_air = False
 
         delta_height = max(pos_abs[2] - self._init_height, 0.0)
@@ -107,3 +113,7 @@ class TaskJumping(TaskBase):
 
     def _terminated(self):
         return self.is_fallen() or self._not_allowed_contact()
+
+    def print_info(self):
+        print(f"max forward distance -> {self._max_forward_distance:.3f}")
+        print(f"max peak height -> {(self._init_height + self._relative_max_height):.3f}")
