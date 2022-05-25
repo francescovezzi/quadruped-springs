@@ -1,5 +1,6 @@
-import numpy as np
 import time
+
+import numpy as np
 
 
 class MotorInterfaceBase:
@@ -206,7 +207,7 @@ class ActionWrapperBase(MotorInterfaceBase):
                 time.sleep(0.001)
             env._pybullet_client.stepSimulation()
         return settling_action
-    
+
     def _load_springs(self, j=0.5):
         """Settle the robot to an initial config. Return last action used."""
         env = self._motor_interface._env

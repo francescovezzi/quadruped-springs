@@ -339,7 +339,7 @@ class QuadrupedGymEnv(gym.Env):
 
         self._ac_interface._reset(self.robot)
         self._settle_robot()  # Settle robot after being spawned
-        
+
         if self._enable_env_randomization:
             self._env_randomizers.randomize_env()
 
