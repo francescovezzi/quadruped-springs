@@ -5,6 +5,7 @@ class EarlyTerminateWrapper(gym.Wrapper):
     """
     Wrapper to terminate the episode when the robot starts flying.
     """
+
     def __init__(self, env):
         super().__init__(env)
 
@@ -18,7 +19,7 @@ class EarlyTerminateWrapper(gym.Wrapper):
         if self.maximum_height_reached() and not done:
             reward += self.env.get_reward_end_episode()
             done = True
-        
+
         return obs, reward, done, infos
 
     def render(self, mode="rgb_array", **kwargs):
@@ -31,4 +32,3 @@ class EarlyTerminateWrapper(gym.Wrapper):
 
     def close(self):
         self.env.close()
-        

@@ -31,7 +31,7 @@ class MotorInterfaceBase:
         """Set the robot initial pose."""
         assert len(init_pose) == self._robot_config.NUM_MOTORS, "Wrong dimension for init pose."
         self._init_pose = np.copy(init_pose)
-        
+
     def set_landing_pose(self, land_pose):
         self._landing_pose = land_pose
 

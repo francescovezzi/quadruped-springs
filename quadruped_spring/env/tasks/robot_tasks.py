@@ -17,7 +17,7 @@ class JumpingOnPlaceHeight(TaskJumping):
         height = self._env.robot.GetBasePosition()[2]
         if self._init_height - height > 0.02:
             return -0.04
-        else :
+        else:
             return 0
 
     def _reward_end_episode(self):
@@ -31,7 +31,7 @@ class JumpingOnPlaceHeight(TaskJumping):
         else:
             max_height_normalized = self._relative_max_height / max_height
         reward += 0.8 * max_height_normalized
-        
+
         reward += max_height_normalized * 0.03 * np.exp(-self._max_yaw**2 / 0.01)  # orientation
         reward += max_height_normalized * 0.03 * np.exp(-self._max_roll**2 / 0.01)  # orientation
         reward += max_height_normalized * 0.03 * np.exp(-self._max_pitch**2 / 0.01)  # orientation
@@ -41,7 +41,7 @@ class JumpingOnPlaceHeight(TaskJumping):
         # action_clip = 0.4
         # if self._max_delta_action > action_clip:
         #     reward -= 0.5 * (self._max_delta_action - action_clip)
-            
+
         if not self._terminated():
             # Alive bonus proportional to the risk taken
             reward += 0.1 * max_height_normalized
@@ -107,20 +107,20 @@ class JumpingInPlaceDense(TaskJumping):
         """Reward calculated each step."""
         lin_vel = self._env.robot.GetBaseLinearVelocity()[[0, 2]]
         _, pitch_rate, _ = self._env.robot.GetTrueBaseRollPitchYawRate()
-        
+
         vel_ref = self._env._robot_sensors.get_desired_velocity()
         track_err = lin_vel - vel_ref
         weight_matrix = np.array([[0.1, 0.0], [0.0, 1.0]])
         pitch_rate_reward = -0.002 * np.abs(pitch_rate)
         # err_reward = 1.0 * np.exp(-(track_err @  weight_matrix @ track_err) / 0.01**2)
-        err_reward = - (track_err @  weight_matrix @ track_err)
-        
+        err_reward = -(track_err @ weight_matrix @ track_err)
+
         reward = err_reward  # + pitch_rate_reward
-        
+
         height = self._env.robot.GetBasePosition()[2]
         if self._init_height - height > 0.02:
             reward -= -0.04
-        
+
         return reward
 
     def _reward_end_episode(self):

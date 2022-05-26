@@ -285,7 +285,7 @@ class DesiredBaseLinearVelocityXZ(Sensor):
 
     def get_desired_velocity(self):
         return self._desired_velocity
-    
+
     def set_desired_velocity(self, vel):
         self._desired_velocity = vel
 
