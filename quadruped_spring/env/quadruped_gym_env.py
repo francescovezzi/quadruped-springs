@@ -18,7 +18,7 @@ import quadruped_spring.go1.configs_go1_with_springs as go1_config_with_springs
 import quadruped_spring.go1.configs_go1_without_springs as go1_config_without_springs
 from quadruped_spring.env import quadruped
 from quadruped_spring.env.control_interface.collection import ActionInterfaceCollection, MotorInterfaceCollection
-from quadruped_spring.env.control_interface.utils import settle_robot_by_PD
+from quadruped_spring.env.control_interface.utils import settle_robot_by_pd
 from quadruped_spring.env.env_randomizers.env_randomizer_collection import EnvRandomizerCollection
 from quadruped_spring.env.env_randomizers.env_randomizer_list import EnvRandomizerList
 from quadruped_spring.env.sensors.robot_sensors import SensorList
@@ -361,7 +361,7 @@ class QuadrupedGymEnv(gym.Env):
             if self._preload_springs:
                 self._last_action = self._ac_interface._load_springs()
         else:
-            settle_robot_by_PD(self)
+            settle_robot_by_pd(self)
 
     ######################################################################################
     # Render, record videos, bookkeping, and misc pybullet helpers.
