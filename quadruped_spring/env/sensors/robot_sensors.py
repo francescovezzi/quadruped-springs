@@ -281,7 +281,7 @@ class DesiredBaseLinearVelocityXZ(Sensor):
     def __init__(self):
         super().__init__()
         self._name = "Desired base linear velocity xz plane"
-        self._desired_velocity = np.array([0.0, 0.05])
+        self._desired_velocity = np.array([0.0, 0.01])
 
     def get_desired_velocity(self):
         return self._desired_velocity
