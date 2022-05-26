@@ -24,7 +24,7 @@ class JumpingOnPlaceHeight(TaskJumping):
         """Compute bonus and malus to add to reward at the end of the episode"""
         reward = 0
 
-        max_height = 0.1
+        max_height = 0.4
         # max_height_normalized = self._relative_max_height / max_height
         if self._relative_max_height > max_height:
             max_height_normalized = 1.0
@@ -34,12 +34,13 @@ class JumpingOnPlaceHeight(TaskJumping):
         
         reward += max_height_normalized * 0.03 * np.exp(-self._max_yaw**2 / 0.01)  # orientation
         reward += max_height_normalized * 0.03 * np.exp(-self._max_roll**2 / 0.01)  # orientation
+        reward += max_height_normalized * 0.03 * np.exp(-self._max_pitch**2 / 0.01)  # orientation
         reward += max_height_normalized * 0.05 * np.exp(-self._max_forward_distance**2 / 0.05)  # be on place
         reward += max_height_normalized * 0.08 * np.exp(-self._max_vel_err**2 / 0.001)  # vel direction is similar to [0,0,1]
 
-        action_clip = 0.4
-        if self._max_delta_action > action_clip:
-            reward -= 1.0 * (self._max_delta_action - action_clip)
+        # action_clip = 0.4
+        # if self._max_delta_action > action_clip:
+        #     reward -= 0.5 * (self._max_delta_action - action_clip)
             
         if not self._terminated():
             # Alive bonus proportional to the risk taken
@@ -109,14 +110,26 @@ class JumpingInPlaceDense(TaskJumping):
         
         vel_ref = self._env._robot_sensors.get_desired_velocity()
         track_err = lin_vel - vel_ref
-        
+        weight_matrix = np.array([[0.1, 0.0], [0.0, 1.0]])
         pitch_rate_reward = -0.002 * np.abs(pitch_rate)
-        err_reward = 1.0 * np.exp(-np.dot(track_err, track_err) / 0.02**2)
+        # err_reward = 1.0 * np.exp(-(track_err @  weight_matrix @ track_err) / 0.01**2)
+        err_reward = - (track_err @  weight_matrix @ track_err)
         
         reward = err_reward  # + pitch_rate_reward
+        
+        height = self._env.robot.GetBasePosition()[2]
+        if self._init_height - height > 0.02:
+            reward -= -0.04
+        
         return reward
 
     def _reward_end_episode(self):
         """Compute bonus and malus to add to reward at the end of the episode"""
         reward = 0
         return reward
+
+    def _terminated(self):
+        done = super()._terminated()
+        if self._env.robot.GetBasePosition()[2] >= 0.36:
+            done = True
+        return done
