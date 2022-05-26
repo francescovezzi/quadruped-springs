@@ -20,11 +20,11 @@ from quadruped_spring.utils.video_recording import VideoRec
 LEARNING_ALGS = {"ars": ARS}
 LEARNING_ALG = "ars"
 ENV_ID = "QuadrupedSpring-v0"
-ID = "5"
+ID = "3"
 
 REC_VIDEO = False
-SAVE_PLOTS = True
-RENDER = False
+SAVE_PLOTS = False
+RENDER = True
 
 
 def callable_env(env_id, wrappers, kwargs):
