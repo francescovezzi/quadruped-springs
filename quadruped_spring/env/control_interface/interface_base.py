@@ -98,7 +98,7 @@ class MotorInterfaceBase:
     def get_intermediate_settling_pose(self, i):
         """
         Get a pose that is the result of an interpolation between
-        the initial pose and the seeling pose. The parameter i belongs to [0, 1].
+        the initial pose and the settling pose. The parameter i belongs to [0, 1].
         """
         assert i >= 0 and i <= 1, "the interpolation parameter should belongs to [0, 1]."
         init_pose = self.get_init_pose()
