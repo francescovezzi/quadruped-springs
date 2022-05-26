@@ -95,10 +95,10 @@ class MotorInterfaceBase:
         action = -1 + 2 * (command - lower_lim) / (upper_lim - lower_lim)
         return np.clip(action, -1, 1)
 
-    def get_parametrized_settling_pose(self, i):
+    def get_intermediate_settling_pose(self, i):
         """
         Get a pose that is the result of an interpolation between
-        the initial pose and the seeling pose. The parameter i belongs to [0, 1].
+        the initial pose and the settling pose. The parameter i belongs to [0, 1].
         """
         assert i >= 0 and i <= 1, "the interpolation parameter should belongs to [0, 1]."
         init_pose = self.get_init_pose()
@@ -117,7 +117,7 @@ class MotorInterfaceBase:
 
     def smooth_settling(self, i, i_min, i_max, j=1):
         """Return the output from a ramp going from the init pose to the settling pose."""
-        return self.generate_ramp(i, i_min, i_max, self.get_init_pose(), self.get_parametrized_settling_pose(j))
+        return self.generate_ramp(i, i_min, i_max, self.get_init_pose(), self.get_intermediate_settling_pose(j))
 
 
 MOTOR_CONTROL_MODE_SUPPORTED_LIST = ["TORQUE", "PD", "CARTESIAN_PD"]
@@ -193,13 +193,18 @@ class ActionWrapperBase(MotorInterfaceBase):
     def smooth_settling(self, i, i_min, i_max, j=1):
         return self._motor_interface.smooth_settling(i, i_min, i_max, j)
 
-    def get_parametrized_settling_pose(self, i):
-        return self._motor_interface.get_parametrized_settling_pose(i)
+    def get_intermediate_settling_pose(self, i):
+        return self._motor_interface.get_intermediate_settling_pose(i)
 
     def _settle_robot_by_reference(self, reference, n_steps):
         """
         Settle robot in according to the used motor control mode in RL interface.
         Return the last action utilized.
+        The reference is the desired pose for the robot, can be expressed either in
+        joint space (joint angles) that in cartesian space (feet position).
+        The command is as the same as reference except the fact the output produced
+        respect the Action Space mode selected, e.g. for Symmetric mode the output
+        is forced to be symmetric in this way.
         """
         env = self._motor_interface._env
         if env._is_render:

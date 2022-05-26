@@ -9,6 +9,8 @@ from quadruped_spring.utils.timer import Timer
 BASE_MASS_ERROR_RANGE = (-0.2, 0.2)  # 0.2 means 20%
 LEG_MASS_ERROR_RANGE = (-0.2, 0.2)  # 0.2 means 20%
 MAX_SETTLING_ACTION_DISTURBANCE = (0.05, 0.05, 0.05)  # Hip, thigh, calf
+
+# Values used for nominal springs parameters randomization
 SPRING_STIFFNESS_MAX_ERROR_RANGE = (0.1, 0.1, 0.1)  # Hip, thigh, calf
 SPRING_DAMPING_MAX_ERROR_RANGE = (0.05, 0.05, 0.05)  # Hip, thigh, calf
 
@@ -160,13 +162,6 @@ class EnvRandomizerInitialConfiguration(EnvRandomizerBase):
         new_action = action + sample_disturbe
         noised_config = self._aci._scale_helper_action_to_motor_command(new_action)
         return noised_config
-
-    # def _compute_new_init_config(self):
-    #     # sample disturbance and get the new init config
-    #     sample_disturbe = np.random.uniform(np.zeros(self._env._robot_config.NUM_MOTORS), np.array(self._max_disturbe))
-    #     init_action = self._aci._scale_helper_motor_command_to_action(self._aci.get_init_pose())
-    #     new_init_action = init_action + sample_disturbe
-    #     self._new_init_config = self._aci._scale_helper_action_to_motor_command(new_init_action)
 
     def get_new_init_config(self):
         return self._new_init_configdamping
