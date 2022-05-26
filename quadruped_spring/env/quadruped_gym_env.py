@@ -359,7 +359,7 @@ class QuadrupedGymEnv(gym.Env):
         if self._isRLGymInterface:
             self._last_action = self._ac_interface._settle_robot_by_reference(self.get_init_pose(), n_steps=1200)
             if self._preload_springs:
-                self._last_action = self._ac_interface._load_springs()
+                self._last_action = self._ac_interface._load_springs(j=0.3)
         else:
             settle_robot_by_PD(self)
 
@@ -546,7 +546,7 @@ def build_env():
         "enable_action_interpolation": False,
         "enable_action_filter": True,
         "task_env": "JUMPING_ON_PLACE_HEIGHT",
-        "observation_space_mode": "CUSTOM_2D",
+        "observation_space_mode": "ARS",
         "action_space_mode": "SYMMETRIC",
         "enable_env_randomization": True,
         "env_randomizer_mode": "SETTLING_RANDOMIZER",
