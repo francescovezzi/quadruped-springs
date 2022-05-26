@@ -10,6 +10,10 @@ BASE_MASS_ERROR_RANGE = (-0.2, 0.2)  # 0.2 means 20%
 LEG_MASS_ERROR_RANGE = (-0.2, 0.2)  # 0.2 means 20%
 MAX_SETTLING_ACTION_DISTURBANCE = (0.05, 0.05, 0.05)  # Hip, thigh, calf
 
+# Values used for nominal springs parameters randomization
+SPRING_STIFFNESS_MAX_ERROR_RANGE = (0.1, 0.1, 0.1)  # Hip, thigh, calf
+SPRING_DAMPING_MAX_ERROR_RANGE = (0.05, 0.05, 0.05)  # Hip, thigh, calf
+
 # Absolute range.
 MAX_POS_MASS_OFFSET = (0.1, 0.0, 0.05)  # meters
 MAX_MASS_OFFSET = 0.5  # kg
@@ -145,9 +149,8 @@ class EnvRandomizerInitialConfiguration(EnvRandomizerBase):
         self._max_disturbe = np.array(max_disturbe * self._env._robot_config.NUM_LEGS)
 
     def randomize_env(self):
-        # change init config ac_interface
-        self._compute_new_init_config()
-        # self._aci.set_init_pose(self._new_init_config)
+        noised_config = self._add_noise_to_actual_config()
+        self._env._last_action = self._env._ac_interface._settle_robot_by_reference(noised_config, n_steps=1000)
 
     def randomize_step(self):
         pass
@@ -160,18 +163,46 @@ class EnvRandomizerInitialConfiguration(EnvRandomizerBase):
         noised_config = self._aci._scale_helper_action_to_motor_command(new_action)
         return noised_config
 
-    def _compute_new_init_config(self):
-        # sample disturbance and get the new init config
-        sample_disturbe = np.random.uniform(np.zeros(self._env._robot_config.NUM_MOTORS), np.array(self._max_disturbe))
-        init_action = self._aci._scale_helper_motor_command_to_action(self._aci.get_init_pose())
-        new_init_action = init_action + sample_disturbe
-        self._new_init_config = self._aci._scale_helper_action_to_motor_command(new_init_action)
-
     def get_new_init_config(self):
-        return self._new_init_config
+        return self._new_init_configdamping
 
     def get_noised_config(self):
         return self._add_noise_to_actual_config()
+
+
+class EnvRandomizerSprings(EnvRandomizerBase):
+    """Change the springs stiffness and damping coefficients."""
+
+    def __init__(
+        self,
+        env,
+        max_err_stiffness=SPRING_STIFFNESS_MAX_ERROR_RANGE,
+        max_err_damping=SPRING_DAMPING_MAX_ERROR_RANGE,
+    ):
+        self._max_err_stiffness = max_err_stiffness
+        self._max_err_damping = max_err_damping
+        self._env = env
+
+    def randomize_env(self):
+        self._randomize_springs()
+
+    def get_new_stiffness(self):
+        stiffness, _, _ = self._env.robot.get_spring_nominal_params()
+        stiffness_lower_bound = np.array(stiffness) * (1.0 - np.array(self._max_err_stiffness))
+        stiffness_upper_bound = np.array(stiffness) * (1.0 + np.array(self._max_err_stiffness))
+        new_stiffness = np.random.uniform(stiffness_lower_bound, stiffness_upper_bound)
+        return list(new_stiffness)
+
+    def get_new_damping(self):
+        _, damping, _ = self._env.robot.get_spring_nominal_params()
+        damping_lower_bound = np.array(damping) * (1.0 - np.array(self._max_err_damping))
+        damping_upper_bound = np.array(damping) * (1.0 + np.array(self._max_err_damping))
+        new_damping = np.random.uniform(damping_lower_bound, damping_upper_bound)
+        return list(new_damping)
+
+    def _randomize_springs(self):
+        self._env.robot.set_spring_stiffness(self.get_new_stiffness())
+        self._env.robot.set_spring_damping(self.get_new_damping())
 
 
 class Disturbe:

@@ -18,8 +18,9 @@ import quadruped_spring.go1.configs_go1_with_springs as go1_config_with_springs
 import quadruped_spring.go1.configs_go1_without_springs as go1_config_without_springs
 from quadruped_spring.env import quadruped
 from quadruped_spring.env.control_interface.collection import ActionInterfaceCollection, MotorInterfaceCollection
-from quadruped_spring.env.env_randomizers.env_randomizer import EnvRandomizerInitialConfiguration as ERIC
+from quadruped_spring.env.control_interface.utils import settle_robot_by_pd
 from quadruped_spring.env.env_randomizers.env_randomizer_collection import EnvRandomizerCollection
+from quadruped_spring.env.env_randomizers.env_randomizer_list import EnvRandomizerList
 from quadruped_spring.env.sensors.robot_sensors import SensorList
 from quadruped_spring.env.sensors.sensor_collection import SensorCollection
 from quadruped_spring.env.tasks.task_collection import TaskCollection
@@ -36,10 +37,10 @@ VIDEO_LOG_DIRECTORY = "videos/" + datetime.datetime.now().strftime("vid-%Y-%m-%d
 
 
 # Motor control mode implemented: TORQUE, PD, CARTESIAN_PD
-# Observation space implemented: DEFAULT, ENCODER, CARTESIAN_NO_IMU, ANGLE_NO_IMU, CARTESIAN_ANGLE_NO_IMU
+# Observation space implemented: DEFAULT, ENCODER, CARTESIAN_NO_IMU, ANGLE_NO_IMU
 # Action space implemented: DEFAULT, SYMMETRIC, SYMMETRIC_NO_HIP
 # Task implemented: JUMPING_ON_PLACE_HEIGHT, JUMPING_FORWARD
-# Env randomizer implemented: MASS_RANDOMIZER, DISTURBANCE_RANDOMIZER, SETTLING_RANDOMIZER
+# Env randomizer implemented: MASS_RANDOMIZER, DISTURBANCE_RANDOMIZER, SETTLING_RANDOMIZER, SPRING_RANDOMIZER
 
 # NOTE:
 # TORQUE control mode actually works only if isRLGymInterface is setted to False.
@@ -73,6 +74,7 @@ class QuadrupedGymEnv(gym.Env):
         enable_action_interpolation=False,
         enable_action_filter=False,
         enable_env_randomization=True,
+        preload_springs=False,
         env_randomizer_mode="MASS_RANDOMIZER",
         test_env=False,  # NOT ALLOWED FOR TRAINING!
     ):
@@ -108,6 +110,7 @@ class QuadrupedGymEnv(gym.Env):
             observations space modes.
           enable_env_randomizer: Boolean specifying whether to enable env randomization.
           env_randomizer_mode: String specifying which env randomizers to use.
+          preload_springs: Boolean specifying whether
         """
         self.seed()
         self._enable_springs = enable_springs
@@ -127,6 +130,7 @@ class QuadrupedGymEnv(gym.Env):
         self._enable_action_interpolation = enable_action_interpolation
         self._enable_action_filter = enable_action_filter
         self._using_test_env = test_env
+        self._preload_springs = preload_springs
         if test_env:
             self._add_noise = True
 
@@ -157,9 +161,8 @@ class QuadrupedGymEnv(gym.Env):
         self._enable_env_randomization = enable_env_randomization
         if self._enable_env_randomization:
             self._env_randomizer_mode = env_randomizer_mode
-            self._env_randomizers = EnvRandomizerCollection().get_el(self._env_randomizer_mode)
-            for idx, env_rnd in enumerate(self._env_randomizers):
-                self._env_randomizers[idx] = env_rnd(self)
+            self._env_randomizers = EnvRandomizerList(EnvRandomizerCollection().get_el(self._env_randomizer_mode))
+            self._env_randomizers._init(self)
         self.reset()
 
     ######################################################################################
@@ -176,7 +179,7 @@ class QuadrupedGymEnv(gym.Env):
             raise ValueError(f"the motor control mode {motor_control_mode} not" "implemented yet for RL Gym interface.")
 
         motor_interface = MotorInterfaceCollection().get_el(motor_control_mode)
-        motor_interface = motor_interface(self._robot_config)
+        motor_interface = motor_interface(self)
 
         ac_interface = ActionInterfaceCollection().get_el(action_space_mode)
         self._ac_interface = ac_interface(motor_interface)
@@ -186,10 +189,10 @@ class QuadrupedGymEnv(gym.Env):
 
     def setupActionSpace(self):
         """Set up action space for RL."""
-        action_dim = self.get_action_dim()
-        self._action_dim = action_dim
-        action_high = np.array([1] * action_dim)
+        self._action_dim = self.get_action_dim()
+        action_high = np.array([1] * self._action_dim)
         self.action_space = spaces.Box(-action_high, action_high, dtype=np.float32)
+        self._last_action = np.zeros(self._action_dim)
 
     ######################################################################################
     # Step simulation, map policy network actions to joint commands, etc.
@@ -222,8 +225,7 @@ class QuadrupedGymEnv(gym.Env):
             proc_action = action
         self.robot.ApplyAction(proc_action)
         if self._enable_env_randomization:
-            for env_rnd in self._env_randomizers:
-                env_rnd.randomize_step()
+            self._env_randomizers.randomize_step()
 
         self._pybullet_client.stepSimulation()
         self._sim_step_counter += 1
@@ -234,13 +236,14 @@ class QuadrupedGymEnv(gym.Env):
     def step(self, action):
         """Step forward the simulation, given the action."""
         curr_act = action.copy()
+        self._last_action = curr_act
+
         if self._enable_action_filter:
             curr_act = self._filter_action(curr_act)
 
         for sub_step in range(self._action_repeat):
             self._sub_step(curr_act, sub_step)
 
-        self._last_action = curr_act
         self._env_step_counter += 1
         self._task._on_step()
         reward = self._task._reward()
@@ -284,7 +287,7 @@ class QuadrupedGymEnv(gym.Env):
         # initialize the filter history, since resetting the filter will fill
         # the history with zeros and this can cause sudden movements at the start
         # of each episode
-        init_action = self._settling_action
+        init_action = self._last_action
         self._action_filter.init_history(init_action)
 
     ######################################################################################
@@ -335,11 +338,11 @@ class QuadrupedGymEnv(gym.Env):
             self._pybullet_client.resetDebugVisualizerCamera(self._cam_dist, self._cam_yaw, self._cam_pitch, [0, 0, 0])
 
         self._ac_interface._reset(self.robot)
-        if self._enable_env_randomization:
-            for env_randomizer in self._env_randomizers:
-                env_randomizer.randomize_env()
-
         self._settle_robot()  # Settle robot after being spawned
+
+        if self._enable_env_randomization:
+            self._env_randomizers.randomize_env()
+
         self._robot_sensors._reset(self.robot)  # Rsest sensors
         self._task._reset(self)  # Reset task internal state
 
@@ -352,62 +355,13 @@ class QuadrupedGymEnv(gym.Env):
 
         return self.get_observation()
 
-    def _settle_robot_by_reference(self, reference, n_steps):
-        """Settle robot in according to the used motor control mode in RL interface"""
-        if self._is_render:
-            time.sleep(0.2)
-        settling_command = self._ac_interface._convert_reference_to_command(reference)
-        self._settling_action = self._ac_interface._transform_motor_command_to_action(settling_command)
-        for _ in range(n_steps):
-            self.robot.ApplyAction(settling_command)
-            if self._is_render:
-                time.sleep(0.001)
-            self._pybullet_client.stepSimulation()
-
-    def _settle_with_randomizer(self):
-        n_steps = 800
-        self._settle_robot_by_reference(self.get_init_pose(), n_steps)
-        for env_rnd in self._env_randomizers:
-            if isinstance(env_rnd, ERIC):
-                self._settle_robot_by_reference(env_rnd.get_noised_config(), n_steps)
-
-    def _settle_robot_by_PD(self):
-        """Settle robot and add noise to init configuration."""
-        # change to PD control mode to set initial position, then set back..
-        tmp_save_motor_control_mode_ENV = self._motor_control_mode
-        tmp_save_motor_control_mode_ROB = self.robot._motor_control_mode
-        self._motor_control_mode = "PD"
-        self.robot._motor_control_mode = "PD"
-        try:
-            tmp_save_motor_control_mode_MOT = self.robot._motor_model._motor_control_mode
-            self.robot._motor_model._motor_control_mode = "PD"
-        except:
-            pass
-        init_motor_angles = self._robot_config.INIT_MOTOR_ANGLES + self._robot_config.JOINT_OFFSETS
-        if self._is_render:
-            time.sleep(0.2)
-        for _ in range(1500):
-            self.robot.ApplyAction(init_motor_angles)
-            if self._is_render:
-                time.sleep(0.001)
-            self._pybullet_client.stepSimulation()
-
-        # set control mode back
-        self._motor_control_mode = tmp_save_motor_control_mode_ENV
-        self.robot._motor_control_mode = tmp_save_motor_control_mode_ROB
-        try:
-            self.robot._motor_model._motor_control_mode = tmp_save_motor_control_mode_MOT
-        except:
-            pass
-
     def _settle_robot(self):
         if self._isRLGymInterface:
-            if self._enable_env_randomization:
-                self._settle_with_randomizer()
-            else:
-                self._settle_robot_by_reference(self.get_init_pose(), n_steps=1200)
+            self._last_action = self._ac_interface._settle_robot_by_reference(self.get_init_pose(), n_steps=1200)
+            if self._preload_springs:
+                self._last_action = self._ac_interface._load_springs()
         else:
-            self._settle_robot_by_PD()
+            settle_robot_by_pd(self)
 
     ######################################################################################
     # Render, record videos, bookkeping, and misc pybullet helpers.
@@ -572,44 +526,49 @@ class QuadrupedGymEnv(gym.Env):
         landing_action = self._ac_interface._transform_motor_command_to_action(landing_pose)
         return landing_action
 
+    def get_last_action(self):
+        """Get the last action applied."""
+        return self._last_action
+
     def print_task_info(self):
         """Print some info about the task performed."""
         self._task.print_info()
 
 
-def test_env():
-
+def build_env():
     env_config = {
         "render": True,
         "on_rack": False,
         "motor_control_mode": "PD",
         "action_repeat": 10,
-        "enable_springs": True,
+        "enable_springs": False,
         "add_noise": False,
         "enable_action_interpolation": False,
         "enable_action_filter": True,
-        "task_env": "JUMPING_FORWARD",
-        "observation_space_mode": "DEFAULT",
+        "task_env": "JUMPING_ON_PLACE_HEIGHT",
+        "observation_space_mode": "CUSTOM_2D",
         "action_space_mode": "SYMMETRIC",
         "enable_env_randomization": True,
         "env_randomizer_mode": "SETTLING_RANDOMIZER",
+        "preload_springs": True,
     }
-
     env = QuadrupedGymEnv(**env_config)
     env = ObsFlatteningWrapper(env)
     # env = RestWrapper(env)
     # env = LandingWrapper(env)
+    return env
+
+
+def test_env():
+    env = build_env()
     sim_steps = 500
     action_dim = env.get_action_dim()
     obs = env.reset()
     for i in range(sim_steps):
         action = np.random.rand(action_dim) * 2 - 1
         # action = np.full(action_dim, 0)
+        # action = env.get_settling_action()
         obs, reward, done, info = env.step(action)
-        if done:
-            print(f"reward -> {reward}")
-            break
-
     # env.print_task_info()
     env.close()
     print("end")

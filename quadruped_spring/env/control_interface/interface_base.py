@@ -1,22 +1,27 @@
+import time
+
 import numpy as np
 
 
 class MotorInterfaceBase:
     """Prototype class for a generic command-action interface"""
 
-    def __init__(self, robot_config):
+    def __init__(self, env):
         self._robot = None
         self._motor_control_mode = None
         self._motor_control_mode_ROB = None
         self._lower_lim = None
         self._upper_lim = None
         self._init_pose = None
+        self._settling_pose = None
+        self._landing_pose = None
         self._action_bound = 1.0
-        self._init(robot_config)
+        self._init(env)
 
-    def _init(self, robot_config):
+    def _init(self, env):
         """Initialize the interface"""
-        self._robot_config = robot_config
+        self._env = env
+        self._robot_config = self._env._robot_config
 
     def _reset(self, robot):
         """Reset interface"""
@@ -27,13 +32,20 @@ class MotorInterfaceBase:
         assert len(init_pose) == self._robot_config.NUM_MOTORS, "Wrong dimension for init pose."
         self._init_pose = np.copy(init_pose)
 
+    def set_landing_pose(self, land_pose):
+        self._landing_pose = land_pose
+
     def get_init_pose(self):
         """Get the initial pose robot should be settled at reset."""
         return self._init_pose
 
     def get_landing_pose(self):
         """Get the pose you'd like the robot assume at landing."""
-        pass
+        return self._landing_pose
+
+    def get_settling_pose(self):
+        """Get the settling pose you want the robot to achieve."""
+        return self._settling_pose
 
     def get_motor_control_mode(self):
         """Get the implemented motor control mode."""
@@ -82,6 +94,30 @@ class MotorInterfaceBase:
         command = np.clip(command, lower_lim, upper_lim)
         action = -1 + 2 * (command - lower_lim) / (upper_lim - lower_lim)
         return np.clip(action, -1, 1)
+
+    def get_intermediate_settling_pose(self, i):
+        """
+        Get a pose that is the result of an interpolation between
+        the initial pose and the settling pose. The parameter i belongs to [0, 1].
+        """
+        assert i >= 0 and i <= 1, "the interpolation parameter should belongs to [0, 1]."
+        init_pose = self.get_init_pose()
+        end_pose = self.get_settling_pose()
+        return init_pose * (1 - i) + i * end_pose
+
+    @staticmethod
+    def generate_ramp(i, i_min, i_max, u_min, u_max) -> float:
+        """Return the output from a ramp function."""
+        if i < i_min:
+            return u_min
+        elif i > i_max:
+            return u_max
+        else:
+            return u_min + (u_max - u_min) * (i - i_min) / (i_max - i_min)
+
+    def smooth_settling(self, i, i_min, i_max, j=1):
+        """Return the output from a ramp going from the init pose to the settling pose."""
+        return self.generate_ramp(i, i_min, i_max, self.get_init_pose(), self.get_intermediate_settling_pose(j))
 
 
 MOTOR_CONTROL_MODE_SUPPORTED_LIST = ["TORQUE", "PD", "CARTESIAN_PD"]
@@ -145,5 +181,55 @@ class ActionWrapperBase(MotorInterfaceBase):
     def set_init_pose(self, init_pose):
         self._motor_interface.set_init_pose(init_pose)
 
+    def set_landing_pose(self, land_pose):
+        self._motor_interface.set_landing_pose(land_pose)
+
     def get_robot_pose(self):
         return self._motor_interface.get_robot_pose()
+
+    def get_settling_pose(self):
+        return self._motor_interface.get_settling_pose()
+
+    def smooth_settling(self, i, i_min, i_max, j=1):
+        return self._motor_interface.smooth_settling(i, i_min, i_max, j)
+
+    def get_intermediate_settling_pose(self, i):
+        return self._motor_interface.get_intermediate_settling_pose(i)
+
+    def _settle_robot_by_reference(self, reference, n_steps):
+        """
+        Settle robot in according to the used motor control mode in RL interface.
+        Return the last action utilized.
+        The reference is the desired pose for the robot, can be expressed either in
+        joint space (joint angles) that in cartesian space (feet position).
+        The command is as the same as reference except the fact the output produced
+        respect the Action Space mode selected, e.g. for Symmetric mode the output
+        is forced to be symmetric in this way.
+        """
+        env = self._motor_interface._env
+        if env._is_render:
+            time.sleep(0.2)
+        settling_command = self._convert_reference_to_command(reference)
+        settling_action = self._transform_motor_command_to_action(settling_command)
+        for _ in range(n_steps):
+            env.robot.ApplyAction(settling_command)
+            if env._is_render:
+                time.sleep(0.001)
+            env._pybullet_client.stepSimulation()
+        return settling_action
+
+    def _load_springs(self, j=0.5):
+        """Settle the robot to an initial config. Return last action used."""
+        env = self._motor_interface._env
+        if env._is_render:
+            time.sleep(0.2)
+        n_steps_tot = 900
+        n_steps_ramp = max(n_steps_tot - 100, 1)
+        for i in range(n_steps_tot):
+            reference = self.smooth_settling(i, 0, n_steps_ramp, j)
+            settling_command = self._convert_reference_to_command(reference)
+            env.robot.ApplyAction(settling_command)
+            if env._is_render:
+                time.sleep(0.001)
+            env._pybullet_client.stepSimulation()
+        return self._transform_motor_command_to_action(settling_command)

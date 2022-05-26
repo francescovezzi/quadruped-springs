@@ -41,7 +41,8 @@ class TaskJumping(TaskBase):
         self._all_feet_in_the_air = False
         self._time_take_off = self._env.get_sim_time()
         self._robot_pose_take_off = robot.GetBasePosition()
-        self._init_height = robot._robot_config.INIT_HEIGHT
+        # self._init_height = robot._robot_config.INIT_HEIGHT
+        self._init_height = self._robot_pose_take_off[2]
         self._robot_orientation_take_off = robot.GetBaseOrientationRollPitchYaw()
         self._max_flight_time = 0.0
         self._max_forward_distance = 0.0
@@ -51,6 +52,9 @@ class TaskJumping(TaskBase):
         self._max_vel_err = 1.0
 
     def _on_step(self):
+        self._compute_jumping_info()
+
+    def _compute_jumping_info(self):
         pos_abs = np.array(self._env.robot.GetBasePosition())
         vel_abs = self._env.robot.GetBaseLinearVelocity()
         orient_rpy = np.array(self._env.robot.GetBaseOrientationRollPitchYaw())

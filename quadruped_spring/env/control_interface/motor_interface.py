@@ -6,13 +6,15 @@ from quadruped_spring.env.control_interface.interface_base import MotorInterface
 class MotorInterfacePD(MotorInterfaceBase):
     """Command Action interface for PD motor control mode."""
 
-    def __init__(self, robot_config):
-        super().__init__(robot_config)
+    def __init__(self, env):
+        super().__init__(env)
         self._motor_control_mode = "PD"
         self._motor_control_mode_ROB = "PD"
         self._lower_lim = self._robot_config.RL_LOWER_ANGLE_JOINT
         self._upper_lim = self._robot_config.RL_UPPER_ANGLE_JOINT
         self._init_pose = np.copy(self._robot_config.INIT_MOTOR_ANGLES)
+        self._settling_pose = self._robot_config.ANGLE_SETTLING_POSE
+        self._landing_pose = self._robot_config.ANGLE_LANDING_POSE
         self._symm_idx = 0
 
     def _reset(self, robot):
@@ -27,23 +29,25 @@ class MotorInterfacePD(MotorInterfaceBase):
         action = self._scale_helper_motor_command_to_action(command)
         return action
 
-    def get_landing_pose(self):
-        return self._robot_config.ANGLE_LANDING_POSE
-
     def get_robot_pose(self):
         return self._robot.GetMotorAngles()
+
+    def get_settling_pose(self):
+        return self._settling_pose
 
 
 class MotorInterfaceCARTESIAN_PD(MotorInterfaceBase):
     """Command Action interface for CARTESIAN_PD motor control mode."""
 
-    def __init__(self, robot_config):
-        super().__init__(robot_config)
+    def __init__(self, env):
+        super().__init__(env)
         self._motor_control_mode = "CARTESIAN_PD"
         self._motor_control_mode_ROB = "PD"
         self._lower_lim = self._robot_config.RL_LOWER_CARTESIAN_POS
         self._upper_lim = self._robot_config.RL_UPPER_CARTESIAN_POS
         self._init_pose = np.copy(self._robot_config.NOMINAL_FOOT_POS_LEG_FRAME)
+        self._settling_pose = self._robot_config.CARTESIAN_SETTLING_POSE
+        self._landing_pose = self._robot_config.CARTESIAN_LANDING_POSE
         self._symm_idx = 1
 
     def _reset(self, robot):
@@ -66,19 +70,19 @@ class MotorInterfaceCARTESIAN_PD(MotorInterfaceBase):
         action = self._scale_helper_motor_command_to_action(command)
         return action
 
-    def get_landing_pose(self):
-        return self._robot_config.CARTESIAN_LANDING_POSE
-
     def get_robot_pose(self):
         feet_pos, _ = self._robot.ComputeFeetPosAndVel()
         return feet_pos
+
+    def get_settling_pose(self):
+        return self._settling_pose
 
 
 class MotorInterfaceTORQUE(MotorInterfaceBase):
     """In order to supply pure torque to motors"""
 
-    def __init__(self, robot_config):
-        super().__init__(robot_config)
+    def __init__(self, env):
+        super().__init__(env)
         self._motor_control_mode = "TORQUE"
         self._motor_control_mode_ROB = "TORQUE"
         self._lower_lim = -self._robot_config.TORQUE_LIMITS

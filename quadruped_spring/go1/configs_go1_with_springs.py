@@ -31,8 +31,8 @@ DEFAULT_HIP_ANGLE = 0
 DEFAULT_THIGH_ANGLE = np.pi / 4
 DEFAULT_CALF_ANGLE = -np.pi / 2
 
-ANGLE_LANDING_POSE = np.array([DEFAULT_HIP_ANGLE, DEFAULT_THIGH_ANGLE, DEFAULT_CALF_ANGLE] * NUM_LEGS)
-
+ANGLE_LANDING_POSE = np.array([0.0, 1.1, -2.1] * NUM_LEGS)
+ANGLE_SETTLING_POSE = np.array([0.0, 1.30, -2.5] * NUM_LEGS)
 # Used to convert the robot SDK joint angles to URDF joint angles.
 JOINT_DIRECTIONS = np.array([1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1])
 
@@ -59,7 +59,7 @@ NOMINAL_FOOT_POS_LEG_FRAME = np.array(
     list(map(lambda sign: [DEFAULT_X, sign * DEFAULT_Y, DEFAULT_Z], [-1, 1, -1, 1]))
 ).flatten()
 CARTESIAN_LANDING_POSE = np.array(list(map(lambda sign: [DEFAULT_X, sign * DEFAULT_Y, LANDING_Z], [-1, 1, -1, 1]))).flatten()
-
+CARTESIAN_SETTLING_POSE = np.array(list(map(lambda sign: [-0.02, sign * DEFAULT_Y, -0.15], [-1, 1, -1, 1]))).flatten()
 INIT_HEIGHT = 0.35  # Useful for jumping tasks
 
 ##################################################################################
@@ -72,7 +72,7 @@ REAL_LOWER_ANGLE_JOINT = np.array([-1.0471975512, -0.663225115758, -2.7227136331
 # modified range in simulation (min observation space for RL)
 RL_UPPER_ANGLE_JOINT = np.array([0.2, DEFAULT_THIGH_ANGLE + 0.5, -0.95] * NUM_LEGS)
 RL_LOWER_ANGLE_JOINT = np.array(
-    [-0.2, DEFAULT_THIGH_ANGLE - 0.5, -2.42] * NUM_LEGS
+    [-0.2, DEFAULT_THIGH_ANGLE - 0.5, -2.5] * NUM_LEGS
 )  # if calf angle=-2.42 the robot height is 0.15
 # RL_LOWER_ANGLE_JOINT = np.array([-0.2, DEFAULT_THIGH_ANGLE - 0.4, DEFAULT_CALF_ANGLE - 0.85] * NUM_LEGS)
 
@@ -91,8 +91,11 @@ VELOCITY_LIMITS = 1.0 * np.asarray([30.1, 30.1, 30.1] * NUM_LEGS)
 RL_VELOCITY_LIMITS = 1.0 * np.asarray([10, 10, 10] * NUM_LEGS)  #  Used for noise observation calculation
 
 # Sample Joint Gains
-MOTOR_KP = [100.0, 100.0, 100.0] * NUM_LEGS
-MOTOR_KD = [1.0, 2.0, 2.0] * NUM_LEGS
+MOTOR_KP = [75.0, 75.0, 75.0] * NUM_LEGS
+MOTOR_KD = [0.8, 0.8, 0.8] * NUM_LEGS
+
+# MOTOR_KP = [55, 55, 55] * NUM_LEGS
+# MOTOR_KD = [0.8, 0.8, 0.8] * NUM_LEGS
 
 # Sample Cartesian Gains
 kpCartesian = np.diag([1200, 2000, 2000])
@@ -158,7 +161,9 @@ MAX_CARTESIAN_FOOT_POS_CHANGE_PER_STEP = np.array([0.1, 0.02, 0.08])
 # Sensor High Limits
 ################################################
 
+HEIHGT_HIGH = np.array([0.4])
 VEL_LIN_HIGH = np.array([5.0] * 3)
+VEL_ANG_HIGH = np.array([3.0] * 3)
 ORIENT_RPY_HIGH = np.array([np.pi] * 3)
 ORIENT_RATE_HIGH = np.array([5.0] * 3)
 IMU_HIGH = np.concatenate((VEL_LIN_HIGH, ORIENT_RPY_HIGH, ORIENT_RATE_HIGH))
@@ -168,11 +173,17 @@ CONTACT_FORCE_HIGH = np.array([5.0] * NUM_LEGS)
 CONTACT_BOOL_HIGH = np.array([1.0] * NUM_LEGS)
 FEET_POS_HIGH = RL_UPPER_CARTESIAN_POS
 FEET_VEL_HIGH = np.array([10.0] * NUM_MOTORS)
+QUATERNION_HIGH = np.array([1.0, 1.0, 1.0, 1.0])
+PITCH_HIGH = np.array([np.pi])
+PITCH_RATE_HIGH = np.array([5.0])
 
 ################################################
 # Sensor Low Limits
 ################################################
 
+HEIGHT_LOW = np.array([0.1])
+VEL_LIN_LOW = -VEL_LIN_HIGH
+VEL_ANG_LOW = -VEL_ANG_HIGH
 IMU_LOW = -IMU_HIGH
 JOINT_ANGLES_LOW = RL_LOWER_ANGLE_JOINT
 JOINT_VELOCITIES_LOW = -JOINT_VELOCITIES_HIGH
@@ -180,6 +191,9 @@ CONTACT_FORCE_LOW = -CONTACT_FORCE_HIGH
 CONTACT_BOOL_LOW = np.array([0.0] * NUM_LEGS)
 FEET_POS_LOW = RL_LOWER_CARTESIAN_POS
 FEET_VEL_LOW = -FEET_POS_HIGH
+QUATERNION_LOW = np.array([0.0, 0.0, 0.0, 0.0])
+PITCH_LOW = -PITCH_HIGH
+PITCH_RATE_LOW = -PITCH_RATE_HIGH
 
 ################################################
 # Sensor Noise std
@@ -187,7 +201,9 @@ FEET_VEL_LOW = -FEET_POS_HIGH
 
 STD_COEFF = 0.01
 
+HEIGHT_NOISE = HEIHGT_HIGH * STD_COEFF
 VEL_LIN_NOISE = VEL_LIN_HIGH * STD_COEFF
+VEL_ANG_NOISE = VEL_ANG_HIGH * STD_COEFF
 ORIENT_RPY_NOISE = ORIENT_RPY_HIGH * STD_COEFF
 ORIENT_RATE_NOISE = ORIENT_RATE_HIGH * STD_COEFF
 IMU_NOISE = np.concatenate((VEL_LIN_NOISE, ORIENT_RPY_NOISE, ORIENT_RATE_NOISE))
@@ -197,3 +213,6 @@ CONTACT_FORCE_NOISE = CONTACT_FORCE_HIGH * STD_COEFF
 CONTACT_BOOL_NOISE = np.array([0] * NUM_LEGS)
 FEET_POS_NOISE = np.array([0.1, 0.05, 0.1] * NUM_LEGS) * STD_COEFF
 FEET_VEL_NOISE = FEET_VEL_HIGH * STD_COEFF
+QUATERNION_NOISE = QUATERNION_HIGH * STD_COEFF
+PITCH_NOISE = PITCH_HIGH * STD_COEFF
+PITCH_RATE_NOISE = PITCH_RATE_HIGH * STD_COEFF

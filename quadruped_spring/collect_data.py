@@ -1,5 +1,8 @@
 import inspect
 import os
+import uuid
+
+import numpy as np
 
 currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 os.sys.path.insert(0, currentdir)
@@ -12,39 +15,22 @@ from stable_baselines3.common.cmd_util import make_vec_env
 from stable_baselines3.common.vec_env import VecNormalize
 
 from env.quadruped_gym_env import QuadrupedGymEnv
-from quadruped_spring.env.wrappers.rest_wrapper import RestWrapper
-from quadruped_spring.utils.evaluate_metric import EvaluateMetricJumpOnPlace
-from quadruped_spring.utils.monitor_state import MonitorState
-from quadruped_spring.utils.video_recording import VideoRec
 
 LEARNING_ALGS = {"ars": ARS}
 LEARNING_ALG = "ars"
 ENV_ID = "QuadrupedSpring-v0"
 ID = "5"
 
-REC_VIDEO = False
-SAVE_PLOTS = True
-RENDER = False
-
 
 def callable_env(env_id, wrappers, kwargs):
     def aux():
         env = env_id(**kwargs)
-        env = RestWrapper(env)
-        if SAVE_PLOTS:
-            plot_folder = f"logs/plots/{LEARNING_ALG}_{ENV_ID}_{ID}"
-            env = MonitorState(env, path=plot_folder, n_episode=2)
-        if REC_VIDEO:
-            video_folder = "logs/videos/"
-            video_name = f"{LEARNING_ALG}_{ENV_ID}_{ID}"
-            env = VideoRec(env, video_folder, video_name)
         for wrapper in wrappers:
             module = ".".join(wrapper.split(".")[:-1])
             class_name = wrapper.split(".")[-1]
             module = import_module(module)
             wrap = getattr(module, class_name)
             env = wrap(env)
-        env = EvaluateMetricJumpOnPlace(env)
         return env
 
     return aux
@@ -56,6 +42,8 @@ model_dir = os.path.join(currentdir, aux_dir, LEARNING_ALG, f"{ENV_ID}_{ID}")
 model_file = os.path.join(model_dir, "best_model.zip")
 args_file = os.path.join(model_dir, ENV_ID, "args.yml")
 stats_file = os.path.join(model_dir, ENV_ID, "vecnormalize.pkl")
+data_dir = os.path.join(model_dir, f"data_{str(uuid.uuid4())}")
+os.makedirs(data_dir, exist_ok=True)
 
 # Load env kwargs
 env_kwargs = {}
@@ -64,8 +52,7 @@ if os.path.isfile(args_file):
         loaded_args = yaml.load(f, Loader=yaml.UnsafeLoader)  # pytype: disable=module-attr
         if loaded_args["env_kwargs"] is not None:
             env_kwargs = loaded_args["env_kwargs"]
-if RENDER:
-    env_kwargs["render"] = True
+
 wrapper_list = loaded_args["hyperparams"]["env_wrapper"]
 
 # build env
@@ -79,18 +66,24 @@ env.norm_reward = False  # reward normalization is not needed at test time
 
 # load model
 model = LEARNING_ALGS[LEARNING_ALG].load(model_file, env)
-print(f"\nLoaded model: {model_file}\n")
-
+obs_list = []
+action_list = []
+n_episodes = 1
 obs = env.reset()
-n_episodes = 3
+
 for _ in range(n_episodes):
     done = False
     while not done:
-        action, _states = model.predict(obs, deterministic=True)
+        action, _ = model.predict(obs, deterministic=True)
+        obs_list.append(obs[0, :])
+        action_list.append(action[0, :])
         obs, rewards, done, info = env.step(action)
 
-# env.env_method("print_metric", indices=0)
-# env.env_method("release_video", indices=0)
+obs_array = np.array(obs_list)
+action_array = np.array(action_list)
+
+np.save(data_dir + "/obs.npy", obs_array)
+np.save(data_dir + "/actions.npy", action_array)
 
 env.close()
 print("end")

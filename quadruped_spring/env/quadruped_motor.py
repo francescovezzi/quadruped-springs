@@ -4,6 +4,8 @@ import collections
 
 import numpy as np
 
+from quadruped_spring.env.springs import Springs
+
 NUM_MOTORS = 12
 NUM_LEGS = 4
 
@@ -24,10 +26,11 @@ class QuadrupedMotorModel(object):
 
     """
 
-    def __init__(self, kp=60, kd=1, torque_limits=None, motor_control_mode="PD"):
-        self._kpSprings = np.array([0, 0, 0] * NUM_LEGS)  # Spring stiffness
-        self._kdSprings = np.array([0.0, 0.0, 0.0] * NUM_LEGS)  # Spring damping
-        self._restSprings = np.array([0, 0, 0] * NUM_LEGS)  # Spring rest angles
+    def __init__(self, robot_config, enable_springs=False, kp=60, kd=1, torque_limits=None, motor_control_mode="PD"):
+        # add springs to motor !
+        self._enable_springs = enable_springs
+        if self._enable_springs:
+            self._springs = Springs(robot_config)
         self._kp = kp
         self._kd = kd
         self._torque_limits = torque_limits
@@ -96,27 +99,27 @@ class QuadrupedMotorModel(object):
         return motor_torques, motor_torques
 
     def compute_spring_torques(self, motor_angles, motor_velocities):
-        k = self._kpSprings
-        b = self._kdSprings
-        rest_angles = self._restSprings
+        k, b, rest_angles = self._springs.get_spring_real_params(motor_angles)
         spring_torques = -k * (motor_angles - rest_angles) - b * motor_velocities
-
         return spring_torques
 
     def getSpringStiffness(self):
-        return self._kpSprings
+        return self._springs._stiffness_nominal
 
     def getSpringDumping(self):
-        return self._kdSprings
+        return self._springs._damping_nominal
 
     def getSpringRestAngles(self):
-        return self._restSprings
+        return self._springs._rest_angles
 
     def _setSpringStiffness(self, k_springs):
-        self._kpSprings = np.array(k_springs * NUM_LEGS)
+        self._springs.set_stiffness(k_springs)
 
     def _setSpringDumping(self, kd_springs):
-        self._kdSprings = np.array(kd_springs * NUM_LEGS)
+        self._springs.set_damping(kd_springs)
 
     def _setSpringRestAngle(self, rest_springs):
-        self._restSprings = np.array(rest_springs * NUM_LEGS)
+        self._springs.set_rest_angles(rest_springs)
+
+    def get_real_spring_params(self, motor_angles):
+        return self._springs.get_spring_real_params(motor_angles)

@@ -2,8 +2,6 @@
 This file implements the functionalities of a quadruped using pybullet.
 """
 import os
-import re
-import time
 
 import numpy as np
 
@@ -63,15 +61,13 @@ class Quadruped(object):
             self._kp = self._robot_config.MOTOR_KP
             self._kd = self._robot_config.MOTOR_KD
             self._motor_model = quadruped_motor.QuadrupedMotorModel(
+                robot_config=self._robot_config,
+                enable_springs=self._enable_springs,
                 motor_control_mode=self._motor_control_mode,
                 kp=self._kp,
                 kd=self._kd,
                 torque_limits=self._robot_config.TORQUE_LIMITS,
             )
-            if self._enable_springs:
-                self._motor_model._setSpringStiffness(self._robot_config.SPRINGS_STIFFNESS)
-                self._motor_model._setSpringRestAngle(self._robot_config.SPRINGS_REST_ANGLE)
-                self._motor_model._setSpringDumping(self._robot_config.SPRINGS_DAMPING)
         else:
             raise ValueError("Must use accurate motor model")
 
@@ -698,6 +694,30 @@ class Quadruped(object):
             return rel_pos_local
         except AttributeError:
             print("offset mass not created")
+
+    def get_spring_nominal_params(self):
+        """Get spring stiffness, dumping and rest angles."""
+        spring_stiffness = self._motor_model.getSpringStiffness()
+        spring_dumping = self._motor_model.getSpringDumping()
+        spring_rest_angles = self._motor_model.getSpringRestAngles()
+        return spring_stiffness, spring_dumping, spring_rest_angles
+
+    def get_spring_real_stiffness_and_damping(self):
+        """Get the real values of springs stiffness and damping."""
+        q = self.GetMotorAngles()
+        return self._motor_model.get_real_spring_params(q)
+
+    def set_spring_stiffness(self, stiffness):
+        """Set springs stiffness."""
+        self._motor_model._setSpringStiffness(stiffness)
+
+    def set_spring_damping(self, damping):
+        """Set springs damping."""
+        self._motor_model._setSpringDumping(damping)
+
+    def set_spring_rest_angles(self, rest_angles):
+        """Set spring rest angles."""
+        self._motor_model._setSpringRestAngle(rest_angles)
 
     def SetBaseMass(self, base_mass):
         """Set the mass of quadruped's base.
