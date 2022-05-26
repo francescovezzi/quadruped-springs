@@ -9,3 +9,4 @@ quadruped_spring/store_params_from_model.py
 quadruped_spring/print_params_from_model.py
 quadruped_spring/collect_data.py
 quadruped_spring/clone_policy.py
+quadruped_spring/get_training_data.sh
