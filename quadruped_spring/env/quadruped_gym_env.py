@@ -338,11 +338,9 @@ class QuadrupedGymEnv(gym.Env):
             self._pybullet_client.resetDebugVisualizerCamera(self._cam_dist, self._cam_yaw, self._cam_pitch, [0, 0, 0])
 
         self._ac_interface._reset(self.robot)
-        self._settle_robot()  # Settle robot after being spawned
-
         if self._enable_env_randomization:
             self._env_randomizers.randomize_env()
-
+        self._settle_robot()  # Settle robot after being spawned
         self._robot_sensors._reset(self.robot)  # Rsest sensors
         self._task._reset(self)  # Reset task internal state
 
