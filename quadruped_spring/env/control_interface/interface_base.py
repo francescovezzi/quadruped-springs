@@ -30,7 +30,10 @@ class MotorInterfaceBase:
     def set_init_pose(self, init_pose):
         """Set the robot initial pose."""
         assert len(init_pose) == self._robot_config.NUM_MOTORS, "Wrong dimension for init pose."
-        self._init_pose = np.copy(init_pose)
+        self._init_pose = init_pose
+
+    def set_settling_pose(self, settle_pose):
+        self._settling_pose = settle_pose
 
     def set_landing_pose(self, land_pose):
         self._landing_pose = land_pose
@@ -180,6 +183,9 @@ class ActionWrapperBase(MotorInterfaceBase):
 
     def set_init_pose(self, init_pose):
         self._motor_interface.set_init_pose(init_pose)
+        
+    def set_settling_pose(self, settle_pose):
+        self._motor_interface.set_settling_pose(settle_pose)
 
     def set_landing_pose(self, land_pose):
         self._motor_interface.set_landing_pose(land_pose)
