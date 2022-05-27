@@ -50,21 +50,52 @@ class TaskJumping(TaskBase):
         self._max_pitch = 0.0
         self._max_roll = 0.0
         self._relative_max_height = 0.0
+        self._max_delta_x = 0.0
+        self._max_delta_y = 0.0
         self._max_vel_err = 1.0
         self._base_acc = np.zeros(3)
         self._new_action = self._old_action = self._env.get_last_action()
         self._max_delta_action = 0.0
-        self._base_velocity_new = self._base_velocity_old = robot.GetBaseLinearVelocity()
 
     def _on_step(self):
         self._update_actions()
-        self._update_base_velocities()
+        self._update_pose()
+        self._compute_pose_info()
         self._compute_jumping_info()
 
+    def _update_pose(self):
+        self._pos_abs = np.array(self._env.robot.GetBasePosition())
+        self._vel_abs = self._env.robot.GetBaseLinearVelocity()
+        self._orient_rpy = np.array(self._env.robot.GetBaseOrientationRollPitchYaw())
+        
+    def _compute_pose_info(self):
+        self._compute_position_info()
+        self._compute_orientation_info()
+        self._compute_velocity_info()
+        
+    def _compute_position_info(self):
+        x, y, z = self._pos_abs
+        delta_height = max(z - self._init_height, 0.0)
+        self._relative_max_height = max(self._relative_max_height, delta_height)
+        self._max_delta_x = max(abs(x), self._max_delta_x)
+        self._max_delta_y = max(abs(y), self._max_delta_y)
+
+    def _compute_orientation_info(self):
+        roll, pitch, yaw = self._orient_rpy
+        self._max_yaw = max(np.abs(yaw), self._max_yaw)
+        self._max_roll = max(np.abs(roll), self._max_roll)
+        self._max_pitch = max(np.abs(pitch), self._max_pitch)
+    
+    def _compute_velocity_info(self):
+        vel_abs = self._vel_abs
+        vel_module = np.sqrt(np.dot(vel_abs, vel_abs))
+        if vel_module > 0.01:
+            vel_err = 1 - np.dot(vel_abs / vel_module, np.array([0, 0, 1]))
+            self._max_vel_err = max(vel_err, self._max_vel_err)
+
     def _compute_jumping_info(self):
-        pos_abs = np.array(self._env.robot.GetBasePosition())
-        vel_abs = self._env.robot.GetBaseLinearVelocity()
-        orient_rpy = np.array(self._env.robot.GetBaseOrientationRollPitchYaw())
+        pos_abs = self._pos_abs
+        orient_rpy = self._orient_rpy
         if self._env.robot._is_flying():
             if not self._all_feet_in_the_air:
                 self._all_feet_in_the_air = True
@@ -80,18 +111,7 @@ class TaskJumping(TaskBase):
                 pos_relative = pos_abs + translation
                 pos_relative = pos_relative @ rotation_matrix
                 self._max_forward_distance = max(pos_relative[0], self._max_forward_distance)
-                vel_module = np.sqrt(np.dot(vel_abs, vel_abs))
-                if vel_module > 0.1:
-                    vel_err = 1 - np.dot(vel_abs / vel_module, np.array([0, 0, 1]))
-                    self._max_vel_err = max(vel_err, self._max_vel_err)
             self._all_feet_in_the_air = False
-
-        delta_height = max(pos_abs[2] - self._init_height, 0.0)
-        self._relative_max_height = max(self._relative_max_height, delta_height)
-        roll, pitch, yaw = orient_rpy
-        self._max_yaw = max(np.abs(yaw), self._max_yaw)
-        self._max_roll = max(np.abs(roll), self._max_roll)
-        self._max_pitch = max(np.abs(pitch), self._max_pitch)
 
     def is_fallen(self, dot_prod_min=0.85):
         """Decide whether the quadruped has fallen.
@@ -104,11 +124,10 @@ class TaskJumping(TaskBase):
         Returns:
           Boolean value that indicates whether the quadruped has fallen.
         """
-        base_rpy = self._env.robot.GetBaseOrientationRollPitchYaw()
         orientation = self._env.robot.GetBaseOrientation()
         rot_mat = self._env._pybullet_client.getMatrixFromQuaternion(orientation)
         local_up = rot_mat[6:]
-        pos = self._env.robot.GetBasePosition()
+        pos = self._pos_abs
         return (
             np.dot(np.asarray([0, 0, 1]), np.asarray(local_up)) < dot_prod_min
             or pos[2] < self._env._robot_config.IS_FALLEN_HEIGHT
@@ -130,16 +149,9 @@ class TaskJumping(TaskBase):
         print(f"max forward distance -> {self._max_forward_distance:.3f}")
         print(f"max peak height -> {(self._init_height + self._relative_max_height):.3f}")
 
-    def _compute_base_acc(self):
-        return (self._base_velocity_new - self._base_velocity_old) / self._env.get_env_time_step()
-
-    def _update_base_velocities(self):
-        self._base_velocity_old = self._base_velocity_new
-        self._base_velocity_new = self._env.robot.GetBaseLinearVelocity()
-
     def _update_actions(self):
         self._old_action = self._new_action
         self._new_action = self._env.get_last_action()
-        self._delta_action = np.abs(self._new_action - self._old_action)
         if not self._env.robot._is_flying():
+            self._delta_action = np.abs(self._new_action - self._old_action)
             self._max_delta_action = max(self._max_delta_action, np.amax(self._delta_action))
