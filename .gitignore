@@ -7,6 +7,4 @@ make_performance_report.sh
 quadruped_spring/evaluate_all_models.py
 quadruped_spring/store_params_from_model.py
 quadruped_spring/print_params_from_model.py
-quadruped_spring/collect_data.py
-quadruped_spring/make_training_data.py
-quadruped_spring/get_training_data.sh
+quadruped_spring/policy_cloning/
