@@ -36,14 +36,16 @@ class JumpingOnPlaceHeight(TaskJumping):
         reward += max_height_normalized * 0.02 * np.exp(-self._max_yaw**2 / 0.15**2)  # orientation
         reward += max_height_normalized * 0.02 * np.exp(-self._max_roll**2 / 0.15**2)  # orientation
         reward += max_height_normalized * 0.05 * np.exp(-self._max_pitch**2 / 0.15**2)  # orientation
-        
+
         # Position -> jump in place !
-        #reward += max_height_normalized * 0.05 * np.exp(-self._max_forward_distance**2 / 0.05)  # be on place
+        # reward += max_height_normalized * 0.05 * np.exp(-self._max_forward_distance**2 / 0.05)  # be on place
         reward += max_height_normalized * 0.02 * np.exp(-self._max_delta_x**2 / 0.1**2)
         reward += max_height_normalized * 0.05 * np.exp(-self._max_delta_y**2 / 0.1**2)  # be on place
 
         # Velocity -> velocity direction close to [0,0,1]
-        reward += max_height_normalized * 0.06 * np.exp(-self._max_vel_err**2 / 0.1**2)  # vel direction is similar to [0,0,1]
+        reward += (
+            max_height_normalized * 0.06 * np.exp(-self._max_vel_err**2 / 0.1**2)
+        )  # vel direction is similar to [0,0,1]
 
         # action_clip = 0.4
         # if self._max_delta_action > action_clip:

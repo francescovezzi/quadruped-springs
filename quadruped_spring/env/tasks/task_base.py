@@ -67,12 +67,12 @@ class TaskJumping(TaskBase):
         self._pos_abs = np.array(self._env.robot.GetBasePosition())
         self._vel_abs = self._env.robot.GetBaseLinearVelocity()
         self._orient_rpy = np.array(self._env.robot.GetBaseOrientationRollPitchYaw())
-        
+
     def _compute_pose_info(self):
         self._compute_position_info()
         self._compute_orientation_info()
         self._compute_velocity_info()
-        
+
     def _compute_position_info(self):
         x, y, z = self._pos_abs
         delta_height = max(z - self._init_height, 0.0)
@@ -85,7 +85,7 @@ class TaskJumping(TaskBase):
         self._max_yaw = max(np.abs(yaw), self._max_yaw)
         self._max_roll = max(np.abs(roll), self._max_roll)
         self._max_pitch = max(np.abs(pitch), self._max_pitch)
-    
+
     def _compute_velocity_info(self):
         vel_abs = self._vel_abs
         vel_module = np.sqrt(np.dot(vel_abs, vel_abs))

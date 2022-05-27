@@ -183,7 +183,7 @@ class ActionWrapperBase(MotorInterfaceBase):
 
     def set_init_pose(self, init_pose):
         self._motor_interface.set_init_pose(init_pose)
-        
+
     def set_settling_pose(self, settle_pose):
         self._motor_interface.set_settling_pose(settle_pose)
 

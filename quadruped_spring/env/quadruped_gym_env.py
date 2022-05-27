@@ -546,7 +546,7 @@ def build_env():
         "task_env": "JUMPING_ON_PLACE_HEIGHT",
         "observation_space_mode": "ARS",
         "action_space_mode": "SYMMETRIC",
-        "enable_env_randomization": True,
+        "enable_env_randomization": False,
         "env_randomizer_mode": "SETTLING_RANDOMIZER",
         "preload_springs": True,
     }
