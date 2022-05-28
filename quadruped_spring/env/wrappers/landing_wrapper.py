@@ -73,6 +73,7 @@ class LandingWrapper(gym.Wrapper):
         obs, reward, done, infos = self.env.step(action)
 
         if self.is_flying() and not done:
+            self.env.task.enable_landing_mode()
             _, reward, done, infos = self.take_off_phase(action)
             if not done:
                 _, reward, done, infos = self.landing_phase()
