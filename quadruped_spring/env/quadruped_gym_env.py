@@ -74,7 +74,6 @@ class QuadrupedGymEnv(gym.Env):
         enable_action_interpolation=False,
         enable_action_filter=False,
         enable_env_randomization=True,
-        preload_springs=False,
         env_randomizer_mode="MASS_RANDOMIZER",
         test_env=False,  # NOT ALLOWED FOR TRAINING!
     ):
@@ -110,7 +109,6 @@ class QuadrupedGymEnv(gym.Env):
             observations space modes.
           enable_env_randomizer: Boolean specifying whether to enable env randomization.
           env_randomizer_mode: String specifying which env randomizers to use.
-          preload_springs: Boolean specifying whether
         """
         self.seed()
         self._enable_springs = enable_springs
@@ -130,7 +128,6 @@ class QuadrupedGymEnv(gym.Env):
         self._enable_action_interpolation = enable_action_interpolation
         self._enable_action_filter = enable_action_filter
         self._using_test_env = test_env
-        self._preload_springs = preload_springs
         if test_env:
             self._add_noise = True
 
@@ -163,6 +160,7 @@ class QuadrupedGymEnv(gym.Env):
             self._env_randomizer_mode = env_randomizer_mode
             self._env_randomizers = EnvRandomizerList(EnvRandomizerCollection().get_el(self._env_randomizer_mode))
             self._env_randomizers._init(self)
+    
         self.reset()
 
     ######################################################################################
@@ -341,8 +339,8 @@ class QuadrupedGymEnv(gym.Env):
         if self._enable_env_randomization:
             self._env_randomizers.randomize_env()
         self._settle_robot()  # Settle robot after being spawned
-        self._robot_sensors._reset(self.robot)  # Rsest sensors
         self._task._reset(self)  # Reset task internal state
+        self._robot_sensors._reset(self.robot)  # Rsest sensors
 
         if self._enable_action_filter:
             self._reset_action_filter()
@@ -356,8 +354,6 @@ class QuadrupedGymEnv(gym.Env):
     def _settle_robot(self):
         if self._isRLGymInterface:
             self._last_action = self._ac_interface._settle_robot_by_reference(self.get_init_pose(), n_steps=1200)
-            if self._preload_springs:
-                self._last_action = self._ac_interface._load_springs(j=0.3)
         else:
             settle_robot_by_pd(self)
 
@@ -548,7 +544,6 @@ def build_env():
         "action_space_mode": "SYMMETRIC",
         "enable_env_randomization": False,
         "env_randomizer_mode": "SETTLING_RANDOMIZER",
-        "preload_springs": True,
     }
     env = QuadrupedGymEnv(**env_config)
     env = ObsFlatteningWrapper(env)
