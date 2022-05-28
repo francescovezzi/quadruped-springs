@@ -8,20 +8,20 @@ class TaskBase:
     def __init__(self):
         self._init_curriculum()
         pass
-    
+
     def _init_curriculum(self):
         """Initialize the curriculum level. It should always be in [0,1]."""
         self._curriculum_level = 0.0
-        
+
     def set_curriculum_level(self, curriculum_level):
         curriculum_level = np.clip(curriculum_level, 0.0, 1.0)
         self._curriculum_level = curriculum_level
-    
+
     def increse_curriculum_gradually(self):
         curr_level = self.get_curriculum_level()
         curr_level += 0.05
         self.set_curriculum_level(curr_level)
-    
+
     def get_curriculum_level(self):
         return self._curriculum_level
 
@@ -50,11 +50,11 @@ class TaskJumping(TaskBase):
     """Generic Jumping Task"""
 
     def __init__(self):
-        super().__init__()        
+        super().__init__()
         self._intermediate_settling_parameter_min = 0.3
         self._intermediate_settling_parameter_max = 1.0
         self._intermediate_settling_parameter_task = self._intermediate_settling_parameter_min
-    
+
     def _compute_intermediate_settling_parameter_task(self):
         """Compute the intermediate settling parameter for the task."""
         _min = self._intermediate_settling_parameter_min
@@ -67,7 +67,7 @@ class TaskJumping(TaskBase):
         self._reset_params()
         self._intermediate_settling_parameter_task = self._compute_intermediate_settling_parameter_task()
         self._env._last_action = self._env._ac_interface._load_springs(self._intermediate_settling_parameter_task)
-    
+
     def _reset_params(self):
         robot = self._env.robot
         self._all_feet_in_the_air = False

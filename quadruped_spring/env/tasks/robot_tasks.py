@@ -14,7 +14,7 @@ class JumpingOnPlaceHeight(TaskJumping):
         self._height_min = 0.4
         self._height_max = 0.7
         self._max_height_task = self._height_min
-        
+
     def _reset(self, env):
         super()._reset(env)
         self._max_height = self._compute_max_height_task()
@@ -26,7 +26,7 @@ class JumpingOnPlaceHeight(TaskJumping):
             return -0.04
         else:
             return 0
-    
+
     def _compute_max_height_task(self):
         """Compute the maximum robot base height desired for the task."""
         curr_level = self.get_curriculum_level()
@@ -52,12 +52,10 @@ class JumpingOnPlaceHeight(TaskJumping):
         # Position -> jump in place !
         # reward += max_height_normalized * 0.05 * np.exp(-self._max_forward_distance**2 / 0.05)
         reward += max_height_normalized * 0.03 * np.exp(-self._max_delta_x**2 / 0.1**2)
-        # reward += max_height_normalized * 0.05 * np.exp(-self._max_delta_y**2 / 0.1**2)  
+        # reward += max_height_normalized * 0.05 * np.exp(-self._max_delta_y**2 / 0.1**2)
 
         # Velocity -> velocity direction close to [0,0,1]
-        reward += (
-            max_height_normalized * 0.06 * np.exp(-self._max_vel_err**2 / 0.1**2)
-        )
+        reward += max_height_normalized * 0.06 * np.exp(-self._max_vel_err**2 / 0.1**2)
 
         if not self._terminated():
             # Alive bonus proportional to the risk taken

@@ -160,7 +160,7 @@ class QuadrupedGymEnv(gym.Env):
             self._env_randomizer_mode = env_randomizer_mode
             self._env_randomizers = EnvRandomizerList(EnvRandomizerCollection().get_el(self._env_randomizer_mode))
             self._env_randomizers._init(self)
-    
+
         self.reset()
 
     ######################################################################################
