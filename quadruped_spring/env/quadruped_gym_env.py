@@ -143,7 +143,7 @@ class QuadrupedGymEnv(gym.Env):
         self._robot_sensors = SensorList(SensorCollection().get_el(observation_space_mode))
         self.setupObservationSpace()
 
-        self._task = TaskCollection().get_el(task_env)()
+        self.task = TaskCollection().get_el(task_env)()
 
         if self._enable_action_filter:
             self._action_filter = self._build_action_filter()
@@ -243,8 +243,8 @@ class QuadrupedGymEnv(gym.Env):
             self._sub_step(curr_act, sub_step)
 
         self._env_step_counter += 1
-        self._task._on_step()
-        reward = self._task._reward()
+        self.task._on_step()
+        reward = self.task._reward()
         done = False
         # infos = {"base_pos": self.robot.GetBasePosition()}
         infos = {}
@@ -256,7 +256,7 @@ class QuadrupedGymEnv(gym.Env):
 
         # Update the actual reward at the end of the episode with bonus or malus
         if done:
-            reward += self._task._reward_end_episode()
+            reward += self.task._reward_end_episode()
 
         self._robot_sensors._on_step()
         obs = self.get_observation()
@@ -330,7 +330,6 @@ class QuadrupedGymEnv(gym.Env):
 
         self._env_step_counter = 0
         self._sim_step_counter = 0
-        self._last_base_position = [0, 0, 0]
 
         if self._is_render:
             self._pybullet_client.resetDebugVisualizerCamera(self._cam_dist, self._cam_yaw, self._cam_pitch, [0, 0, 0])
@@ -339,7 +338,7 @@ class QuadrupedGymEnv(gym.Env):
         if self._enable_env_randomization:
             self._env_randomizers.randomize_env()
         self._settle_robot()  # Settle robot after being spawned
-        self._task._reset(self)  # Reset task internal state
+        self.task._reset(self)  # Reset task internal state
         self._robot_sensors._reset(self.robot)  # Rsest sensors
 
         if self._enable_action_filter:
@@ -500,11 +499,11 @@ class QuadrupedGymEnv(gym.Env):
 
     def task_terminated(self):
         """Return boolean specifying whther the task is terminated."""
-        return self._task._terminated()
+        return self.task._terminated()
 
     def get_reward_end_episode(self):
         """Return bonus and malus to add to the reward at the end of the episode."""
-        return self._task._reward_end_episode()
+        return self.task._reward_end_episode()
 
     def get_init_pose(self):
         """Get the initial init pose for robot settling."""
@@ -526,7 +525,7 @@ class QuadrupedGymEnv(gym.Env):
 
     def print_task_info(self):
         """Print some info about the task performed."""
-        self._task.print_info()
+        self.task.print_info()
 
 
 def build_env():
