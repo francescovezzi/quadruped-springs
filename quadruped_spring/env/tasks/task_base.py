@@ -6,7 +6,24 @@ class TaskBase:
     """Prototype class for a generic task"""
 
     def __init__(self):
+        self._init_curriculum()
         pass
+    
+    def _init_curriculum(self):
+        """Initialize the curriculum level. It should always be in [0,1]."""
+        self._curriculum_level = 0.0
+        
+    def set_curriculum_level(self, curriculum_level):
+        curriculum_level = np.clip(curriculum_level, 0.0, 1.0)
+        self._curriculum_level = curriculum_level
+    
+    def increse_curriculum_gradually(self):
+        curr_level = self.get_curriculum_level()
+        curr_level += 0.05
+        self.set_curriculum_level(curr_level)
+    
+    def get_curriculum_level(self):
+        return self._curriculum_level
 
     def _reset(self, env):
         """reset task and initialize task variables"""
@@ -33,15 +50,29 @@ class TaskJumping(TaskBase):
     """Generic Jumping Task"""
 
     def __init__(self):
-        super().__init__()
+        super().__init__()        
+        self._intermediate_settling_parameter_min = 0.3
+        self._intermediate_settling_parameter_max = 1.0
+        self._intermediate_settling_parameter_task = self._intermediate_settling_parameter_min
+    
+    def _compute_intermediate_settling_parameter_task(self):
+        """Compute the intermediate settling parameter for the task."""
+        _min = self._intermediate_settling_parameter_min
+        _max = self._intermediate_settling_parameter_max
+        curr_level = self.get_curriculum_level()
+        return _min * (1 - curr_level) + _max * curr_level
 
     def _reset(self, env):
         super()._reset(env)
+        self._reset_params()
+        self._intermediate_settling_parameter_task = self._compute_intermediate_settling_parameter_task()
+        self._env._last_action = self._env._ac_interface._load_springs(self._intermediate_settling_parameter_task)
+    
+    def _reset_params(self):
         robot = self._env.robot
         self._all_feet_in_the_air = False
         self._time_take_off = self._env.get_sim_time()
         self._robot_pose_take_off = robot.GetBasePosition()
-        # self._init_height = robot._robot_config.INIT_HEIGHT
         self._init_height = self._robot_pose_take_off[2]
         self._robot_orientation_take_off = robot.GetBaseOrientationRollPitchYaw()
         self._max_flight_time = 0.0
@@ -53,7 +84,6 @@ class TaskJumping(TaskBase):
         self._max_delta_x = 0.0
         self._max_delta_y = 0.0
         self._max_vel_err = 1.0
-        self._base_acc = np.zeros(3)
         self._new_action = self._old_action = self._env.get_last_action()
         self._max_delta_action = 0.0
 

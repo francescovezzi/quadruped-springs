@@ -11,21 +11,33 @@ class JumpingOnPlaceHeight(TaskJumping):
 
     def __init__(self):
         super().__init__()
+        self._height_min = 0.4
+        self._height_max = 0.7
+        self._max_height_task = self._height_min
+        
+    def _reset(self, env):
+        super()._reset(env)
+        self._max_height = self._compute_max_height_task()
 
     def _reward(self):
-        """Remember the reward is sparse. So is 0 except the end of the episode."""
+        """Penalize the robot if the base height decreases."""
         height = self._env.robot.GetBasePosition()[2]
         if self._init_height - height > 0.02:
             return -0.04
         else:
             return 0
+    
+    def _compute_max_height_task(self):
+        """Compute the maximum robot base height desired for the task."""
+        curr_level = self.get_curriculum_level()
+        return self._height_min * (1 - curr_level) + self._height_max * curr_level
 
     def _reward_end_episode(self):
         """Compute bonus and malus to add to reward at the end of the episode"""
         reward = 0
 
         # Task reward -> Height
-        max_height = 0.4
+        max_height = self._max_height_task
         if self._relative_max_height > max_height:
             max_height_normalized = 1.0
         else:
@@ -38,18 +50,14 @@ class JumpingOnPlaceHeight(TaskJumping):
         reward += max_height_normalized * 0.05 * np.exp(-self._max_pitch**2 / 0.15**2)  # orientation
 
         # Position -> jump in place !
-        # reward += max_height_normalized * 0.05 * np.exp(-self._max_forward_distance**2 / 0.05)  # be on place
-        reward += max_height_normalized * 0.02 * np.exp(-self._max_delta_x**2 / 0.1**2)
-        reward += max_height_normalized * 0.05 * np.exp(-self._max_delta_y**2 / 0.1**2)  # be on place
+        # reward += max_height_normalized * 0.05 * np.exp(-self._max_forward_distance**2 / 0.05)
+        reward += max_height_normalized * 0.03 * np.exp(-self._max_delta_x**2 / 0.1**2)
+        # reward += max_height_normalized * 0.05 * np.exp(-self._max_delta_y**2 / 0.1**2)  
 
         # Velocity -> velocity direction close to [0,0,1]
         reward += (
             max_height_normalized * 0.06 * np.exp(-self._max_vel_err**2 / 0.1**2)
-        )  # vel direction is similar to [0,0,1]
-
-        # action_clip = 0.4
-        # if self._max_delta_action > action_clip:
-        #     reward -= 0.5 * (self._max_delta_action - action_clip)
+        )
 
         if not self._terminated():
             # Alive bonus proportional to the risk taken
