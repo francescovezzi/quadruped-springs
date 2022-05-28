@@ -33,7 +33,7 @@ class JumpingOnPlaceHeight(TaskJumping):
         if delta_tau_module > tau_max:
             reward -= 0.01 * delta_tau_module / 500
         return reward
-        
+
     def _compute_max_height_task(self):
         """Compute the maximum robot base height desired for the task."""
         curr_level = self.get_curriculum_level()
@@ -115,6 +115,7 @@ class JumpingForward(TaskJumping):
         # print(f"Forward dist: {self._max_forward_distance}")
         return reward
 
+
 class JumpingForwardHeight(TaskJumping):
     """
     Robot has to perform a forward jumping. Sparse reward based on maximizing the max height
@@ -150,6 +151,7 @@ class JumpingForwardHeight(TaskJumping):
             reward += 0.1 * self._max_flight_time
         # print(f"Forward dist: {self._max_forward_distance}")
         return reward
+
 
 class JumpingInPlaceDense(TaskJumping):
     """

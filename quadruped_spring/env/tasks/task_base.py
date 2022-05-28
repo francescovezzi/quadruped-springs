@@ -91,7 +91,7 @@ class TaskJumping(TaskBase):
         self._max_vel_err = 1.0
         self._new_action = self._old_action = self._env.get_last_action()
         self._max_delta_action = 0.0
-        self._old_torque = self._new_torque  = self._env.robot.GetMotorTorques()
+        self._old_torque = self._new_torque = self._env.robot.GetMotorTorques()
 
     def _on_step(self):
         self._update_actions()
@@ -99,7 +99,7 @@ class TaskJumping(TaskBase):
         self._update_pose()
         self._compute_pose_info()
         self._compute_jumping_info()
-    
+
     def _update_torques(self):
         self._old_torque = self._new_torque
         self._new_torque = self._env.robot.GetMotorTorques()
@@ -155,7 +155,7 @@ class TaskJumping(TaskBase):
                 self._max_forward_distance = max(pos_relative[0], self._max_forward_distance)
                 # self._jump_counter += 1
             self._all_feet_in_the_air = False
-            
+
     # def _multiple_jumping(self):
     #     """Returns true if the robot executes multiple jumping before the real one."""
     #     if self._landing_mode_enabled:
@@ -193,7 +193,7 @@ class TaskJumping(TaskBase):
         return num_invalid_contacts
 
     def _terminated(self):
-        return self.is_fallen() or self._not_allowed_contact()# or self._multiple_jumping()
+        return self.is_fallen() or self._not_allowed_contact()  # or self._multiple_jumping()
 
     def print_info(self):
         print(f"max forward distance -> {self._max_forward_distance:.3f}")
