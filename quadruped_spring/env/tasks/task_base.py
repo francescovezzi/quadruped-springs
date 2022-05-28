@@ -67,6 +67,11 @@ class TaskJumping(TaskBase):
         self._reset_params()
         self._intermediate_settling_parameter_task = self._compute_intermediate_settling_parameter_task()
         self._env._last_action = self._env._ac_interface._load_springs(self._intermediate_settling_parameter_task)
+        self._jump_counter = 0
+        self._landing_mode_enabled = False  # The landing wrapper will set this value to True
+
+    def enable_landing_mode(self):
+        self._landing_mode_enabled = True
 
     def _reset_params(self):
         robot = self._env.robot
@@ -86,12 +91,19 @@ class TaskJumping(TaskBase):
         self._max_vel_err = 1.0
         self._new_action = self._old_action = self._env.get_last_action()
         self._max_delta_action = 0.0
+        self._old_torque = self._new_torque  = self._env.robot.GetMotorTorques()
 
     def _on_step(self):
         self._update_actions()
+        self._update_torques()
         self._update_pose()
         self._compute_pose_info()
         self._compute_jumping_info()
+    
+    def _update_torques(self):
+        self._old_torque = self._new_torque
+        self._new_torque = self._env.robot.GetMotorTorques()
+        # print(self._new_torque)
 
     def _update_pose(self):
         self._pos_abs = np.array(self._env.robot.GetBasePosition())
@@ -141,7 +153,15 @@ class TaskJumping(TaskBase):
                 pos_relative = pos_abs + translation
                 pos_relative = pos_relative @ rotation_matrix
                 self._max_forward_distance = max(pos_relative[0], self._max_forward_distance)
+                # self._jump_counter += 1
             self._all_feet_in_the_air = False
+            
+    # def _multiple_jumping(self):
+    #     """Returns true if the robot executes multiple jumping before the real one."""
+    #     if self._landing_mode_enabled:
+    #         return False
+    #     else:
+    #         return self._jump_counter > 1
 
     def is_fallen(self, dot_prod_min=0.85):
         """Decide whether the quadruped has fallen.
@@ -173,7 +193,7 @@ class TaskJumping(TaskBase):
         return num_invalid_contacts
 
     def _terminated(self):
-        return self.is_fallen() or self._not_allowed_contact()
+        return self.is_fallen() or self._not_allowed_contact()# or self._multiple_jumping()
 
     def print_info(self):
         print(f"max forward distance -> {self._max_forward_distance:.3f}")

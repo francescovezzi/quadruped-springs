@@ -20,13 +20,20 @@ class JumpingOnPlaceHeight(TaskJumping):
         self._max_height = self._compute_max_height_task()
 
     def _reward(self):
-        """Penalize the robot if the base height decreases."""
+        """Reward for each simulation step."""
+        reward = 0
+        # Penalize height base decreasing
         height = self._env.robot.GetBasePosition()[2]
         if self._init_height - height > 0.02:
-            return -0.04
-        else:
-            return 0
-
+            reward += -0.04
+        # Penalize high frequency torques command
+        tau_max = 300
+        delta_tau = self._new_torque - self._old_torque
+        delta_tau_module = np.sum(delta_tau**2)
+        if delta_tau_module > tau_max:
+            reward -= 0.01 * delta_tau_module / 500
+        return reward
+        
     def _compute_max_height_task(self):
         """Compute the maximum robot base height desired for the task."""
         curr_level = self.get_curriculum_level()
@@ -51,11 +58,11 @@ class JumpingOnPlaceHeight(TaskJumping):
 
         # Position -> jump in place !
         # reward += max_height_normalized * 0.05 * np.exp(-self._max_forward_distance**2 / 0.05)
-        reward += max_height_normalized * 0.03 * np.exp(-self._max_delta_x**2 / 0.1**2)
+        # reward += max_height_normalized * 0.02 * np.exp(-self._max_delta_x**2 / 0.1**2)
         # reward += max_height_normalized * 0.05 * np.exp(-self._max_delta_y**2 / 0.1**2)
 
         # Velocity -> velocity direction close to [0,0,1]
-        reward += max_height_normalized * 0.06 * np.exp(-self._max_vel_err**2 / 0.1**2)
+        # reward += max_height_normalized * 0.01 * np.exp(-self._max_vel_err**2 / 0.1**2)
 
         if not self._terminated():
             # Alive bonus proportional to the risk taken
@@ -108,6 +115,41 @@ class JumpingForward(TaskJumping):
         # print(f"Forward dist: {self._max_forward_distance}")
         return reward
 
+class JumpingForwardHeight(TaskJumping):
+    """
+    Robot has to perform a forward jumping. Sparse reward based on maximizing the max height
+    and the forward distance. Bonus for mantaining the right orientation, malus on crushing.
+    """
+
+    def __init__(self):
+        super().__init__()
+
+    def _reward(self):
+        """Remember the reward is sparse. So is 0 except the end of the episode."""
+        return 0
+
+    def _reward_end_episode(self):
+        """Compute bonus and malus to add to reward at the end of the episode"""
+        reward = 0
+        if self._terminated():
+            # Malus for crashing
+            # Optionally: no reward in case of crash
+            reward -= 0.08 * (1 + 0.1 * self._max_flight_time)
+
+        max_distance = 0.2
+        max_fwd_distance_normalized = self._max_forward_distance / max_distance
+
+        reward += self._max_flight_time
+        reward += 0.1 * max_fwd_distance_normalized
+
+        reward += self._max_flight_time * 0.05 * np.exp(-self._max_yaw**2 / 0.01)  # orientation
+        reward += self._max_flight_time * 0.05 * np.exp(-self._max_roll**2 / 0.01)  # orientation
+
+        if self._max_flight_time > 0 and not self._terminated():
+            # Alive bonus proportional to the risk taken
+            reward += 0.1 * self._max_flight_time
+        # print(f"Forward dist: {self._max_forward_distance}")
+        return reward
 
 class JumpingInPlaceDense(TaskJumping):
     """
