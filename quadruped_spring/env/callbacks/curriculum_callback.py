@@ -7,7 +7,7 @@ from stable_baselines3.common.vec_env.vec_normalize import VecNormalize
 from quadruped_spring.env.quadruped_gym_env import QuadrupedGymEnv
 from quadruped_spring.env.wrappers.landing_wrapper import LandingWrapper
 from quadruped_spring.env.wrappers.obs_flattening_wrapper import ObsFlatteningWrapper
-
+from quadruped_spring.env.wrappers.curriculum_wrapper import CurriculumWrapper
 
 import warnings
 
@@ -15,6 +15,7 @@ import warnings
 def callable_env(kwargs):
     def aux():
         env = QuadrupedGymEnv(**kwargs)
+        env = CurriculumWrapper(env)
         env = LandingWrapper(env)
         env = ObsFlatteningWrapper(env)
         return env
@@ -36,6 +37,10 @@ class CurriculumCallback(EventCallback):
         self.level_step = 0.05
         self.deterministic = True
         
+        self.eval_freq = 100
+        self.n_eval_episodes = 2
+        self.reward_threshold = -20
+        
     def _init_callback(self) -> None:
         env_config = self.training_env.env_method("get_env_kwargs", indices=0)[0]
         eval_env = callable_env(env_config)
@@ -48,6 +53,8 @@ class CurriculumCallback(EventCallback):
         # Does not work in some corner cases, where the wrapper is not the same
         if not isinstance(self.training_env, type(self.eval_env)):
             warnings.warn("Training and eval env are not of the same type" f"{self.training_env} != {self.eval_env}")
+            
+        self.training_env.env_method("print_curriculum_info", indices=0)
 
     def _on_step(self) -> bool:
         """
@@ -84,6 +91,8 @@ class CurriculumCallback(EventCallback):
 
             if mean_reward > self.reward_threshold:
                 self.training_env.env_method("increase_curriculum_level", self.level_step, indices=range(self.training_env.num_envs))
+                self.eval_env.env_method("increase_curriculum_level", self.level_step, indices=range(self.eval_env.num_envs))
+                self.training_env.env_method("print_curriculum_info", indices=0)
 
         return True
         

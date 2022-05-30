@@ -15,11 +15,13 @@ class JumpingOnPlaceHeight(TaskJumping):
         self._height_max = 0.7
         self._max_height_task = self._compute_max_height_task()
         
-    def on_curriculum_step(self, verbose):
-        super().on_curriculum_step(verbose=verbose)
+    def on_curriculum_step(self):
+        super().on_curriculum_step()
         self._max_height_task = self._compute_max_height_task()
-        if verbose > 0:
-            print(f'-- max height set to {self._max_height_task:.3f} --')
+    
+    def print_curriculum_info(self):
+        super().print_curriculum_info()
+        print(f'-- max height set to {self._max_height_task:.3f} --')
 
     def _reward(self):
         """Reward for each simulation step."""

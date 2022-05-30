@@ -15,18 +15,23 @@ class TaskBase:
     def set_curriculum_level(self, curriculum_level, verbose=1):
         curriculum_level = np.clip(curriculum_level, 0.0, 1.0)
         self._curriculum_level = curriculum_level
-        self.on_curriculum_step(verbose=verbose)
+        self.on_curriculum_step()
+        if verbose > 0:
+            self.print_curriculum_info()
 
     def increase_curriculum_level(self, increase_value):
         curr_level = self.get_curriculum_level()
         if curr_level < 1:
             curr_level += increase_value
-        self.set_curriculum_level(curr_level)
+        self.set_curriculum_level(curr_level, verbose=0)
         
-    def on_curriculum_step(self, verbose=0):
+    def on_curriculum_step(self):
         """Method called each time the curriculum level increases."""
-        if verbose > 0:
-            print(f'-- curriculum level set to {self._curriculum_level:.3f} --')
+        pass
+    
+    def print_curriculum_info(self):
+        print('***** Curriculum Info *****')
+        print(f'-- curriculum level set to {self._curriculum_level:.3f} --')
 
     def get_curriculum_level(self):
         return self._curriculum_level
@@ -68,11 +73,13 @@ class TaskJumping(TaskBase):
         curr_level = self.get_curriculum_level()
         return _min * (1 - curr_level) + _max * curr_level
 
-    def on_curriculum_step(self, verbose):
-        super().on_curriculum_step(verbose=verbose)
+    def on_curriculum_step(self):
+        super().on_curriculum_step()
         self._intermediate_settling_parameter_task = self._compute_intermediate_settling_parameter_task()
-        if verbose > 0:
-            print(f'-- intermediate settling parameter set to {self._intermediate_settling_parameter_task:.3f} --')
+
+    def print_curriculum_info(self):
+        super().print_curriculum_info()
+        print(f'-- intermediate settling parameter set to {self._intermediate_settling_parameter_task:.3f} --')
 
     def _reset(self, env):
         super()._reset(env)

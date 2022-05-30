@@ -1,7 +1,6 @@
 """This file implements the gym environment for a quadruped. """
 import datetime
 import os
-from tabnanny import verbose
 import time
 
 # gym
@@ -76,7 +75,7 @@ class QuadrupedGymEnv(gym.Env):
         enable_action_filter=False,
         enable_env_randomization=True,
         env_randomizer_mode="MASS_RANDOMIZER",
-        curriculum_level = 0.0,
+        curriculum_level=0.0,
         test_env=False,  # NOT ALLOWED FOR TRAINING!
     ):
         """Initialize the quadruped gym environment.
@@ -147,8 +146,8 @@ class QuadrupedGymEnv(gym.Env):
         self._robot_sensors = SensorList(SensorCollection().get_el(self._observation_space_mode))
         self.setupObservationSpace()
 
-        self._task_env = task_env
-        self.task = TaskCollection().get_el(self._task_env)()
+        self.task_env = task_env
+        self.task = TaskCollection().get_el(self.task_env)()
         self.task.set_curriculum_level(curriculum_level, verbose=0)
 
         if self._enable_action_filter:
@@ -502,6 +501,14 @@ class QuadrupedGymEnv(gym.Env):
     def are_springs_enabled(self):
         """Get boolean specifying if springs are enabled or not."""
         return self._enable_springs
+    
+    def get_action_observation_space_mode(self):
+        """Get action and observation space mode."""
+        return self._action_space_mode, self._observation_space_mode
+    
+    def low_pass_filter_enabled(self):
+        """Get boolean specifying if low-pass filter is enabled."""
+        return self._enable_action_filter
 
     def task_terminated(self):
         """Return boolean specifying whther the task is terminated."""
@@ -529,23 +536,6 @@ class QuadrupedGymEnv(gym.Env):
         """Get the last action applied."""
         return self._last_action
     
-    def increase_curriculum_level(self, value):
-        """increase the curriculum level."""
-        assert value >= 0 and value < 1, "curriculum level change should be in [0,1)."
-        self.task.increase_curriculum_level(value)
-    
-    def get_env_kwargs(self):
-        """Get the environment kwargs. Useful for training."""
-        kwargs = {
-            "motor_control_mode": self.get_motor_control_mode(),
-            "enable_springs": self._enable_springs,
-            "enable_action_filter": self._enable_action_filter,
-            "task_env": self._task_env,
-            "observation_space_mode": self._observation_space_mode,
-            "action_space_mode": self._action_space_mode,
-        }
-        return kwargs
-    
     def print_task_info(self):
         """Print some info about the task performed."""
         self.task.print_info()
@@ -562,12 +552,13 @@ def build_env():
         "enable_action_interpolation": False,
         "enable_action_filter": True,
         "task_env": "JUMPING_ON_PLACE_HEIGHT",
-        "observation_space_mode": "ARS",
+        "observation_space_mode": "ARS_HEIGHT",
         "action_space_mode": "SYMMETRIC",
         "enable_env_randomization": False,
         "env_randomizer_mode": "SETTLING_RANDOMIZER",
     }
     env = QuadrupedGymEnv(**env_config)
+    
     env = ObsFlatteningWrapper(env)
     # env = RestWrapper(env)
     # env = LandingWrapper(env)
@@ -579,7 +570,6 @@ def test_env():
     sim_steps = 500
     action_dim = env.get_action_dim()
     obs = env.reset()
-    print(env.get_env_kwargs())
     for i in range(sim_steps):
         action = np.random.rand(action_dim) * 2 - 1
         # action = np.full(action_dim, 0)
