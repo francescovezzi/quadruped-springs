@@ -40,10 +40,6 @@ class CurriculumCallback(EventCallback):
         self.level_step = 0.05
         self.deterministic = True
 
-        self.eval_freq = 100
-        self.n_eval_episodes = 2
-        self.reward_threshold = -20
-
     def _init_callback(self) -> None:
         env_config = self.training_env.env_method("get_env_kwargs", indices=0)[0]
         eval_env = callable_env(env_config)
