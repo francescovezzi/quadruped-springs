@@ -1,6 +1,6 @@
 import numpy as np
 
-from quadruped_spring.env.tasks.task_base import TaskJumping
+from quadruped_spring.env.tasks.task_base import TaskBase, TaskJumping
 
 
 class JumpingOnPlaceHeight(TaskJumping):
@@ -197,3 +197,10 @@ class JumpingInPlaceDense(TaskJumping):
         if self._env.robot.GetBasePosition()[2] >= 0.36:
             done = True
         return done
+
+
+class NoTask(TaskBase):
+    """No tasks is required to be performed. Useful for using TORQUE action interface."""
+
+    def __init__(self):
+        super().__init__()
