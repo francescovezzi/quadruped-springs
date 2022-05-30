@@ -1,6 +1,7 @@
 """This file implements the gym environment for a quadruped. """
 import datetime
 import os
+from tabnanny import verbose
 import time
 
 # gym
@@ -75,6 +76,7 @@ class QuadrupedGymEnv(gym.Env):
         enable_action_filter=False,
         enable_env_randomization=True,
         env_randomizer_mode="MASS_RANDOMIZER",
+        curriculum_level = 0.0,
         test_env=False,  # NOT ALLOWED FOR TRAINING!
     ):
         """Initialize the quadruped gym environment.
@@ -109,6 +111,7 @@ class QuadrupedGymEnv(gym.Env):
             observations space modes.
           enable_env_randomizer: Boolean specifying whether to enable env randomization.
           env_randomizer_mode: String specifying which env randomizers to use.
+          curriculum_level: Scalar in [0,1] specyfing the task difficulty level.
         """
         self.seed()
         self._enable_springs = enable_springs
@@ -146,6 +149,7 @@ class QuadrupedGymEnv(gym.Env):
 
         self._task_env = task_env
         self.task = TaskCollection().get_el(self._task_env)()
+        self.task.set_curriculum_level(curriculum_level, verbose=0)
 
         if self._enable_action_filter:
             self._action_filter = self._build_action_filter()
