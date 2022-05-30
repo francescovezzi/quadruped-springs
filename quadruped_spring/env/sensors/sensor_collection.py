@@ -43,6 +43,14 @@ class SensorCollection(CollectionBase):
             rs.JointPosition,
             rs.JointVelocity,
         ]
+        self._ARS_HEIGHT = [
+            rs.Pitch,
+            rs.PitchRate,
+            rs.LinearVelocity2D,
+            rs.JointPosition,
+            rs.JointVelocity,
+            rs.Height,
+        ]
         self._dict = {
             "DEFAULT": self._DEFAULT,
             "ENCODER": self._ENCODER,
