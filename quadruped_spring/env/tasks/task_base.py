@@ -7,7 +7,6 @@ class TaskBase:
 
     def __init__(self):
         self._init_curriculum()
-        pass
 
     def _init_curriculum(self):
         """Initialize the curriculum level. It should always be in [0,1]."""
@@ -17,10 +16,16 @@ class TaskBase:
         curriculum_level = np.clip(curriculum_level, 0.0, 1.0)
         self._curriculum_level = curriculum_level
 
-    def increse_curriculum_gradually(self):
+    def increase_curriculum_level(self, increase_value):
         curr_level = self.get_curriculum_level()
-        curr_level += 0.05
+        if curr_level < 1:
+            curr_level += increase_value
         self.set_curriculum_level(curr_level)
+        self.on_curriculum_step()
+        
+    def on_curriculum_step(self):
+        """Method called each time the curriculum level increases."""
+        print(f'-- curriculum level set to {self._curriculum_level:.3f} --')
 
     def get_curriculum_level(self):
         return self._curriculum_level
@@ -53,7 +58,7 @@ class TaskJumping(TaskBase):
         super().__init__()
         self._intermediate_settling_parameter_min = 0.3
         self._intermediate_settling_parameter_max = 1.0
-        self._intermediate_settling_parameter_task = self._intermediate_settling_parameter_min
+        self._intermediate_settling_parameter_task = self._compute_intermediate_settling_parameter_task()
 
     def _compute_intermediate_settling_parameter_task(self):
         """Compute the intermediate settling parameter for the task."""
@@ -62,10 +67,14 @@ class TaskJumping(TaskBase):
         curr_level = self.get_curriculum_level()
         return _min * (1 - curr_level) + _max * curr_level
 
+    def on_curriculum_step(self):
+        super().on_curriculum_step()
+        self._intermediate_settling_parameter_task = self._compute_intermediate_settling_parameter_task()
+        print(f'-- intermediate settling parameter set to {self._intermediate_settling_parameter_task:.3f} --')
+
     def _reset(self, env):
         super()._reset(env)
         self._reset_params()
-        self._intermediate_settling_parameter_task = self._compute_intermediate_settling_parameter_task()
         self._env._last_action = self._env._ac_interface._load_springs(self._intermediate_settling_parameter_task)
         self._jump_counter = 0
         self._landing_mode_enabled = False  # The landing wrapper will set this value to True

@@ -140,10 +140,12 @@ class QuadrupedGymEnv(gym.Env):
         self._build_action_command_interface(motor_control_mode, action_space_mode)
         self.setupActionSpace()
 
-        self._robot_sensors = SensorList(SensorCollection().get_el(observation_space_mode))
+        self._observation_space_mode = observation_space_mode
+        self._robot_sensors = SensorList(SensorCollection().get_el(self._observation_space_mode))
         self.setupObservationSpace()
 
-        self.task = TaskCollection().get_el(task_env)()
+        self._task_env = task_env
+        self.task = TaskCollection().get_el(self._task_env)()
 
         if self._enable_action_filter:
             self._action_filter = self._build_action_filter()
@@ -522,7 +524,24 @@ class QuadrupedGymEnv(gym.Env):
     def get_last_action(self):
         """Get the last action applied."""
         return self._last_action
-
+    
+    def increase_curriculum_level(self, value):
+        """increase the curriculum level."""
+        assert value >= 0 and value < 1, "curriculum level change should be in [0,1)."
+        self.task.increase_curriculum_level(value)
+    
+    def get_env_kwargs(self):
+        """Get the environment kwargs. Useful for training."""
+        kwargs = {
+            "motor_control_mode": self.get_motor_control_mode(),
+            "enable_springs": self._enable_springs,
+            "enable_action_filter": self._enable_action_filter,
+            "task_env": self._task_env,
+            "observation_space_mode": self._observation_space_mode,
+            "action_space_mode": self._action_space_mode,
+        }
+        return kwargs
+    
     def print_task_info(self):
         """Print some info about the task performed."""
         self.task.print_info()
@@ -556,6 +575,7 @@ def test_env():
     sim_steps = 500
     action_dim = env.get_action_dim()
     obs = env.reset()
+    print(env.get_env_kwargs())
     for i in range(sim_steps):
         action = np.random.rand(action_dim) * 2 - 1
         # action = np.full(action_dim, 0)

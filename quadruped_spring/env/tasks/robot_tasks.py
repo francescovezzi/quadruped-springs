@@ -13,11 +13,12 @@ class JumpingOnPlaceHeight(TaskJumping):
         super().__init__()
         self._height_min = 0.4
         self._height_max = 0.7
-        self._max_height_task = self._height_min
-
-    def _reset(self, env):
-        super()._reset(env)
-        self._max_height = self._compute_max_height_task()
+        self._max_height_task = self._compute_max_height_task()
+        
+    def on_curriculum_step(self):
+        super().on_curriculum_step()
+        self._max_height_task = self._compute_max_height_task()
+        print(f'-- max height set to {self._max_height_task:.3f} --')
 
     def _reward(self):
         """Reward for each simulation step."""
@@ -25,13 +26,13 @@ class JumpingOnPlaceHeight(TaskJumping):
         # Penalize height base decreasing
         height = self._env.robot.GetBasePosition()[2]
         if self._init_height - height > 0.02:
-            reward += -0.04
+            reward += -0.005
         # Penalize high frequency torques command
         tau_max = 300
         delta_tau = self._new_torque - self._old_torque
         delta_tau_module = np.sum(delta_tau**2)
-        if delta_tau_module > tau_max:
-            reward -= 0.01 * delta_tau_module / 500
+        # if delta_tau_module > tau_max:
+        #     reward -= 0.005 * delta_tau_module / 500
         return reward
 
     def _compute_max_height_task(self):
@@ -54,7 +55,7 @@ class JumpingOnPlaceHeight(TaskJumping):
         # Orientation -> Maintain the initial orientation if you can !
         reward += max_height_normalized * 0.02 * np.exp(-self._max_yaw**2 / 0.15**2)  # orientation
         reward += max_height_normalized * 0.02 * np.exp(-self._max_roll**2 / 0.15**2)  # orientation
-        reward += max_height_normalized * 0.05 * np.exp(-self._max_pitch**2 / 0.15**2)  # orientation
+        reward += max_height_normalized * 0.1 * np.exp(-self._max_pitch**2 / 0.15**2)  # orientation
 
         # Position -> jump in place !
         # reward += max_height_normalized * 0.05 * np.exp(-self._max_forward_distance**2 / 0.05)
