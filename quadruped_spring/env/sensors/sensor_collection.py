@@ -60,5 +60,6 @@ class SensorCollection(CollectionBase):
             "CUSTOM_3D": self._CUSTOM_3D,
             "CUSTOM_2D": self._CUSTOM_2D,
             "ARS": self._ARS,
+            "ARS_HEIGHT": self._ARS_HEIGHT,
         }
         self._element_type = "sensor package"
