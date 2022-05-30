@@ -34,7 +34,7 @@ class CurriculumCallback(EventCallback):
         super().__init__(None, verbose)
 
         self.n_eval_env = 4
-        self.eval_freq = 4_000_000
+        self.eval_freq = 500_000
         self.n_eval_episodes = 10
         self.reward_threshold = 0.75
         self.level_step = 0.05
