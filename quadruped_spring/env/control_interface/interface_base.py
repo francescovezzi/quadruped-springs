@@ -224,7 +224,7 @@ class ActionWrapperBase(MotorInterfaceBase):
             env._pybullet_client.stepSimulation()
         return settling_action
 
-    def _load_springs(self, j=0.5):
+    def _load_springs(self, j=0.0):
         """Settle the robot to an initial config. Return last action used."""
         env = self._motor_interface._env
         if env._is_render:
