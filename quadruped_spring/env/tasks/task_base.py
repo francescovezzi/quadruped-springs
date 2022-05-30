@@ -24,14 +24,14 @@ class TaskBase:
         if curr_level < 1:
             curr_level += increase_value
         self.set_curriculum_level(curr_level, verbose=0)
-        
+
     def on_curriculum_step(self):
         """Method called each time the curriculum level increases."""
         pass
-    
+
     def print_curriculum_info(self):
-        print('***** Curriculum Info *****')
-        print(f'-- curriculum level set to {self._curriculum_level:.3f} --')
+        print("***** Curriculum Info *****")
+        print(f"-- curriculum level set to {self._curriculum_level:.3f} --")
 
     def get_curriculum_level(self):
         return self._curriculum_level
@@ -79,7 +79,7 @@ class TaskJumping(TaskBase):
 
     def print_curriculum_info(self):
         super().print_curriculum_info()
-        print(f'-- intermediate settling parameter set to {self._intermediate_settling_parameter_task:.3f} --')
+        print(f"-- intermediate settling parameter set to {self._intermediate_settling_parameter_task:.3f} --")
 
     def _reset(self, env):
         super()._reset(env)
@@ -231,6 +231,6 @@ class TaskJumping(TaskBase):
         """Compute the time the robot needs to reach the maximum height"""
         _, _, vz = self._env.robot.GetBaseLinearVelocity()
         return vz / 9.81
-    
+
     def is_switched_controller(self):
         return self._switched_controller

@@ -58,9 +58,7 @@ class LandingWrapper(gym.Wrapper):
         actual_time = self.env.get_sim_time()
         delta_time = self.env.task.compute_time_for_peak_heihgt()
         self.timer_jumping.reset_timer()
-        self.timer_jumping.start_timer(
-            timer_time=actual_time, start_time=actual_time, delta_time=delta_time
-        )
+        self.timer_jumping.start_timer(timer_time=actual_time, start_time=actual_time, delta_time=delta_time)
 
     def step(self, action):
         obs, reward, done, infos = self.env.step(action)

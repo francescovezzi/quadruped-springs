@@ -5,6 +5,7 @@ class CurriculumWrapper(gym.Wrapper):
     """
     Wrapper to provide curriculum API.
     """
+
     def __init__(self, env):
         super().__init__(env)
 
@@ -21,12 +22,12 @@ class CurriculumWrapper(gym.Wrapper):
 
     def close(self):
         self.env.close()
-        
+
     def increase_curriculum_level(self, value):
         """increase the curriculum level."""
         assert value >= 0 and value < 1, "curriculum level change should be in [0,1)."
         self.env.task.increase_curriculum_level(value)
-    
+
     def get_env_kwargs(self):
         """Get the environment kwargs. Useful for training."""
         action_mode, obs_mode = self.env.get_action_observation_space_mode()
@@ -40,7 +41,7 @@ class CurriculumWrapper(gym.Wrapper):
             "curriculum_level": self.env.task.get_curriculum_level(),
         }
         return kwargs
-    
+
     def print_curriculum_info(self):
         """Print curriculum info."""
         self.env.task.print_curriculum_info()

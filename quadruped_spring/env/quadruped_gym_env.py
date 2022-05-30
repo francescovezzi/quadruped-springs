@@ -501,11 +501,11 @@ class QuadrupedGymEnv(gym.Env):
     def are_springs_enabled(self):
         """Get boolean specifying if springs are enabled or not."""
         return self._enable_springs
-    
+
     def get_action_observation_space_mode(self):
         """Get action and observation space mode."""
         return self._action_space_mode, self._observation_space_mode
-    
+
     def low_pass_filter_enabled(self):
         """Get boolean specifying if low-pass filter is enabled."""
         return self._enable_action_filter
@@ -535,7 +535,7 @@ class QuadrupedGymEnv(gym.Env):
     def get_last_action(self):
         """Get the last action applied."""
         return self._last_action
-    
+
     def print_task_info(self):
         """Print some info about the task performed."""
         self.task.print_info()
@@ -558,7 +558,7 @@ def build_env():
         "env_randomizer_mode": "SETTLING_RANDOMIZER",
     }
     env = QuadrupedGymEnv(**env_config)
-    
+
     env = ObsFlatteningWrapper(env)
     # env = RestWrapper(env)
     # env = LandingWrapper(env)
