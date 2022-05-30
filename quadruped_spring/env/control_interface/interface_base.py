@@ -224,15 +224,19 @@ class ActionWrapperBase(MotorInterfaceBase):
             env._pybullet_client.stepSimulation()
         return settling_action
 
-    def _load_springs(self, j=0.0):
-        """Settle the robot to an initial config. Return last action used."""
+    def _load_springs(self, intermediate_pose_param=0.0):
+        """
+        Settle the robot to an intermediate config between the initial
+        pose and the settling pose.
+        Return last action used.
+        """
         env = self._motor_interface._env
         if env._is_render:
             time.sleep(0.2)
         n_steps_tot = 900
         n_steps_ramp = max(n_steps_tot - 100, 1)
         for i in range(n_steps_tot):
-            reference = self.smooth_settling(i, 0, n_steps_ramp, j)
+            reference = self.smooth_settling(i, 0, n_steps_ramp, intermediate_pose_param)
             settling_command = self._convert_reference_to_command(reference)
             env.robot.ApplyAction(settling_command)
             if env._is_render:
