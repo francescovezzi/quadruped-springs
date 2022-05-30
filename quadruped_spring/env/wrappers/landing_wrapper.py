@@ -54,26 +54,18 @@ class LandingWrapper(gym.Wrapper):
             obs, reward, done, infos = self.env.step(action)
         return obs, reward, done, infos
 
-    def is_flying(self):
-        return self.env.robot._is_flying() and self.compute_time_for_peak_heihgt() > 0.06
-
-    def compute_time_for_peak_heihgt(self):
-        """Compute the time the robot needs to reach the maximum height"""
-        _, _, vz = self.env.robot.GetBaseLinearVelocity()
-        return vz / 9.81
-
     def start_jumping_timer(self):
         actual_time = self.env.get_sim_time()
+        delta_time = self.env.task.compute_time_for_peak_heihgt()
         self.timer_jumping.reset_timer()
         self.timer_jumping.start_timer(
-            timer_time=actual_time, start_time=actual_time, delta_time=self.compute_time_for_peak_heihgt()
+            timer_time=actual_time, start_time=actual_time, delta_time=delta_time
         )
 
     def step(self, action):
         obs, reward, done, infos = self.env.step(action)
 
-        if self.is_flying() and not done:
-            self.env.task.enable_landing_mode()
+        if self.env.task.is_switched_controller() and not done:
             _, reward, done, infos = self.take_off_phase(action)
             if not done:
                 _, reward, done, infos = self.landing_phase()

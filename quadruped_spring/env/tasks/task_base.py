@@ -12,20 +12,21 @@ class TaskBase:
         """Initialize the curriculum level. It should always be in [0,1]."""
         self._curriculum_level = 0.0
 
-    def set_curriculum_level(self, curriculum_level):
+    def set_curriculum_level(self, curriculum_level, verbose=1):
         curriculum_level = np.clip(curriculum_level, 0.0, 1.0)
         self._curriculum_level = curriculum_level
+        self.on_curriculum_step(verbose=verbose)
 
     def increase_curriculum_level(self, increase_value):
         curr_level = self.get_curriculum_level()
         if curr_level < 1:
             curr_level += increase_value
         self.set_curriculum_level(curr_level)
-        self.on_curriculum_step()
         
-    def on_curriculum_step(self):
+    def on_curriculum_step(self, verbose=0):
         """Method called each time the curriculum level increases."""
-        print(f'-- curriculum level set to {self._curriculum_level:.3f} --')
+        if verbose > 0:
+            print(f'-- curriculum level set to {self._curriculum_level:.3f} --')
 
     def get_curriculum_level(self):
         return self._curriculum_level
@@ -67,20 +68,18 @@ class TaskJumping(TaskBase):
         curr_level = self.get_curriculum_level()
         return _min * (1 - curr_level) + _max * curr_level
 
-    def on_curriculum_step(self):
-        super().on_curriculum_step()
+    def on_curriculum_step(self, verbose):
+        super().on_curriculum_step(verbose=verbose)
         self._intermediate_settling_parameter_task = self._compute_intermediate_settling_parameter_task()
-        print(f'-- intermediate settling parameter set to {self._intermediate_settling_parameter_task:.3f} --')
+        if verbose > 0:
+            print(f'-- intermediate settling parameter set to {self._intermediate_settling_parameter_task:.3f} --')
 
     def _reset(self, env):
         super()._reset(env)
         self._reset_params()
         self._env._last_action = self._env._ac_interface._load_springs(self._intermediate_settling_parameter_task)
         self._jump_counter = 0
-        self._landing_mode_enabled = False  # The landing wrapper will set this value to True
-
-    def enable_landing_mode(self):
-        self._landing_mode_enabled = True
+        self._switched_controller = False
 
     def _reset_params(self):
         robot = self._env.robot
@@ -103,6 +102,7 @@ class TaskJumping(TaskBase):
         self._old_torque = self._new_torque = self._env.robot.GetMotorTorques()
 
     def _on_step(self):
+        self._task_jump_take_off()
         self._update_actions()
         self._update_torques()
         self._update_pose()
@@ -214,3 +214,16 @@ class TaskJumping(TaskBase):
         if not self._env.robot._is_flying():
             self._delta_action = np.abs(self._new_action - self._old_action)
             self._max_delta_action = max(self._max_delta_action, np.amax(self._delta_action))
+
+    def _task_jump_take_off(self):
+        """Switch controller if the robot is starting the task jump."""
+        if self._env.robot._is_flying() and self.compute_time_for_peak_heihgt() > 0.06:
+            self._switched_controller = True
+
+    def compute_time_for_peak_heihgt(self):
+        """Compute the time the robot needs to reach the maximum height"""
+        _, _, vz = self._env.robot.GetBaseLinearVelocity()
+        return vz / 9.81
+    
+    def is_switched_controller(self):
+        return self._switched_controller

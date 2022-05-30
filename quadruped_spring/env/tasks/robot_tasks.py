@@ -11,28 +11,30 @@ class JumpingOnPlaceHeight(TaskJumping):
 
     def __init__(self):
         super().__init__()
-        self._height_min = 0.4
+        self._height_min = 0.35
         self._height_max = 0.7
         self._max_height_task = self._compute_max_height_task()
         
-    def on_curriculum_step(self):
-        super().on_curriculum_step()
+    def on_curriculum_step(self, verbose):
+        super().on_curriculum_step(verbose=verbose)
         self._max_height_task = self._compute_max_height_task()
-        print(f'-- max height set to {self._max_height_task:.3f} --')
+        if verbose > 0:
+            print(f'-- max height set to {self._max_height_task:.3f} --')
 
     def _reward(self):
         """Reward for each simulation step."""
         reward = 0
-        # Penalize height base decreasing
-        height = self._env.robot.GetBasePosition()[2]
-        if self._init_height - height > 0.02:
-            reward += -0.005
-        # Penalize high frequency torques command
-        tau_max = 300
-        delta_tau = self._new_torque - self._old_torque
-        delta_tau_module = np.sum(delta_tau**2)
-        # if delta_tau_module > tau_max:
-        #     reward -= 0.005 * delta_tau_module / 500
+        if not self._switched_controller:  # Only if the robot is using RL policy
+            # Penalize height base decreasing
+            height = self._env.robot.GetBasePosition()[2]
+            if self._init_height - height > 0.02:
+                reward -= 0.008
+            # Penalize high frequency torques command
+            # tau_max = 300
+            # delta_tau = self._new_torque - self._old_torque
+            # delta_tau_module = np.sum(delta_tau**2)
+            # if delta_tau_module > tau_max:
+            #     reward -= 0.005 * delta_tau_module / 500
         return reward
 
     def _compute_max_height_task(self):
