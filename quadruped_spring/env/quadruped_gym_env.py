@@ -498,18 +498,6 @@ class QuadrupedGymEnv(gym.Env):
         """Get current robot config."""
         return self._robot_config
 
-    def are_springs_enabled(self):
-        """Get boolean specifying if springs are enabled or not."""
-        return self._enable_springs
-
-    def get_action_observation_space_mode(self):
-        """Get action and observation space mode."""
-        return self._action_space_mode, self._observation_space_mode
-
-    def low_pass_filter_enabled(self):
-        """Get boolean specifying if low-pass filter is enabled."""
-        return self._enable_action_filter
-
     def task_terminated(self):
         """Return boolean specifying whther the task is terminated."""
         return self.task._terminated()
@@ -539,6 +527,19 @@ class QuadrupedGymEnv(gym.Env):
     def print_task_info(self):
         """Print some info about the task performed."""
         self.task.print_info()
+        
+    def get_curriculum_level(self):
+        """Return the acutal curriculum level."""
+        return self.task.get_curriculum_level()
+
+    def increase_curriculum_level(self, value):
+        """increase the curriculum level."""
+        assert value >= 0 and value < 1, "curriculum level change should be in [0,1)."
+        self.task.increase_curriculum_level(value)
+
+    def print_curriculum_info(self):
+        """Print curriculum info."""
+        self.task.print_curriculum_info()
 
 
 def build_env():

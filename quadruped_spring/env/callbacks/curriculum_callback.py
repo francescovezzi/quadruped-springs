@@ -39,6 +39,10 @@ class CurriculumCallback(EventCallback):
         self.reward_threshold = 0.75
         self.level_step = 0.05
         self.deterministic = True
+        
+        self.eval_freq = 100
+        self.n_eval_episodes = 2
+        self.reward_threshold = -9
 
     def _init_callback(self) -> None:
         env_config = self.training_env.env_method("get_env_kwargs", indices=0)[0]
@@ -86,7 +90,7 @@ class CurriculumCallback(EventCallback):
                 warn=True,
             )
             if self.verbose > 0:
-                print(f"Eval num_timesteps={self.num_timesteps}, " f"episode_reward={mean_reward:.2f} +/- {std_reward:.2f}")
+                print(f"Curriculum eval num_timesteps={self.num_timesteps}, " f"episode_reward={mean_reward:.2f} +/- {std_reward:.2f}")
 
             if mean_reward > self.reward_threshold:
                 self.training_env.env_method(
