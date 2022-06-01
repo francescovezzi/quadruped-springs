@@ -497,7 +497,7 @@ class QuadrupedGymEnv(gym.Env):
     def get_robot_config(self):
         """Get current robot config."""
         return self._robot_config
-    
+
     def are_springs_enabled(self):
         """Return boolean specifying whether springs are enabled."""
         return self._enable_springs
