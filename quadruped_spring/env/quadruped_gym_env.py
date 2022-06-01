@@ -497,9 +497,13 @@ class QuadrupedGymEnv(gym.Env):
     def get_robot_config(self):
         """Get current robot config."""
         return self._robot_config
+    
+    def are_springs_enabled(self):
+        """Return boolean specifying whether springs are enabled."""
+        return self._enable_springs
 
     def task_terminated(self):
-        """Return boolean specifying whther the task is terminated."""
+        """Return boolean specifying whether the task is terminated."""
         return self.task._terminated()
 
     def get_reward_end_episode(self):
@@ -527,7 +531,7 @@ class QuadrupedGymEnv(gym.Env):
     def print_task_info(self):
         """Print some info about the task performed."""
         self.task.print_info()
-        
+
     def get_curriculum_level(self):
         """Return the acutal curriculum level."""
         return self.task.get_curriculum_level()
