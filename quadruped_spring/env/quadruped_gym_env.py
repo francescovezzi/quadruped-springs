@@ -529,13 +529,13 @@ class QuadrupedGymEnv(gym.Env):
     def get_quadruped_config(self):
         """Return the quadruped configuration."""
         return self._quadruped_config
-    
+
     def get_randomizer_mode(self):
         """Return the env ranodmizer mode."""
         if self._enable_env_randomization:
             return self._env_randomizer_mode
         else:
-            return 'noone'
+            return "noone"
 
     def increase_curriculum_level(self, value):
         """increase the curriculum level."""

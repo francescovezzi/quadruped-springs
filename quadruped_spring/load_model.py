@@ -9,14 +9,13 @@ from importlib import import_module
 import yaml
 from sb3_contrib import ARS
 from stable_baselines3.common.env_util import make_vec_env
-from stable_baselines3.common.vec_env import VecNormalize
 from stable_baselines3.common.utils import set_random_seed
+from stable_baselines3.common.vec_env import VecNormalize
 
 from env.quadruped_gym_env import QuadrupedGymEnv
 from quadruped_spring.env.wrappers.rest_wrapper import RestWrapper
 from quadruped_spring.utils.monitor_state import MonitorState
 from quadruped_spring.utils.video_recording import VideoRec
-
 
 SEED = 24
 
@@ -51,6 +50,7 @@ def callable_env(env_id, wrappers, kwargs):
             wrap = getattr(module, class_name)
             env = wrap(env)
         return env
+
     return aux
 
 
@@ -102,7 +102,7 @@ for _ in range(n_episodes):
         action, _states = model.predict(obs, deterministic=True)
         obs, rewards, done, info = env.step(action)
     total_reward += rewards[0]
-    total_success += info[0]['TimeLimit.truncated']
+    total_success += info[0]["TimeLimit.truncated"]
 
 avg_reward = total_reward / n_episodes
 avg_success = total_success / n_episodes
@@ -113,11 +113,11 @@ if SAVE_PLOTS:
     env.env_method("release_plots", indices=0)
 
 env_randomizer = env.env_method("get_randomizer_mode", indices=0)[0]
-print('\n')
-print(f'over {n_episodes} episodes using {env_randomizer} env randomizer:')
-print(f'average reward -> {avg_reward}' )
-print(f'average success -> {avg_success}')
-print('\n')
+print("\n")
+print(f"over {n_episodes} episodes using {env_randomizer} env randomizer:")
+print(f"average reward -> {avg_reward}")
+print(f"average success -> {avg_success}")
+print("\n")
 
 env.close()
 print("end")
