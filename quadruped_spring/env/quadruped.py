@@ -21,7 +21,6 @@ class Quadruped(object):
         on_rack=False,
         render=False,
         enable_springs=False,
-        translated=False,
     ):
         """Construct a quadruped and reset it to the initial states.
 
@@ -37,8 +36,6 @@ class Quadruped(object):
             the walking gait. In this mode, the quaruped's base is hanged midair so
             that its walking gait is clearer to visualize.
           enable_springs: Whether the joint level springs are enabled or not.
-          trasnlated: Boolean specifying if the robot default spawn position should be
-            translated or not.
         """
         self._robot_config = robot_config
         self.num_motors = self._robot_config.NUM_MOTORS
@@ -52,7 +49,6 @@ class Quadruped(object):
         self._spring_torque = np.zeros(self.num_motors)
         self._accurate_motor_model_enabled = accurate_motor_model_enabled
         self._enable_springs = enable_springs
-        self._translated = translated
 
         # motor control mode for accurate motor model, should only be torque or position at this low level
         if motor_control_mode == "PD":
@@ -93,13 +89,9 @@ class Quadruped(object):
             initialized on ground.
         """
         if self._on_rack:
-            init_pose = self._robot_config.INIT_RACK_POSITION
+            return self._robot_config.INIT_RACK_POSITION
         else:
-            init_pose = self._robot_config.INIT_POSITION
-        if self._translated:
-            return [x + y for (x, y) in zip(init_pose, self._robot_config.TRANSLATION_OFFSET)]
-        else:
-            return init_pose
+            return self._robot_config.INIT_POSITION
 
     def _GetDefaultInitOrientation(self):
         z = 0.2 * (np.random.uniform() - 0.5)
