@@ -9,9 +9,14 @@ class EnvRandomizerBase:
 
         Will be called at when env is reset. The physical parameters will be fixed
         for that episode and be randomized again in the next environment.reset().
+        """
+        pass
 
-        Args:
-        env: The Minitaur gym environment to be randomized.
+    def randomize_robot(self):
+        """Randomize the robot after simulation steps have been applied.
+
+        Will be called at when env is reset. The physical parameters will be fixed
+        for that episode and be randomized again in the next environment.reset().
         """
         pass
 
@@ -19,8 +24,5 @@ class EnvRandomizerBase:
         """Randomize simulation steps.
 
         Will be called at every timestep. May add random forces/torques to Minitaur.
-
-        Args:
-        env: The Minitaur gym environment to be randomized.
         """
         pass

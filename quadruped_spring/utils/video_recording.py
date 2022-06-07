@@ -1,3 +1,4 @@
+import copy
 import os
 import time
 
@@ -16,8 +17,13 @@ class VideoRec(gym.Wrapper):
             name (str, optional): file name. Defaults to 'rl_video'.
         """
         super().__init__(env)
+        self._old_method = copy.copy(self.unwrapped.step_simulation)
+        self.unwrapped.step_simulation = self._step_simulation
         self._path = path
         self._name = self._path + name + ".mp4"
+        self._n_episodes = 1
+        self._episode_counter = 0
+        self._disable_video = False
         self._init_video()
 
     def _init_video(self):
@@ -40,24 +46,25 @@ class VideoRec(gym.Wrapper):
         """
         Reset the environment
         """
-        obs = self.env.reset()
+        self._video_counter = 0
+        self._episode_counter += 1
+        if self._episode_counter <= self._n_episodes:
+            obs = self.env.reset()
+        else:
+            obs = self.env.get_observation()
         return obs
 
     def release_video(self):
         self._movie.release()
 
     def step(self, action):
-        """
-        :param action: ([float] or int) Action taken by the agent
-        :return: (np.ndarray, float, bool, dict) observation, reward, is the episode over?, additional informations
-        """
-
         obs, reward, done, infos = self.env.step(action)
-
-        self._increase_video()
-        time.sleep(0.005)
-
         return obs, reward, done, infos
 
-    def render(self, mode="rgb_array", **kwargs):
-        return self.env.render(mode, **kwargs)
+    def _step_simulation(self, increase_sim_counter=True):
+        self._old_method(increase_sim_counter)
+        self._video_counter += 1
+        if self._video_counter == 10:
+            self._increase_video()
+            self._video_counter = 0
+        time.sleep(0.005)

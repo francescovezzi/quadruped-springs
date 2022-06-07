@@ -3,6 +3,7 @@ import matplotlib
 import numpy as np
 
 matplotlib.use("tkagg")
+import copy
 import os
 import time
 
@@ -12,12 +13,14 @@ H_MIN = 0.15
 
 
 class MonitorState(gym.Wrapper):
-    def __init__(self, env, n_episode=1, path="logs/plots/", paddle=10):
+    def __init__(self, env, path="logs/plots/", paddle=10):
         super().__init__(env)
+        self._old_method = copy.copy(self.unwrapped.step_simulation)
+        self.unwrapped.step_simulation = self._step_simulation
         self._path = path
         self._paddle = paddle
         # self._rec_length = rec_length
-        self._time_step = self.env.get_env_time_step()
+        self._time_step = 0.001
         self.quadruped = self.env.robot
         self._motor = self.quadruped._motor_model
         if self.quadruped._enable_springs:
@@ -28,9 +31,8 @@ class MonitorState(gym.Wrapper):
         self._torque_limits = self.quadruped._robot_config.TORQUE_LIMITS
         self._velocity_limits = self.quadruped._robot_config.VELOCITY_LIMITS
         self._plot_done = False
-        self._n_episode = n_episode
+        self._n_episodes = 1
         self._episode_counter = 0
-        self._init_storage()
 
     # def _init_storage(self):
     #     NUM_MOTORS = self.env._robot_config.NUM_MOTORS
@@ -57,6 +59,8 @@ class MonitorState(gym.Wrapper):
         self._base_pos = []
         self._base_or = []
         self._feet_normal_forces = []
+        self._pitch = []
+        self._pitch_rate = []
 
     def _compute_energy_spring(self, q):
         if self.quadruped._enable_springs:
@@ -68,7 +72,7 @@ class MonitorState(gym.Wrapper):
             return np.zeros(12)
 
     def _get_data(self):
-        self._time.append(self.env.get_sim_time())
+        self._time.append(self._step_counter * self._time_step)
         self._config.append(self.quadruped.GetMotorAngles())
         self._motor_true_vel.append(self.quadruped.GetMotorVelocities())
         self._motor_tau.append(self.env.robot._applied_motor_torque)
@@ -77,6 +81,7 @@ class MonitorState(gym.Wrapper):
         self._base_pos.append(self.quadruped.GetBasePosition())
         self._base_or.append(self.quadruped.GetBaseOrientationRollPitchYaw())
         self._feet_normal_forces.append(self.quadruped.GetContactInfo()[2])
+        self._pitch_rate.append([self.quadruped.GetTrueBaseRollPitchYawRate()[1]])
 
     def _transform_to_array(self):
         self._time = np.asarray(self._time)
@@ -88,6 +93,7 @@ class MonitorState(gym.Wrapper):
         self._base_pos = np.asarray(self._base_pos)
         self._base_or = np.asarray(self._base_or)
         self._feet_normal_forces = np.asarray(self._feet_normal_forces)
+        self._pitch_rate = np.asarray(self._pitch_rate)
 
     def _plot_normal_forces(self):
         fig, ax = plt.subplots()
@@ -135,6 +141,29 @@ class MonitorState(gym.Wrapper):
             limit_low = -limit_up
             ax.plot(self._time, np.full(length, limit_up), "--")
             ax.plot(self._time, np.full(length, limit_low), "--")
+            box = ax.get_position()
+            ax.set_position([box.x0, box.y0, box.width * 0.8, box.height])
+            ax.legend(labels, loc="center left", bbox_to_anchor=(1, 0.5))
+        plt.tight_layout(rect=[0, 0, 0.75, 1])
+        # plt.show()
+        return fig, axs
+
+    def _plot_config(self):
+        fig, axs = plt.subplots(nrows=3, sharex=True)
+        titles = ["HIP", "THIGH", "CALF"]
+        labels = ("FR", "FL", "RR", "RL")  #  , "up_limit", "low_limit")
+        fig.suptitle("motor angles")
+        for i, (ax, title) in enumerate(zip(axs, titles)):
+            data = self._config[:, i + np.array([0, 3, 6, 9])]
+            ax.plot(self._time, data)
+            ax.set_title(title)
+            ax.set_xlabel("t")
+            ax.set_ylabel("q", rotation=0)
+            # length = np.shape(self._time)[0]
+            # limit_up = self._velocity_limits[i]
+            # limit_low = - limit_up
+            # ax.plot(self._time, np.full(length, limit_up), "--")
+            # ax.plot(self._time, np.full(length, limit_low), "--")
             box = ax.get_position()
             ax.set_position([box.x0, box.y0, box.width * 0.8, box.height])
             ax.legend(labels, loc="center left", bbox_to_anchor=(1, 0.5))
@@ -195,6 +224,24 @@ class MonitorState(gym.Wrapper):
         # plt.show()
         return fig, ax
 
+    def _plot_pitch_rate(self):
+        fig, ax = plt.subplots(nrows=1, ncols=1)
+        pitch_rate = self._pitch_rate
+        ax.plot(self._time, pitch_rate)
+        ax.set_title("pitch rate")
+        ax.set_xlabel("t")
+        ax.set_ylabel(r"\dot{p}", rotation=0)
+        return fig, ax
+
+    def _plot_pitch(self):
+        fig, ax = plt.subplots(nrows=1, ncols=1)
+        pitch = self._base_or[:, 1]
+        ax.plot(self._time, pitch)
+        ax.set_title("pitch")
+        ax.set_xlabel("t")
+        ax.set_ylabel(r"p", rotation=0)
+        return fig, ax
+
     def _generate_figs(self):
         self._transform_to_array()
         fig_height, _ = self._plot_height()
@@ -203,15 +250,31 @@ class MonitorState(gym.Wrapper):
         fig_feet_normal_forces, _ = self._plot_normal_forces()
         fig_springs, _ = self._plot_springs()
         fig_jump, _ = self._plot_jump()
+        fig_pitch, _ = self._plot_pitch()
+        fig_pitch_rate, _ = self._plot_pitch_rate()
+        fig_config, _ = self._plot_config()
 
-        figs = [fig_height, fig_motor_torque, fig_motor_true_velocity, fig_feet_normal_forces, fig_springs, fig_jump]
+        figs = [
+            fig_height,
+            fig_config,
+            fig_motor_torque,
+            fig_motor_true_velocity,
+            fig_feet_normal_forces,
+            fig_springs,
+            fig_jump,
+            fig_pitch,
+            fig_pitch_rate,
+        ]
         names = [
             "height",
+            "angles",
             "motor_torque",
             "motor_true_velocity",
             "feer_normal_forces",
             "elastic_potential_energy",
             "forward_jumping",
+            "pitch",
+            "pitch_rate",
         ]
         return dict(zip(figs, names))
 
@@ -224,20 +287,21 @@ class MonitorState(gym.Wrapper):
     def step(self, action):
 
         obs, reward, done, infos = self.env.step(action)
-        self._step_counter += 1
-
-        if self._episode_counter == self._n_episode and self._step_counter % self._paddle == 0:
-            self._get_data()
-
-        if done and self._episode_counter == self._n_episode:
-            self.release_plots()
 
         return obs, reward, done, infos
 
-    def render(self, mode="rgb_array", **kwargs):
-        return self.env.render(mode, **kwargs)
-
     def reset(self):
-        obs = self.env.reset()
         self._episode_counter += 1
+        if self._episode_counter <= self._n_episodes:
+            self._init_storage()
+            obs = self.env.reset()
+        else:
+            obs = self.env.get_observation()
         return obs
+
+    def _step_simulation(self, increase_sim_counter=True):
+        self._old_method(increase_sim_counter)
+        self._step_counter += 1
+
+        if self._episode_counter <= self._n_episodes and self._step_counter % self._paddle == 0:
+            self._get_data()

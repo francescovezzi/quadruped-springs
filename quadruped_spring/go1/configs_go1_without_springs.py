@@ -203,3 +203,8 @@ FEET_VEL_NOISE = FEET_VEL_HIGH * STD_COEFF
 QUATERNION_NOISE = QUATERNION_HIGH * STD_COEFF
 PITCH_NOISE = PITCH_HIGH * STD_COEFF
 PITCH_RATE_NOISE = PITCH_RATE_HIGH * STD_COEFF
+
+#######################################################
+# Initial simulation position translation
+#######################################################
+TRANSLATION_OFFSET = [0.0, 1.4, 0.0]

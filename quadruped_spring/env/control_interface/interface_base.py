@@ -98,15 +98,13 @@ class MotorInterfaceBase:
         action = -1 + 2 * (command - lower_lim) / (upper_lim - lower_lim)
         return np.clip(action, -1, 1)
 
-    def get_intermediate_settling_pose(self, i):
+    def get_intermediate_target_pose(self, i, start_pose, target_pose):
         """
         Get a pose that is the result of an interpolation between
-        the initial pose and the settling pose. The parameter i belongs to [0, 1].
+        the initial pose and the target pose. The parameter i belongs to [0, 1].
         """
         assert i >= 0 and i <= 1, "the interpolation parameter should belongs to [0, 1]."
-        init_pose = self.get_init_pose()
-        end_pose = self.get_settling_pose()
-        return init_pose * (1 - i) + i * end_pose
+        return start_pose * (1 - i) + i * target_pose
 
     @staticmethod
     def generate_ramp(i, i_min, i_max, u_min, u_max) -> float:
@@ -118,9 +116,9 @@ class MotorInterfaceBase:
         else:
             return u_min + (u_max - u_min) * (i - i_min) / (i_max - i_min)
 
-    def smooth_settling(self, i, i_min, i_max, j=1):
-        """Return the output from a ramp going from the init pose to the settling pose."""
-        return self.generate_ramp(i, i_min, i_max, self.get_init_pose(), self.get_intermediate_settling_pose(j))
+    def config_interpolation(self, i, i_min, i_max, start_pose, target_pose, j=1):
+        """Return the output from a ramp going from the start pose to the target pose."""
+        return self.generate_ramp(i, i_min, i_max, start_pose, self.get_intermediate_target_pose(j, start_pose, target_pose))
 
 
 MOTOR_CONTROL_MODE_SUPPORTED_LIST = ["TORQUE", "PD", "CARTESIAN_PD"]
@@ -181,6 +179,10 @@ class ActionWrapperBase(MotorInterfaceBase):
     def get_init_pose(self):
         return self._motor_interface.get_init_pose()
 
+    def get_last_reference(self):
+        """Get the last reference."""
+        return self._transform_action_to_motor_command(self._env._last_action)
+
     def set_init_pose(self, init_pose):
         self._motor_interface.set_init_pose(init_pose)
 
@@ -196,11 +198,11 @@ class ActionWrapperBase(MotorInterfaceBase):
     def get_settling_pose(self):
         return self._motor_interface.get_settling_pose()
 
-    def smooth_settling(self, i, i_min, i_max, j=1):
-        return self._motor_interface.smooth_settling(i, i_min, i_max, j)
+    def config_interpolation(self, i, i_min, i_max, start_pose, target_pose, j=1):
+        return self._motor_interface.config_interpolation(i, i_min, i_max, start_pose, target_pose, j)
 
-    def get_intermediate_settling_pose(self, i):
-        return self._motor_interface.get_intermediate_settling_pose(i)
+    def get_intermediate_target_pose(self, i, start_pose, target_pose):
+        return self._motor_interface.get_intermediate_target_pose(i, start_pose, target_pose)
 
     def _settle_robot_by_reference(self, reference, n_steps):
         """
@@ -219,27 +221,26 @@ class ActionWrapperBase(MotorInterfaceBase):
         settling_action = self._transform_motor_command_to_action(settling_command)
         for _ in range(n_steps):
             env.robot.ApplyAction(settling_command)
-            if env._is_render:
-                time.sleep(0.001)
-            env._pybullet_client.stepSimulation()
+            env.step_simulation(increase_sim_counter=False)
         return settling_action
 
-    def _load_springs(self, intermediate_pose_param=0.0):
+    def _settle_robot_by_ramp(self, start_pose, target_pose, intermediate_pose_param=0.0):
         """
         Settle the robot to an intermediate config between the initial
-        pose and the settling pose.
+        pose and the target pose.
         Return last action used.
         """
         env = self._motor_interface._env
         if env._is_render:
             time.sleep(0.2)
-        n_steps_tot = 900
+        n_steps_tot = 1500
         n_steps_ramp = max(n_steps_tot - 100, 1)
         for i in range(n_steps_tot):
-            reference = self.smooth_settling(i, 0, n_steps_ramp, intermediate_pose_param)
+            reference = self.config_interpolation(i, 0, n_steps_ramp, start_pose, target_pose, intermediate_pose_param)
             settling_command = self._convert_reference_to_command(reference)
             env.robot.ApplyAction(settling_command)
-            if env._is_render:
-                time.sleep(0.001)
-            env._pybullet_client.stepSimulation()
+            env.step_simulation(increase_sim_counter=False)
         return self._transform_motor_command_to_action(settling_command)
+
+    def _load_springs(self, j=0.0):
+        return self._settle_robot_by_ramp(self.get_init_pose(), self.get_settling_pose(), j)

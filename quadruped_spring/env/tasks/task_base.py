@@ -234,3 +234,5 @@ class TaskJumping(TaskBase):
 
     def is_switched_controller(self):
         return self._switched_controller
+
+
