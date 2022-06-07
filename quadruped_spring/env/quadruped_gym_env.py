@@ -132,6 +132,7 @@ class QuadrupedGymEnv(gym.Env):
         # other bookkeeping
         self._num_bullet_solver_iterations = int(300 / action_repeat)
         self._MAX_EP_LEN = EPISODE_LENGTH  # max sim time in seconds, arbitrary
+        self._settling_steps=1500
 
         self._build_action_command_interface(motor_control_mode, action_space_mode)
         self.setupActionSpace()
@@ -346,7 +347,7 @@ class QuadrupedGymEnv(gym.Env):
 
     def _settle_robot(self):
         if self._isRLGymInterface:
-            self._last_action = self._ac_interface._settle_robot_by_reference(self.get_init_pose(), n_steps=1500)
+            self._last_action = self._ac_interface._settle_robot_by_reference(self.get_init_pose(), n_steps=self._settling_steps)
         else:
             settle_robot_by_pd(self)
 
