@@ -1,5 +1,4 @@
 import gym
-import numpy as np
 
 from quadruped_spring.utils.timer import Timer
 
