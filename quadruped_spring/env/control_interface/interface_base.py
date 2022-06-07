@@ -98,7 +98,8 @@ class MotorInterfaceBase:
         action = -1 + 2 * (command - lower_lim) / (upper_lim - lower_lim)
         return np.clip(action, -1, 1)
 
-    def get_intermediate_target_pose(self, i, start_pose, target_pose):
+    @staticmethod
+    def get_intermediate_target_pose(i, start_pose, target_pose):
         """
         Get a pose that is the result of an interpolation between
         the initial pose and the target pose. The parameter i belongs to [0, 1].
