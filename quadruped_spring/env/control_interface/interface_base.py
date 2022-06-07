@@ -30,7 +30,10 @@ class MotorInterfaceBase:
     def set_init_pose(self, init_pose):
         """Set the robot initial pose."""
         assert len(init_pose) == self._robot_config.NUM_MOTORS, "Wrong dimension for init pose."
-        self._init_pose = np.copy(init_pose)
+        self._init_pose = init_pose
+
+    def set_settling_pose(self, settle_pose):
+        self._settling_pose = settle_pose
 
     def set_landing_pose(self, land_pose):
         self._landing_pose = land_pose
@@ -181,6 +184,9 @@ class ActionWrapperBase(MotorInterfaceBase):
     def set_init_pose(self, init_pose):
         self._motor_interface.set_init_pose(init_pose)
 
+    def set_settling_pose(self, settle_pose):
+        self._motor_interface.set_settling_pose(settle_pose)
+
     def set_landing_pose(self, land_pose):
         self._motor_interface.set_landing_pose(land_pose)
 
@@ -218,15 +224,19 @@ class ActionWrapperBase(MotorInterfaceBase):
             env._pybullet_client.stepSimulation()
         return settling_action
 
-    def _load_springs(self, j=0.5):
-        """Settle the robot to an initial config. Return last action used."""
+    def _load_springs(self, intermediate_pose_param=0.0):
+        """
+        Settle the robot to an intermediate config between the initial
+        pose and the settling pose.
+        Return last action used.
+        """
         env = self._motor_interface._env
         if env._is_render:
             time.sleep(0.2)
         n_steps_tot = 900
         n_steps_ramp = max(n_steps_tot - 100, 1)
         for i in range(n_steps_tot):
-            reference = self.smooth_settling(i, 0, n_steps_ramp, j)
+            reference = self.smooth_settling(i, 0, n_steps_ramp, intermediate_pose_param)
             settling_command = self._convert_reference_to_command(reference)
             env.robot.ApplyAction(settling_command)
             if env._is_render:

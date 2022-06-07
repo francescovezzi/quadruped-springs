@@ -191,6 +191,7 @@ if __name__ == "__main__":
         record_video=False,
         enable_springs=False,
         enable_env_randomization=False,
+        task_env="NO_TASK",
     )
 
     # initialize Hopf Network, supply gait

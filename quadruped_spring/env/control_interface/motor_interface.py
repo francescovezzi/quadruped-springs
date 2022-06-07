@@ -12,14 +12,13 @@ class MotorInterfacePD(MotorInterfaceBase):
         self._motor_control_mode_ROB = "PD"
         self._lower_lim = self._robot_config.RL_LOWER_ANGLE_JOINT
         self._upper_lim = self._robot_config.RL_UPPER_ANGLE_JOINT
-        self._init_pose = np.copy(self._robot_config.INIT_MOTOR_ANGLES)
-        self._settling_pose = self._robot_config.ANGLE_SETTLING_POSE
-        self._landing_pose = self._robot_config.ANGLE_LANDING_POSE
         self._symm_idx = 0
 
     def _reset(self, robot):
         super()._reset(robot)
-        self._init_pose = np.copy(self._robot_config.INIT_MOTOR_ANGLES)
+        self._init_pose = self._robot_config.INIT_MOTOR_ANGLES
+        self._settling_pose = self._robot_config.ANGLE_SETTLING_POSE
+        self._landing_pose = self._robot_config.ANGLE_LANDING_POSE
 
     def _transform_action_to_motor_command(self, action):
         command = self._scale_helper_action_to_motor_command(action)
@@ -32,9 +31,6 @@ class MotorInterfacePD(MotorInterfaceBase):
     def get_robot_pose(self):
         return self._robot.GetMotorAngles()
 
-    def get_settling_pose(self):
-        return self._settling_pose
-
 
 class MotorInterfaceCARTESIAN_PD(MotorInterfaceBase):
     """Command Action interface for CARTESIAN_PD motor control mode."""
@@ -45,14 +41,13 @@ class MotorInterfaceCARTESIAN_PD(MotorInterfaceBase):
         self._motor_control_mode_ROB = "PD"
         self._lower_lim = self._robot_config.RL_LOWER_CARTESIAN_POS
         self._upper_lim = self._robot_config.RL_UPPER_CARTESIAN_POS
-        self._init_pose = np.copy(self._robot_config.NOMINAL_FOOT_POS_LEG_FRAME)
-        self._settling_pose = self._robot_config.CARTESIAN_SETTLING_POSE
-        self._landing_pose = self._robot_config.CARTESIAN_LANDING_POSE
         self._symm_idx = 1
 
     def _reset(self, robot):
         super()._reset(robot)
-        self._init_pose = np.copy(self._robot_config.NOMINAL_FOOT_POS_LEG_FRAME)
+        self._init_pose = self._robot_config.NOMINAL_FOOT_POS_LEG_FRAME
+        self._settling_pose = self._robot_config.CARTESIAN_SETTLING_POSE
+        self._landing_pose = self._robot_config.CARTESIAN_LANDING_POSE
 
     def _transform_action_to_motor_command(self, action):
         des_foot_pos = self._scale_helper_action_to_motor_command(action)
@@ -73,9 +68,6 @@ class MotorInterfaceCARTESIAN_PD(MotorInterfaceBase):
     def get_robot_pose(self):
         feet_pos, _ = self._robot.ComputeFeetPosAndVel()
         return feet_pos
-
-    def get_settling_pose(self):
-        return self._settling_pose
 
 
 class MotorInterfaceTORQUE(MotorInterfaceBase):

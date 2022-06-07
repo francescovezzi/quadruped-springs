@@ -74,8 +74,8 @@ class QuadrupedGymEnv(gym.Env):
         enable_action_interpolation=False,
         enable_action_filter=False,
         enable_env_randomization=True,
-        preload_springs=False,
         env_randomizer_mode="MASS_RANDOMIZER",
+        curriculum_level=0.0,
         test_env=False,  # NOT ALLOWED FOR TRAINING!
     ):
         """Initialize the quadruped gym environment.
@@ -110,7 +110,7 @@ class QuadrupedGymEnv(gym.Env):
             observations space modes.
           enable_env_randomizer: Boolean specifying whether to enable env randomization.
           env_randomizer_mode: String specifying which env randomizers to use.
-          preload_springs: Boolean specifying whether
+          curriculum_level: Scalar in [0,1] specyfing the task difficulty level.
         """
         self.seed()
         self._enable_springs = enable_springs
@@ -130,7 +130,6 @@ class QuadrupedGymEnv(gym.Env):
         self._enable_action_interpolation = enable_action_interpolation
         self._enable_action_filter = enable_action_filter
         self._using_test_env = test_env
-        self._preload_springs = preload_springs
         if test_env:
             self._add_noise = True
 
@@ -143,10 +142,13 @@ class QuadrupedGymEnv(gym.Env):
         self._build_action_command_interface(motor_control_mode, action_space_mode)
         self.setupActionSpace()
 
-        self._robot_sensors = SensorList(SensorCollection().get_el(observation_space_mode))
+        self._observation_space_mode = observation_space_mode
+        self._robot_sensors = SensorList(SensorCollection().get_el(self._observation_space_mode))
         self.setupObservationSpace()
 
-        self._task = TaskCollection().get_el(task_env)()
+        self.task_env = task_env
+        self.task = TaskCollection().get_el(self.task_env)()
+        self.task.set_curriculum_level(curriculum_level, verbose=0)
 
         if self._enable_action_filter:
             self._action_filter = self._build_action_filter()
@@ -163,6 +165,7 @@ class QuadrupedGymEnv(gym.Env):
             self._env_randomizer_mode = env_randomizer_mode
             self._env_randomizers = EnvRandomizerList(EnvRandomizerCollection().get_el(self._env_randomizer_mode))
             self._env_randomizers._init(self)
+
         self.reset()
 
     ######################################################################################
@@ -245,8 +248,8 @@ class QuadrupedGymEnv(gym.Env):
             self._sub_step(curr_act, sub_step)
 
         self._env_step_counter += 1
-        self._task._on_step()
-        reward = self._task._reward()
+        self.task._on_step()
+        reward = self.task._reward()
         done = False
         # infos = {"base_pos": self.robot.GetBasePosition()}
         infos = {}
@@ -258,7 +261,7 @@ class QuadrupedGymEnv(gym.Env):
 
         # Update the actual reward at the end of the episode with bonus or malus
         if done:
-            reward += self._task._reward_end_episode()
+            reward += self.task._reward_end_episode()
 
         self._robot_sensors._on_step()
         obs = self.get_observation()
@@ -332,19 +335,16 @@ class QuadrupedGymEnv(gym.Env):
 
         self._env_step_counter = 0
         self._sim_step_counter = 0
-        self._last_base_position = [0, 0, 0]
 
         if self._is_render:
             self._pybullet_client.resetDebugVisualizerCamera(self._cam_dist, self._cam_yaw, self._cam_pitch, [0, 0, 0])
 
         self._ac_interface._reset(self.robot)
-        self._settle_robot()  # Settle robot after being spawned
-
         if self._enable_env_randomization:
             self._env_randomizers.randomize_env()
-
+        self._settle_robot()  # Settle robot after being spawned
+        self.task._reset(self)  # Reset task internal state
         self._robot_sensors._reset(self.robot)  # Rsest sensors
-        self._task._reset(self)  # Reset task internal state
 
         if self._enable_action_filter:
             self._reset_action_filter()
@@ -358,8 +358,6 @@ class QuadrupedGymEnv(gym.Env):
     def _settle_robot(self):
         if self._isRLGymInterface:
             self._last_action = self._ac_interface._settle_robot_by_reference(self.get_init_pose(), n_steps=1200)
-            if self._preload_springs:
-                self._last_action = self._ac_interface._load_springs()
         else:
             settle_robot_by_pd(self)
 
@@ -501,16 +499,16 @@ class QuadrupedGymEnv(gym.Env):
         return self._robot_config
 
     def are_springs_enabled(self):
-        """Get boolean specifying if springs are enabled or not."""
+        """Return boolean specifying whether springs are enabled."""
         return self._enable_springs
 
     def task_terminated(self):
-        """Return boolean specifying whther the task is terminated."""
-        return self._task._terminated()
+        """Return boolean specifying whether the task is terminated."""
+        return self.task._terminated()
 
     def get_reward_end_episode(self):
         """Return bonus and malus to add to the reward at the end of the episode."""
-        return self._task._reward_end_episode()
+        return self.task._reward_end_episode()
 
     def get_init_pose(self):
         """Get the initial init pose for robot settling."""
@@ -532,7 +530,20 @@ class QuadrupedGymEnv(gym.Env):
 
     def print_task_info(self):
         """Print some info about the task performed."""
-        self._task.print_info()
+        self.task.print_info()
+
+    def get_curriculum_level(self):
+        """Return the acutal curriculum level."""
+        return self.task.get_curriculum_level()
+
+    def increase_curriculum_level(self, value):
+        """increase the curriculum level."""
+        assert value >= 0 and value < 1, "curriculum level change should be in [0,1)."
+        self.task.increase_curriculum_level(value)
+
+    def print_curriculum_info(self):
+        """Print curriculum info."""
+        self.task.print_curriculum_info()
 
 
 def build_env():
@@ -546,13 +557,13 @@ def build_env():
         "enable_action_interpolation": False,
         "enable_action_filter": True,
         "task_env": "JUMPING_ON_PLACE_HEIGHT",
-        "observation_space_mode": "CUSTOM_2D",
+        "observation_space_mode": "ARS_HEIGHT",
         "action_space_mode": "SYMMETRIC",
-        "enable_env_randomization": True,
+        "enable_env_randomization": False,
         "env_randomizer_mode": "SETTLING_RANDOMIZER",
-        "preload_springs": True,
     }
     env = QuadrupedGymEnv(**env_config)
+
     env = ObsFlatteningWrapper(env)
     # env = RestWrapper(env)
     # env = LandingWrapper(env)

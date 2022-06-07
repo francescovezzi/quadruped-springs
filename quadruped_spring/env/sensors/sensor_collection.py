@@ -36,6 +36,21 @@ class SensorCollection(CollectionBase):
             rs.JointPosition,
             rs.JointVelocity,
         ]
+        self._ARS = [
+            rs.Pitch,
+            rs.PitchRate,
+            rs.LinearVelocity2D,
+            rs.JointPosition,
+            rs.JointVelocity,
+        ]
+        self._ARS_HEIGHT = [
+            rs.Pitch,
+            rs.PitchRate,
+            rs.LinearVelocity2D,
+            rs.JointPosition,
+            rs.JointVelocity,
+            rs.Height,
+        ]
         self._dict = {
             "DEFAULT": self._DEFAULT,
             "ENCODER": self._ENCODER,
@@ -44,5 +59,7 @@ class SensorCollection(CollectionBase):
             "ANGLE_NO_IMU": self._ANGLE_NO_IMU,
             "CUSTOM_3D": self._CUSTOM_3D,
             "CUSTOM_2D": self._CUSTOM_2D,
+            "ARS": self._ARS,
+            "ARS_HEIGHT": self._ARS_HEIGHT,
         }
         self._element_type = "sensor package"
