@@ -35,6 +35,7 @@ class Quadruped(object):
           on_rack: Whether to place the quadruped on rack. This is only used to debug
             the walking gait. In this mode, the quaruped's base is hanged midair so
             that its walking gait is clearer to visualize.
+          enable_springs: Whether the joint level springs are enabled or not.
         """
         self._robot_config = robot_config
         self.num_motors = self._robot_config.NUM_MOTORS

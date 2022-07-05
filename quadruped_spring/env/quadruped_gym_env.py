@@ -76,7 +76,6 @@ class QuadrupedGymEnv(gym.Env):
         enable_env_randomization=True,
         env_randomizer_mode="MASS_RANDOMIZER",
         curriculum_level=0.0,
-        test_env=False,  # NOT ALLOWED FOR TRAINING!
     ):
         """Initialize the quadruped gym environment.
 
@@ -85,8 +84,6 @@ class QuadrupedGymEnv(gym.Env):
             if the actions should be scaled.
           time_step: Simulation time step.
           action_repeat: The number of simulation steps where the same actions are applied.
-          distance_weight: The weight of the distance term in the reward.
-          energy_weight: The weight of the energy term in the reward.
           motor_control_mode: Whether to use torque control, PD, control, etc.
           task_env: Task trying to learn (fwd locomotion, standup, etc.)
           observation_space_mode: what should be in here? Check available functions in quadruped.py
@@ -97,7 +94,6 @@ class QuadrupedGymEnv(gym.Env):
           render: Whether to render the simulation.
           record_video: Whether to record a video of each trial.
           add_noise: vary coefficient of friction
-          test_env: add random terrain
           enable_springs: Whether to enable springs or not
           enable_action_interpolation: Whether to interpolate the current action
             with the previous action in order to produce smoother motions
@@ -135,9 +131,8 @@ class QuadrupedGymEnv(gym.Env):
 
         # other bookkeeping
         self._num_bullet_solver_iterations = int(300 / action_repeat)
-        self._last_frame_time = 0.0  # for rendering
         self._MAX_EP_LEN = EPISODE_LENGTH  # max sim time in seconds, arbitrary
-        self._action_bound = 1.0
+        self._settling_steps = 1500
 
         self._build_action_command_interface(motor_control_mode, action_space_mode)
         self.setupActionSpace()
@@ -229,10 +224,12 @@ class QuadrupedGymEnv(gym.Env):
         self.robot.ApplyAction(proc_action)
         if self._enable_env_randomization:
             self._env_randomizers.randomize_step()
+        self.step_simulation()
 
+    def step_simulation(self, increase_sim_counter=True):
         self._pybullet_client.stepSimulation()
-        self._sim_step_counter += 1
-
+        if increase_sim_counter:
+            self._sim_step_counter += 1
         if self._is_render:
             self._render_step_helper()
 
@@ -281,83 +278,78 @@ class QuadrupedGymEnv(gym.Env):
 
     def _reset_action_filter(self):
         self._action_filter.reset()
+        self._action_filter.init_history(self._last_action)
 
     def _filter_action(self, action):
         filtered_action = self._action_filter.filter(action)
         return filtered_action
-
-    def _init_filter(self):
-        # initialize the filter history, since resetting the filter will fill
-        # the history with zeros and this can cause sudden movements at the start
-        # of each episode
-        init_action = self._last_action
-        self._action_filter.init_history(init_action)
 
     ######################################################################################
     # Reset
     ######################################################################################
     def reset(self):
         """Set up simulation environment."""
-        mu_min = 0.5
-        if self._hard_reset:
-            # set up pybullet simulation
-            self._pybullet_client.resetSimulation()
-            self._pybullet_client.setPhysicsEngineParameter(numSolverIterations=int(self._num_bullet_solver_iterations))
-            self._pybullet_client.setTimeStep(self._sim_time_step)
-            self.plane = self._pybullet_client.loadURDF(
-                pybullet_data.getDataPath() + "/plane.urdf", basePosition=[80, 0, 0]
-            )  # to extend available running space (shift)
-            self._pybullet_client.changeVisualShape(self.plane, -1, rgbaColor=[1, 1, 1, 0.9])
-            self._pybullet_client.configureDebugVisualizer(self._pybullet_client.COV_ENABLE_PLANAR_REFLECTION, 0)
-            self._pybullet_client.setGravity(0, 0, -9.8)
-            self.robot = quadruped.Quadruped(
-                pybullet_client=self._pybullet_client,
-                robot_config=self._robot_config,
-                motor_control_mode=self._ac_interface._motor_control_mode_ROB,
-                on_rack=self._on_rack,
-                render=self._is_render,
-                enable_springs=self._enable_springs,
-            )
 
-            if self._add_noise:
-                ground_mu_k = mu_min + (1 - mu_min) * np.random.random()
-                self._ground_mu_k = ground_mu_k
-                self._pybullet_client.changeDynamics(self.plane, -1, lateralFriction=ground_mu_k)
-                if self._is_render:
-                    print("ground friction coefficient is", ground_mu_k)
-
-            if self._using_test_env:
-                pass
-                # self.add_random_boxes()
-                # self._add_base_mass_offset()
-        else:
-            self.robot.Reset(reload_urdf=False)
+        self.reset_pybullet_simulation()
+        if self._add_noise:
+            self._set_ground_friction()
 
         self._env_step_counter = 0
         self._sim_step_counter = 0
-
-        if self._is_render:
-            self._pybullet_client.resetDebugVisualizerCamera(self._cam_dist, self._cam_yaw, self._cam_pitch, [0, 0, 0])
 
         self._ac_interface._reset(self.robot)
         if self._enable_env_randomization:
             self._env_randomizers.randomize_env()
         self._settle_robot()  # Settle robot after being spawned
         self.task._reset(self)  # Reset task internal state
+        if self._enable_env_randomization:
+            self._env_randomizers.randomize_robot()
         self._robot_sensors._reset(self.robot)  # Rsest sensors
 
         if self._enable_action_filter:
             self._reset_action_filter()
-            self._init_filter()
 
         if self._is_record_video:
             self.recordVideoHelper()
 
         return self.get_observation()
 
+    def reset_pybullet_simulation(self):
+        # set up pybullet simulation
+        self._pybullet_client.resetSimulation()
+        self._pybullet_client.setPhysicsEngineParameter(numSolverIterations=int(self._num_bullet_solver_iterations))
+        self._pybullet_client.setTimeStep(self._sim_time_step)
+        self.plane = self._pybullet_client.loadURDF(
+            pybullet_data.getDataPath() + "/plane.urdf", basePosition=[80, 0, 0]
+        )  # to extend available running space (shift)
+        self._pybullet_client.changeVisualShape(self.plane, -1, rgbaColor=[1, 1, 1, 0.9])
+        self._pybullet_client.configureDebugVisualizer(self._pybullet_client.COV_ENABLE_PLANAR_REFLECTION, 0)
+        self._pybullet_client.setGravity(0, 0, -9.8)
+        self._quadruped_config = dict(
+            pybullet_client=self._pybullet_client,
+            robot_config=self._robot_config,
+            motor_control_mode=self._ac_interface._motor_control_mode_ROB,
+            on_rack=self._on_rack,
+            render=self._is_render,
+            enable_springs=self._enable_springs,
+        )
+        self.robot = quadruped.Quadruped(**self._quadruped_config)
+        if self._is_render:
+            self._pybullet_client.resetDebugVisualizerCamera(self._cam_dist, self._cam_yaw, self._cam_pitch, [0, 0, 0])
+
+    def _set_ground_friction(self):
+        mu_min = 0.5
+        ground_mu_k = mu_min + (1 - mu_min) * np.random.random()
+        self._ground_mu_k = ground_mu_k
+        self._pybullet_client.changeDynamics(self.plane, -1, lateralFriction=ground_mu_k)
+        if self._is_render:
+            print("ground friction coefficient is", ground_mu_k)
+
     def _settle_robot(self):
         if self._isRLGymInterface:
-            self._last_action = self._ac_interface._settle_robot_by_reference(self.get_init_pose(), n_steps=1200)
+            self._last_action = self._ac_interface._settle_robot_by_reference(
+                self.get_init_pose(), n_steps=self._settling_steps
+            )
         else:
             settle_robot_by_pd(self)
 
@@ -431,6 +423,7 @@ class QuadrupedGymEnv(gym.Env):
 
     def _configure_visualizer(self):
         """Remove all visualizer borders, and zoom in"""
+        self._last_frame_time = 0.0  # for rendering
         # default rendering options
         self._render_width = 333
         self._render_height = 480
@@ -536,6 +529,17 @@ class QuadrupedGymEnv(gym.Env):
         """Return the acutal curriculum level."""
         return self.task.get_curriculum_level()
 
+    def get_quadruped_config(self):
+        """Return the quadruped configuration."""
+        return self._quadruped_config
+
+    def get_randomizer_mode(self):
+        """Return the env ranodmizer mode."""
+        if self._enable_env_randomization:
+            return self._env_randomizer_mode
+        else:
+            return "noone"
+
     def increase_curriculum_level(self, value):
         """increase the curriculum level."""
         assert value >= 0 and value < 1, "curriculum level change should be in [0,1)."
@@ -548,7 +552,7 @@ class QuadrupedGymEnv(gym.Env):
 
 def build_env():
     env_config = {
-        "render": True,
+        "render": False,
         "on_rack": False,
         "motor_control_mode": "PD",
         "action_repeat": 10,

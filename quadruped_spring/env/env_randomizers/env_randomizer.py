@@ -8,7 +8,7 @@ from quadruped_spring.utils.timer import Timer
 # Relative range.
 BASE_MASS_ERROR_RANGE = (-0.2, 0.2)  # 0.2 means 20%
 LEG_MASS_ERROR_RANGE = (-0.2, 0.2)  # 0.2 means 20%
-MAX_SETTLING_ACTION_DISTURBANCE = (0.05, 0.05, 0.05)  # Hip, thigh, calf
+MAX_SETTLING_ACTION_DISTURBANCE = (0.05, 0.04, 0.03)  # Hip, thigh, calf
 
 # Values used for nominal springs parameters randomization
 SPRING_STIFFNESS_MAX_ERROR_RANGE = (0.1, 0.1, 0.1)  # Hip, thigh, calf
@@ -147,26 +147,16 @@ class EnvRandomizerInitialConfiguration(EnvRandomizerBase):
         self._env = env
         self._aci = self._env._ac_interface
         self._max_disturbe = np.array(max_disturbe * self._env._robot_config.NUM_LEGS)
-        self._noised_config = None
 
-    def randomize_env(self):
-        # Add noise to the settling config
-        self._add_noise_to_settling_config()
-        noised_config = self.get_noised_config()
-        self._aci.set_settling_pose(noised_config)
-
-    def randomize_step(self):
-        pass
-
-    def _add_noise_to_settling_config(self):
-        """Return the config with noise."""
+    def randomize_robot(self):
         sample_disturbe = np.random.uniform(np.zeros(self._env._robot_config.NUM_MOTORS), np.array(self._max_disturbe))
-        action = self._aci._scale_helper_motor_command_to_action(self._aci.get_settling_pose())
+        actual_pose = self._aci.get_robot_pose()
+        action = self._aci._scale_helper_motor_command_to_action(actual_pose)
         new_action = action + sample_disturbe
-        self._noised_config = self._aci._scale_helper_action_to_motor_command(new_action)
-
-    def get_noised_config(self):
-        return self._noised_config
+        noised_config = self._aci._scale_helper_action_to_motor_command(new_action)
+        noised_config = self._aci._convert_reference_to_command(noised_config)
+        pose = self._aci.get_last_reference()
+        self._aci._settle_robot_by_ramp(pose, noised_config)
 
 
 class EnvRandomizerSprings(EnvRandomizerBase):

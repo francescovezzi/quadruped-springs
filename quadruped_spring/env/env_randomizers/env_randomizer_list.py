@@ -21,3 +21,11 @@ class EnvRandomizerList:
         """Each step should be called."""
         for env_rand in self._list:
             env_rand.randomize_step()
+
+    def randomize_robot(self):
+        """
+        Each reset after stepping in simulation
+        should be called.
+        """
+        for env_rand in self._list:
+            env_rand.randomize_robot()

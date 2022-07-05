@@ -8,3 +8,4 @@ quadruped_spring/evaluate_all_models.py
 quadruped_spring/store_params_from_model.py
 quadruped_spring/print_params_from_model.py
 quadruped_spring/policy_cloning/
+quadruped_spring/get_network_statistic.py

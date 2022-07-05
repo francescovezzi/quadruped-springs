@@ -33,10 +33,10 @@ class RestWrapper(gym.Wrapper):
             if self.rest_timer.already_started():
                 self.rest_timer.reset_timer()
 
-        if self.rest_timer.time_up():
-            # Update sparse reward
-            if not done:
-                reward += self.env.get_reward_end_episode()
+        if self.rest_timer.time_up() and not done:
+            # Update sparse reward and infos
+            reward += self.env.get_reward_end_episode()
+            infos["TimeLimit.truncated"] = True
             done = True
 
         return obs, reward, done, infos
