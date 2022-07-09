@@ -39,3 +39,7 @@ The CPGs are based on the following papers:
 - L. Righetti and A. J. Ijspeert, "Pattern generators with sensory feedback for the control of quadruped locomotion," 2008 IEEE International Conference on Robotics and Automation, 2008, pp. 819-824, doi: 10.1109/ROBOT.2008.4543306. [link](https://ieeexplore.ieee.org/document/4543306)
 - M. Ajallooeian, S. Pouya, A. Sproewitz and A. J. Ijspeert, "Central Pattern Generators augmented with virtual model control for quadruped rough terrain locomotion," 2013 IEEE International Conference on Robotics and Automation, 2013, pp. 3321-3328, doi: 10.1109/ICRA.2013.6631040. [link](https://ieeexplore.ieee.org/abstract/document/6631040) 
 - M. Ajallooeian, S. Gay, A. Tuleu, A. Spröwitz and A. J. Ijspeert, "Modular control of limit cycle locomotion over unperceived rough terrain," 2013 IEEE/RSJ International Conference on Intelligent Robots and Systems, 2013, pp. 3390-3397, doi: 10.1109/IROS.2013.6696839. [link](https://ieeexplore.ieee.org/abstract/document/6696839) 
+
+## Acknowledgements
+
+The quadruped env was original created by [Guillaume Bellegarda](https://scholar.google.com/citations?user=YDimn5wAAAAJ&hl=en)
