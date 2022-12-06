@@ -15,51 +15,70 @@ class SensorCollection(CollectionBase):
 
     def __init__(self):
         super().__init__()
-        self._DEFAULT = [rs.IMU, rs.FeetPostion, rs.FeetVelocity, rs.GroundReactionForce]
-        self._ENCODER = [rs.IMU, rs.JointPosition, rs.JointVelocity, rs.GroundReactionForce]
+        self._ENCODER = [rs.JointPosition, rs.JointVelocity]
         self._ENCODER_2 = [rs.LinearVelocity, rs.AngularVelocity, rs.JointPosition, rs.JointVelocity]
-        self._CARTESIAN_NO_IMU = [rs.FeetPostion, rs.FeetVelocity, rs.GroundReactionForce]
-        self._ANGLE_NO_IMU = [rs.JointPosition, rs.JointVelocity, rs.GroundReactionForce]
-        self._CUSTOM_3D = [
-            rs.Quaternion,
-            rs.DesiredBaseLinearVelocityXZ,
-            rs.AngularVelocity,
-            rs.LinearVelocity,
+        self._CARTESIAN_NO_IMU = [rs.FeetPostion, rs.FeetVelocity]
+        self._ARS_BASIC = [
             rs.JointPosition,
             rs.JointVelocity,
-        ]
-        self._CUSTOM_2D = [
             rs.Pitch,
-            rs.PitchRate,
-            rs.DesiredBaseLinearVelocityXZ,
-            rs.LinearVelocity2D,
-            rs.JointPosition,
-            rs.JointVelocity,
-        ]
-        self._ARS = [
-            rs.Pitch,
-            rs.PitchRate,
-            rs.LinearVelocity2D,
-            rs.JointPosition,
-            rs.JointVelocity,
-        ]
-        self._ARS_HEIGHT = [
-            rs.Pitch,
-            rs.PitchRate,
-            rs.LinearVelocity2D,
-            rs.JointPosition,
-            rs.JointVelocity,
             rs.Height,
+            rs.BaseHeightVelocity,
         ]
+
+        self._ARS_SENSOR = [
+            rs.JointPosition,
+            rs.JointVelocity,
+            rs.Pitch,
+            rs.PitchRate,
+            rs.Height,
+            rs.BaseHeightVelocity,
+        ]
+        self._LANDING_SENSOR = [
+            rs.JointPosition,
+            rs.JointVelocity,
+            rs.Pitch,
+            rs.PitchRate,
+            rs.Height,
+            rs.BaseHeightVelocity,
+            rs.Landing,
+        ]
+        self._PPO_BASIC = [
+            rs.JointPosition,
+            rs.JointVelocity,
+            rs.Pitch,
+            rs.Height,
+            rs.BaseHeightVelocity,
+            rs.Landing,
+        ]
+        self._PPO_BASIC_X = [
+            rs.JointPosition,
+            rs.JointVelocity,
+            rs.Pitch,
+            rs.Height,
+            rs.BaseHeightVelocity,
+            rs.VelocityX,
+            rs.Landing,
+        ]
+        self._PPO_BASIC_CONTACT = [
+            rs.JointPosition,
+            rs.JointVelocity,
+            rs.Pitch,
+            rs.Height,
+            rs.BaseHeightVelocity,
+            rs.Landing,
+            rs.BooleanContact,
+        ]
+
         self._dict = {
-            "DEFAULT": self._DEFAULT,
             "ENCODER": self._ENCODER,
             "ENCODER_2": self._ENCODER_2,
             "CARTESIAN_NO_IMU": self._CARTESIAN_NO_IMU,
-            "ANGLE_NO_IMU": self._ANGLE_NO_IMU,
-            "CUSTOM_3D": self._CUSTOM_3D,
-            "CUSTOM_2D": self._CUSTOM_2D,
-            "ARS": self._ARS,
-            "ARS_HEIGHT": self._ARS_HEIGHT,
+            "ARS_BASIC": self._ARS_BASIC,
+            "ARS_SENSOR": self._ARS_SENSOR,
+            "LANDING_SENSOR": self._LANDING_SENSOR,
+            "PPO_BASIC": self._PPO_BASIC,
+            "PPO_BASIC_X": self._PPO_BASIC_X,
+            "PPO_BASIC_CONTACT": self._PPO_BASIC_CONTACT,
         }
         self._element_type = "sensor package"

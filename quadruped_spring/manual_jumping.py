@@ -1,6 +1,5 @@
 import inspect
 import os
-import time
 
 import gym
 import numpy as np
@@ -8,111 +7,90 @@ import numpy as np
 current_dir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 os.sys.path.insert(0, current_dir)
 
-import argparse
-
 from env.quadruped_gym_env import QuadrupedGymEnv
 from env.wrappers.landing_wrapper import LandingWrapper
-from env.wrappers.rest_wrapper import RestWrapper
-from utils.evaluate_metric import EvaluateMetricJumpOnPlace
-
-# from utils.monitor_state import MonitorState
 
 
 class JumpingStateMachine(gym.Wrapper):
     def __init__(self, env):
         super().__init__(env)
+        self.aci = self.env.get_ac_interface()
+        self.j_front = 0.0
+        self.j_rear = 0.0
+        self.init_pose_front = self.aci.get_settling_pose()[:6]
+        self.init_pose_rear = self.aci.get_settling_pose()[6:]
+        self.init_pose = self.aci.get_settling_pose()
+        self.init_action_front = self.aci._transform_motor_command_to_action(self.init_pose)[:6]
+        self.init_action_rear = self.aci._transform_motor_command_to_action(self.init_pose)[6:]
+        self.scale = 0.9
+        x = self.init_action_front[0]
+        y = -self.init_action_front[1]
+        zet = -self.scale * 1
+        self.final_action_front = np.array([x, -y, zet, x, y, zet])
+        self.final_action_rear = np.array([x, -y, zet, x, y, zet])
+
+    @staticmethod
+    def _interpolate_action(a, b, p):
+        p = np.clip(p, 0, 1)
+        return a * (1 - p) + b * p
+
+    def compute_front_action(self):
+        return self._interpolate_action(self.init_action_front, self.final_action_front, self.j_front)
+
+    def compute_rear_action(self):
+        return self._interpolate_action(self.init_action_rear, self.final_action_rear, self.j_rear)
 
     def jumping_explosive_action(self):
-        if self.env._enable_springs:
-            coeff = 0.2
+        if self.env.are_springs_enabled():
+            coeff = 0.7
         else:
-            coeff = 0.2
-        action_front = np.array([0, 0, coeff * 1] * 2)
-        action_rear = np.array([0, 0, 1] * 2)
+            coeff = 1.0
+        action_front = self.compute_front_action()
+        action_rear = self.compute_rear_action()
+        self.j_front += 0.0
+        self.j_rear += 0.1
         jump_action = np.concatenate((action_front, action_rear))
         return jump_action
 
-    def step(self, action):
-
-        obs, reward, done, infos = self.env.step(action)
-
-        return obs, reward, done, infos
-
-    def render(self, mode="rgb_array", **kwargs):
-        return self.env.render(mode, **kwargs)
-
     def reset(self):
         obs = self.env.reset()
+        self.aci._load_springs(1.0)
+        self.j_rear = 0.8
+        self.j_front = 0.8
         return obs
 
-    def close(self):
-        self.env.close()
 
-
-def build_env(enable_springs=False):
+def build_env():
     env_config = {
-        "enable_springs": enable_springs,
+        "enable_springs": True,
         "render": True,
         "on_rack": False,
         "isRLGymInterface": True,
-        "motor_control_mode": "PD",
+        "motor_control_mode": "CARTESIAN_PD",
         "action_repeat": 10,
         "record_video": False,
         "action_space_mode": "DEFAULT",
-        "task_env": "JUMPING_ON_PLACE_HEIGHT",
-        "enable_env_randomization": False,
-        "env_randomizer_mode": "DISTURBANCE_RANDOMIZER",
-        "preload_springs": True,
+        "task_env": "JUMPING_IN_PLACE",
+        "env_randomizer_mode": "GROUND_RANDOMIZER",
+        "curriculum_level": 1.0,
+        "observation_space_mode": "ARS_BASIC",
     }
-    env_config["enable_springs"] = True
-    if fill_line:
-        env_config["render"] = False
     env = QuadrupedGymEnv(**env_config)
+    env = JumpingStateMachine(env)
+    env = LandingWrapper(env)
     return env
 
 
 if __name__ == "__main__":
 
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--enable-springs", action="store_true", default=False, help="enable springs")
-    parser.add_argument("--fill-line", action="store_true", default=False, help="fill line in report.txt")
-    args = parser.parse_args()
-    enable_springs = args.enable_springs
-    fill_line = args.fill_line
-
-    env = build_env(enable_springs=enable_springs)
-    env = JumpingStateMachine(env)
-    # sim_steps = env._total_sim_steps + 3000
-    # env = MonitorState(env=env, path="logs/plots/manual_jumping_with_springs", rec_length=sim_steps)
-    env = EvaluateMetricJumpOnPlace(env)
-    env = RestWrapper(env)
-    env = LandingWrapper(env)
-    done = False
+    env = build_env()
     obs = env.reset()
-    t_start = time.time()
+
+    done = False
     while not done:
         action = env.jumping_explosive_action()
-        # action = np.zeros(12)
         obs, reward, done, info = env.step(action)
-    print(env.robot.GetMotorAngles())
-    t_end = time.time() - t_start
+    success = info["TimeLimit.truncated"]
 
-    # env.release_plots()
-    print("******")
-    print(f"simulation in reality lasted for -> {t_end}")
-    print(f"simulation in simulation lasted for -> {env.get_sim_time()}")
-    print(f"reward -> {reward}")
-    print(f"min_height -> {env.get_metric().height_min}")
-    print("******")
-    if fill_line:
-        report_path = os.path.join(current_dir, "logs", "models", "performance_report.txt")
-        with open(report_path, "w") as f:
-            f.write(env.print_first_line_table())
-            if enable_springs:
-                f.write(env.fill_line(id="ManualWithSprings"))
-            else:
-                f.write(env.fill_line(id="ManualWithoutSprings"))
-    else:
-        env.print_metric()
     env.close()
     print("end")

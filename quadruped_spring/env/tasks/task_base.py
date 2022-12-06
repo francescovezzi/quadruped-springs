@@ -1,44 +1,18 @@
 import numpy as np
 from scipy.spatial.transform import Rotation as R
 
+from quadruped_spring.env.wrappers.get_demonstration_wrapper import GetDemonstrationWrapper as DemoWrapper
+
 
 class TaskBase:
     """Prototype class for a generic task"""
 
-    def __init__(self):
-        self._init_curriculum()
-
-    def _init_curriculum(self):
-        """Initialize the curriculum level. It should always be in [0,1]."""
-        self._curriculum_level = 0.0
-
-    def set_curriculum_level(self, curriculum_level, verbose=1):
-        curriculum_level = np.clip(curriculum_level, 0.0, 1.0)
-        self._curriculum_level = curriculum_level
-        self.on_curriculum_step()
-        if verbose > 0:
-            self.print_curriculum_info()
-
-    def increase_curriculum_level(self, increase_value):
-        curr_level = self.get_curriculum_level()
-        if curr_level < 1:
-            curr_level += increase_value
-        self.set_curriculum_level(curr_level, verbose=0)
-
-    def on_curriculum_step(self):
-        """Method called each time the curriculum level increases."""
-        pass
-
-    def print_curriculum_info(self):
-        print("***** Curriculum Info *****")
-        print(f"-- curriculum level set to {self._curriculum_level:.3f} --")
-
-    def get_curriculum_level(self):
-        return self._curriculum_level
-
-    def _reset(self, env):
-        """reset task and initialize task variables"""
+    def __init__(self, env):
         self._env = env
+
+    def _reset(self):
+        """reset task and initialize task variables"""
+        pass
 
     def _on_step(self):
         """update task variables"""
@@ -46,11 +20,11 @@ class TaskBase:
 
     def _reward(self):
         """Return the reward funciton"""
-        pass
+        return 0
 
-    def _reward_end_episode(self, reward):
+    def _reward_end_episode(self):
         """add bonus and malus to the actual reward at the end of the episode"""
-        pass
+        return 0
 
     def _terminated(self):
         """return boolean specifying whether episode is terminated"""
@@ -60,57 +34,31 @@ class TaskBase:
 class TaskJumping(TaskBase):
     """Generic Jumping Task"""
 
-    def __init__(self):
-        super().__init__()
-        self._intermediate_settling_parameter_min = 0.3
-        self._intermediate_settling_parameter_max = 1.0
-        self._intermediate_settling_parameter_task = self._compute_intermediate_settling_parameter_task()
+    def __init__(self, env):
+        super().__init__(env)
 
-    def _compute_intermediate_settling_parameter_task(self):
-        """Compute the intermediate settling parameter for the task."""
-        _min = self._intermediate_settling_parameter_min
-        _max = self._intermediate_settling_parameter_max
-        curr_level = self.get_curriculum_level()
-        return _min * (1 - curr_level) + _max * curr_level
-
-    def on_curriculum_step(self):
-        super().on_curriculum_step()
-        self._intermediate_settling_parameter_task = self._compute_intermediate_settling_parameter_task()
-
-    def print_curriculum_info(self):
-        super().print_curriculum_info()
-        print(f"-- intermediate settling parameter set to {self._intermediate_settling_parameter_task:.3f} --")
-
-    def _reset(self, env):
-        super()._reset(env)
+    def _reset(self):
         self._reset_params()
-        self._env._last_action = self._env._ac_interface._load_springs(self._intermediate_settling_parameter_task)
-        self._jump_counter = 0
-        self._switched_controller = False
 
     def _reset_params(self):
-        robot = self._env.robot
+        self._switched_controller = False
         self._all_feet_in_the_air = False
         self._time_take_off = self._env.get_sim_time()
-        self._robot_pose_take_off = robot.GetBasePosition()
+        self._robot_pose_take_off = self._env.robot.GetBasePosition()
         self._init_height = self._robot_pose_take_off[2]
-        self._robot_orientation_take_off = robot.GetBaseOrientationRollPitchYaw()
+        self._robot_orientation_take_off = self._env.robot.GetBaseOrientationRollPitchYaw()
         self._max_flight_time = 0.0
         self._max_forward_distance = 0.0
-        self._max_yaw = 0.0
         self._max_pitch = 0.0
-        self._max_roll = 0.0
         self._relative_max_height = 0.0
         self._max_delta_x = 0.0
-        self._max_delta_y = 0.0
-        self._max_vel_err = 1.0
-        self._new_action = self._old_action = self._env.get_last_action()
-        self._max_delta_action = 0.0
         self._old_torque = self._new_torque = self._env.robot.GetMotorTorques()
+        self._max_height = 0.0
+        self._x_actual = self._x_previos = 0.0
+        self.new_config = self._env.robot.GetMotorAngles()
 
     def _on_step(self):
         self._task_jump_take_off()
-        self._update_actions()
         self._update_torques()
         self._update_pose()
         self._compute_pose_info()
@@ -119,7 +67,6 @@ class TaskJumping(TaskBase):
     def _update_torques(self):
         self._old_torque = self._new_torque
         self._new_torque = self._env.robot.GetMotorTorques()
-        # print(self._new_torque)
 
     def _update_pose(self):
         self._pos_abs = np.array(self._env.robot.GetBasePosition())
@@ -129,55 +76,40 @@ class TaskJumping(TaskBase):
     def _compute_pose_info(self):
         self._compute_position_info()
         self._compute_orientation_info()
-        self._compute_velocity_info()
 
     def _compute_position_info(self):
-        x, y, z = self._pos_abs
+        x, _, z = self._pos_abs
         delta_height = max(z - self._init_height, 0.0)
         self._relative_max_height = max(self._relative_max_height, delta_height)
+        self._max_height = max(abs(z), self._max_height)
         self._max_delta_x = max(abs(x), self._max_delta_x)
-        self._max_delta_y = max(abs(y), self._max_delta_y)
 
     def _compute_orientation_info(self):
-        roll, pitch, yaw = self._orient_rpy
-        self._max_yaw = max(np.abs(yaw), self._max_yaw)
-        self._max_roll = max(np.abs(roll), self._max_roll)
+        _, pitch, _ = self._orient_rpy
         self._max_pitch = max(np.abs(pitch), self._max_pitch)
 
-    def _compute_velocity_info(self):
-        vel_abs = self._vel_abs
-        vel_module = np.sqrt(np.dot(vel_abs, vel_abs))
-        if vel_module > 0.01:
-            vel_err = 1 - np.dot(vel_abs / vel_module, np.array([0, 0, 1]))
-            self._max_vel_err = max(vel_err, self._max_vel_err)
-
     def _compute_jumping_info(self):
-        pos_abs = self._pos_abs
-        orient_rpy = self._orient_rpy
         if self._env.robot._is_flying():
             if not self._all_feet_in_the_air:
                 self._all_feet_in_the_air = True
                 self._time_take_off = self._env.get_sim_time()
-                self._robot_pose_take_off = pos_abs
-                self._robot_orientation_take_off = orient_rpy
+                self._robot_pose_take_off = self._pos_abs
+                self._robot_orientation_take_off = self._orient_rpy
+            else:
+                self.compute_max_forward_distance()
         else:
             if self._all_feet_in_the_air:
                 self._max_flight_time = max(self._env.get_sim_time() - self._time_take_off, self._max_flight_time)
-                # Compute forward distance according to local frame (starting at take off)
-                rotation_matrix = R.from_euler("z", -self._robot_orientation_take_off[2], degrees=False).as_matrix()
-                translation = -self._robot_pose_take_off
-                pos_relative = pos_abs + translation
-                pos_relative = pos_relative @ rotation_matrix
-                self._max_forward_distance = max(pos_relative[0], self._max_forward_distance)
-                # self._jump_counter += 1
-            self._all_feet_in_the_air = False
+                self.compute_max_forward_distance()
+                self._all_feet_in_the_air = False
 
-    # def _multiple_jumping(self):
-    #     """Returns true if the robot executes multiple jumping before the real one."""
-    #     if self._landing_mode_enabled:
-    #         return False
-    #     else:
-    #         return self._jump_counter > 1
+    def compute_max_forward_distance(self):
+        """Compute forward distance according to local frame (starting at take off)"""
+        rotation_matrix = R.from_euler("z", -self._robot_orientation_take_off[2], degrees=False).as_matrix()
+        translation = -self._robot_pose_take_off
+        pos_relative = self._pos_abs + translation
+        pos_relative = pos_relative @ rotation_matrix
+        self._max_forward_distance = max(pos_relative[0], self._max_forward_distance)
 
     def is_fallen(self, dot_prod_min=0.85):
         """Decide whether the quadruped has fallen.
@@ -209,22 +141,14 @@ class TaskJumping(TaskBase):
         return num_invalid_contacts
 
     def _terminated(self):
-        return self.is_fallen() or self._not_allowed_contact()  # or self._multiple_jumping()
+        return self.is_fallen() or self._not_allowed_contact()
 
-    def print_info(self):
-        print(f"max forward distance -> {self._max_forward_distance:.3f}")
-        print(f"max peak height -> {(self._init_height + self._relative_max_height):.3f}")
-
-    def _update_actions(self):
-        self._old_action = self._new_action
-        self._new_action = self._env.get_last_action()
-        if not self._env.robot._is_flying():
-            self._delta_action = np.abs(self._new_action - self._old_action)
-            self._max_delta_action = max(self._max_delta_action, np.amax(self._delta_action))
+    def _get_torque_diff(self):
+        return self._old_torque - self._new_torque
 
     def _task_jump_take_off(self):
         """Switch controller if the robot is starting the task jump."""
-        if self._env.robot._is_flying() and self.compute_time_for_peak_heihgt() > 0.06:
+        if not self._switched_controller and self._env.robot._is_flying() and self.compute_time_for_peak_heihgt() > 0.06:
             self._switched_controller = True
 
     def compute_time_for_peak_heihgt(self):
@@ -234,3 +158,59 @@ class TaskJumping(TaskBase):
 
     def is_switched_controller(self):
         return self._switched_controller
+
+    def turn_off_landing_mode(self):
+        self._switched_controller = False
+
+
+class TaskJumpingDemo(TaskJumping):
+    def __init__(self, env):
+        super().__init__(env)
+        # self.demo_path = os.path.join(os.path.dirname(qs.__file__), "demonstrations", "demo_list_imitate.npy")
+        self.demo_list = np.load(self.demo_path)
+        self.demo_length = np.shape(self.demo_list)[0]
+        self.action_dim = self._env.get_action_dim()
+        self.max_err = np.sqrt(2**2 * self.action_dim)
+        self.demo_counter = 0
+
+    def _reset(self):
+        if self._env.robot_desired_state is None:
+            self.demo_counter = 0
+        self.demo_is_landing = self.get_demo()[-1]
+        self.delta_demo = self.demo_length - self.demo_counter
+        return super()._reset()
+
+    def get_demo(self):
+        demo = self.demo_list[self.demo_counter, :]
+        return DemoWrapper.read_demo(
+            demo, action_dim=self._env.get_action_dim(), num_joints=self._env.get_robot_config().NUM_MOTORS
+        )
+
+    @staticmethod
+    def norm(vec):
+        return np.dot(vec, vec)
+
+    def _reward(self):
+        (
+            demo_action,
+            demo_joint_pos,
+            demo_joint_vel,
+            demo_base_pos,
+            demo_base_or,
+            demo_base_lin_vel,
+            demo_base_ang_vel,
+            demo_is_landing,
+        ) = self.get_demo()
+        self.demo_is_landing = demo_is_landing
+        self.demo_counter += 1
+        actual_action = self._env.get_last_action()
+        norm = np.sqrt(self.norm(demo_action - actual_action))
+        rew = np.exp(-0.35 * norm)
+        return rew / self.delta_demo
+
+    def _terminated(self):
+        return super()._terminated() or self.demo_counter == self.demo_length
+
+    def _reward_end_episode(self):
+        reward = 0
+        return reward

@@ -13,7 +13,7 @@ H_MIN = 0.15
 
 
 class MonitorState(gym.Wrapper):
-    def __init__(self, env, path="logs/plots/", paddle=10):
+    def __init__(self, env, path="logs/plots/", paddle=1):
         super().__init__(env)
         self._old_method = copy.copy(self.unwrapped.step_simulation)
         self.unwrapped.step_simulation = self._step_simulation
@@ -30,9 +30,7 @@ class MonitorState(gym.Wrapper):
         self._step_counter = 0
         self._torque_limits = self.quadruped._robot_config.TORQUE_LIMITS
         self._velocity_limits = self.quadruped._robot_config.VELOCITY_LIMITS
-        self._plot_done = False
-        self._n_episodes = 1
-        self._episode_counter = 0
+        self._start_data_collection = False
 
     # def _init_storage(self):
     #     NUM_MOTORS = self.env._robot_config.NUM_MOTORS
@@ -61,6 +59,7 @@ class MonitorState(gym.Wrapper):
         self._feet_normal_forces = []
         self._pitch = []
         self._pitch_rate = []
+        self._actions = []
 
     def _compute_energy_spring(self, q):
         if self.quadruped._enable_springs:
@@ -72,7 +71,7 @@ class MonitorState(gym.Wrapper):
             return np.zeros(12)
 
     def _get_data(self):
-        self._time.append(self._step_counter * self._time_step)
+        self._time.append(self.env.get_sim_time())
         self._config.append(self.quadruped.GetMotorAngles())
         self._motor_true_vel.append(self.quadruped.GetMotorVelocities())
         self._motor_tau.append(self.env.robot._applied_motor_torque)
@@ -94,35 +93,70 @@ class MonitorState(gym.Wrapper):
         self._base_or = np.asarray(self._base_or)
         self._feet_normal_forces = np.asarray(self._feet_normal_forces)
         self._pitch_rate = np.asarray(self._pitch_rate)
+        self._actions = np.asarray(self._actions)
+
+    def collect_data(self):
+        self._transform_to_array()
+        ret_keys = [
+            "time",
+            "joint_angles",
+            "joint_velocities",
+            "torques",
+            "spring_energy",
+            "spring_tau",
+            "base_position",
+            "base_orientation",
+            "feet_forces",
+            "pitch_rate",
+            "actions",
+        ]
+        ret_values = [
+            self._time,
+            self._config,
+            self._motor_true_vel,
+            self._motor_tau,
+            self._energy_spring,
+            self._tau_spring,
+            self._base_pos,
+            self._base_or,
+            self._feet_normal_forces,
+            self._pitch_rate,
+            self._actions,
+        ]
+        ret = dict(zip(ret_keys, ret_values))
+        self._init_storage()
+        self._episode_counter = 0
+        return ret
 
     def _plot_normal_forces(self):
         fig, ax = plt.subplots()
         labels = ["RR", "RL", "FR", "FL"]
-        fig.suptitle("feet normal forces")
+        fig.suptitle(r"feet normal forces")
         ax.plot(self._time, self._feet_normal_forces)
         ax.set_xlabel("t")
         ax.set_ylabel("F", rotation=0)
-        box = ax.get_position()
-        ax.set_position([box.x0, box.y0, box.width * 0.8, box.height])
-        ax.legend(labels, loc="center left", bbox_to_anchor=(1, 0.5))
-        plt.tight_layout(rect=[0, 0, 0.75, 1])
+        ax.legend(labels)
+        # box = ax.get_position()
+        # ax.set_position([box.x0, box.y0, box.width * 0.8, box.height])
+        # ax.legend(labels, loc="center left", bbox_to_anchor=(1, 0.5))
+        # plt.tight_layout(rect=[0, 0, 0.75, 1])
         return fig, ax
 
     def _plot_height(self):
         fig, ax = plt.subplots(nrows=1, ncols=1)
         height = self._base_pos[:, 2]
         ax.plot(self._time, height)
-        ax.set_title("height(t)")
+        fig.suptitle(r"height(t)")
         ax.set_xlabel("t")
         ax.set_ylabel("h", rotation=0)
-        length = np.shape(self._time)[0]
-        limit = np.full(length, H_MIN)
-        ax.plot(self._time, limit, "--")
+        # length = np.shape(self._time)[0]
+        # limit = np.full(length, H_MIN)
+        # ax.plot(self._time, limit, "--")
         # box = ax.get_position()
         # ax.set_position([box.x0, box.y0, box.width * 0.8, box.height])
         # ax.legend(["h", "h_min"], loc="center left", bbox_to_anchor=(1, 0.5))
         # plt.tight_layout(rect=[0, 0, 0.75, 1])
-        ax.legend(["h", "h_min"])
+        # ax.legend(["h", "h_min"])
         return fig, ax
 
     def _plot_motor_torques(self):
@@ -218,7 +252,7 @@ class MonitorState(gym.Wrapper):
         title = "Jump forward motion"
         x_pos, z_pos = self._base_pos[:, 0], self._base_pos[:, 2]
         ax.plot(x_pos, z_pos)
-        ax.set_title(title)
+        fig.suptitle(title)
         ax.set_xlabel("x")
         ax.set_ylabel("h", rotation=0)
         # plt.show()
@@ -230,7 +264,7 @@ class MonitorState(gym.Wrapper):
         ax.plot(self._time, pitch_rate)
         ax.set_title("pitch rate")
         ax.set_xlabel("t")
-        ax.set_ylabel(r"\dot{p}", rotation=0)
+        ax.set_ylabel(r"$\dot{p}$", rotation=0)
         return fig, ax
 
     def _plot_pitch(self):
@@ -241,6 +275,22 @@ class MonitorState(gym.Wrapper):
         ax.set_xlabel("t")
         ax.set_ylabel(r"p", rotation=0)
         return fig, ax
+
+    def _plot_actions(self):
+        n_rows = 2
+        n_cols = 3
+        fig, axs = plt.subplots(nrows=n_rows, ncols=n_cols, sharex=True, sharey=True)
+        y_labels = [[r"hip front", r"thigh front", r"calf front"], [r"hip rear", r"thigh rear", r"calf rear"]]
+        fig.suptitle(r"actions")
+        for i in range(n_rows):
+            for j in range(n_cols):
+                ax = axs[i][j]
+                actions = self._actions[:, i * n_cols + j]
+                ax.plot(list(range(np.shape(actions)[0])), actions)
+                ax.set_xlabel(r"time steps")
+                ax.set_ylabel(y_labels[i][j])
+
+        return fig, axs
 
     def _generate_figs(self):
         self._transform_to_array()
@@ -253,6 +303,7 @@ class MonitorState(gym.Wrapper):
         fig_pitch, _ = self._plot_pitch()
         fig_pitch_rate, _ = self._plot_pitch_rate()
         fig_config, _ = self._plot_config()
+        fig_actions, _ = self._plot_actions()
 
         figs = [
             fig_height,
@@ -264,6 +315,7 @@ class MonitorState(gym.Wrapper):
             fig_jump,
             fig_pitch,
             fig_pitch_rate,
+            fig_actions,
         ]
         names = [
             "height",
@@ -275,6 +327,7 @@ class MonitorState(gym.Wrapper):
             "forward_jumping",
             "pitch",
             "pitch_rate",
+            "actions",
         ]
         return dict(zip(figs, names))
 
@@ -282,26 +335,60 @@ class MonitorState(gym.Wrapper):
         os.makedirs(self._path, exist_ok=True)
         dict = self._generate_figs()
         for fig, name in dict.items():
-            fig.savefig(os.path.join(self._path, name))
+            nm = f"{name}.png"
+            fig.savefig(os.path.join(self._path, nm), format="png")
+
+    def reset(self):
+        obs = self.env.reset()
+        if not self._start_data_collection:
+            self._init_storage()
+        self._start_data_collection = True
+        return obs
 
     def step(self, action):
-
         obs, reward, done, infos = self.env.step(action)
+        self._step_counter += 1
+        # if self._start_data_collection and self._step_counter % self._paddle == 0:
+        #     self._get_data()
+        #     self._actions.append(action)
+        if done:
+            self._transform_to_array()
+            # self.release_plots()
+
+        _, _, feet_force, _ = self.env.robot.GetContactInfo()
+        # infos = {"max_height": self.env.task._max_height,
+        #          "max_fwd": self.env.task._max_forward_distance,
+        #          "feet_forces": np.sum(feet_force)}
 
         return obs, reward, done, infos
 
-    def reset(self):
-        self._episode_counter += 1
-        if self._episode_counter <= self._n_episodes:
-            self._init_storage()
-            obs = self.env.reset()
-        else:
-            obs = self.env.get_observation()
-        return obs
+    def get_height(self):
+        return self._base_pos[:, 2]
+
+    def get_time(self):
+        return self._time
+
+    def get_x(self):
+        x = self._base_pos[:, 0]
+        return x
+
+    # def step(self, action):
+
+    #     obs, reward, done, infos = self.env.step(action)
+    #     self._actions.append(action)
+
+    #     return obs, reward, done, infos
+
+    # def reset(self):
+    #     obs = self.env.reset()
+    #     if not self._start_data_collection:
+    #         self._init_storage()
+    #     self._start_data_collection = True
+    #     return obs
 
     def _step_simulation(self, increase_sim_counter=True):
         self._old_method(increase_sim_counter)
         self._step_counter += 1
 
-        if self._episode_counter <= self._n_episodes and self._step_counter % self._paddle == 0:
+        if self._start_data_collection and self._step_counter % self._paddle == 0:
             self._get_data()

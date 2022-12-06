@@ -4,9 +4,10 @@ register(
     id="QuadrupedSpring-v0",
     entry_point="quadruped_spring.env.quadruped_gym_env:QuadrupedGymEnv",
     kwargs={
-        "motor_control_mode": "CARTESIAN_PD",
-        "task_env": "LR_COURSE_TASK",
-        "observation_space_mode": "LR_COURSE_OBS",
+        "motor_control_mode": "PD",
+        "task_env": "JUMPING_IN_PLACE",
+        "observation_space_mode": "ARS_HEIGHT",
+        "action_space_mode": "SYMMETRIC",
     },
 )
 

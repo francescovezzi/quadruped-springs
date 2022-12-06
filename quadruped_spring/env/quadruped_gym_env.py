@@ -1,7 +1,6 @@
 """This file implements the gym environment for a quadruped. """
 import datetime
 import os
-import time
 
 # gym
 import gym
@@ -12,38 +11,29 @@ import pybullet
 import pybullet_data
 import pybullet_utils.bullet_client as bc
 from gym import spaces
-from gym.utils import seeding
 
 import quadruped_spring.go1.configs_go1_with_springs as go1_config_with_springs
 import quadruped_spring.go1.configs_go1_without_springs as go1_config_without_springs
 from quadruped_spring.env import quadruped
 from quadruped_spring.env.control_interface.collection import ActionInterfaceCollection, MotorInterfaceCollection
 from quadruped_spring.env.control_interface.utils import settle_robot_by_pd
+from quadruped_spring.env.env_randomizers.env_randomizer_base import EnvRandomizerList
 from quadruped_spring.env.env_randomizers.env_randomizer_collection import EnvRandomizerCollection
-from quadruped_spring.env.env_randomizers.env_randomizer_list import EnvRandomizerList
-from quadruped_spring.env.sensors.robot_sensors import SensorList
+from quadruped_spring.env.sensors.sensor import SensorList
 from quadruped_spring.env.sensors.sensor_collection import SensorCollection
 from quadruped_spring.env.tasks.task_collection import TaskCollection
-from quadruped_spring.env.wrappers.obs_flattening_wrapper import ObsFlatteningWrapper
 from quadruped_spring.utils import action_filter
-
-# from quadruped_spring.env.wrappers.rest_wrapper import RestWrapper
-# from quadruped_spring.env.wrappers.landing_wrapper import LandingWrapper
+from quadruped_spring.utils.camera import Camera
 
 ACTION_EPS = 0.01
 OBSERVATION_EPS = 0.01
-EPISODE_LENGTH = 10  # max episode length for RL (seconds)
+EPISODE_LENGTH = 3  # max episode length for RL (seconds)
 VIDEO_LOG_DIRECTORY = "videos/" + datetime.datetime.now().strftime("vid-%Y-%m-%d-%H-%M-%S-%f")
 
-
 # Motor control mode implemented: TORQUE, PD, CARTESIAN_PD
-# Observation space implemented: DEFAULT, ENCODER, CARTESIAN_NO_IMU, ANGLE_NO_IMU
-# Action space implemented: DEFAULT, SYMMETRIC, SYMMETRIC_NO_HIP
-# Task implemented: JUMPING_ON_PLACE_HEIGHT, JUMPING_FORWARD
-# Env randomizer implemented: MASS_RANDOMIZER, DISTURBANCE_RANDOMIZER, SETTLING_RANDOMIZER, SPRING_RANDOMIZER
 
 # NOTE:
-# TORQUE control mode actually works only if isRLGymInterface is setted to False.
+# TORQUE control mode actually works only if isRLGymInterface is set to False.
 
 
 class QuadrupedGymEnv(gym.Env):
@@ -63,19 +53,17 @@ class QuadrupedGymEnv(gym.Env):
         time_step=0.001,
         action_repeat=10,
         motor_control_mode="PD",
-        task_env="JUMPING_ON_PLACE_HEIGHT",
-        observation_space_mode="DEFAULT",
-        action_space_mode="DEFAULT",
+        task_env="JUMPING_IN_PLACE",
+        observation_space_mode="ENCODER",
+        action_space_mode="SYMMETRIC",
         on_rack=False,
         render=False,
-        record_video=False,
-        add_noise=True,
         enable_springs=False,
         enable_action_interpolation=False,
         enable_action_filter=False,
-        enable_env_randomization=True,
-        env_randomizer_mode="MASS_RANDOMIZER",
+        env_randomizer_mode="GROUND_RANDOMIZER",
         curriculum_level=0.0,
+        verbose=0,
     ):
         """Initialize the quadruped gym environment.
 
@@ -92,8 +80,6 @@ class QuadrupedGymEnv(gym.Env):
             the walking gait. In this mode, the quadruped's base is hanged midair so
             that its walking gait is clearer to visualize.
           render: Whether to render the simulation.
-          record_video: Whether to record a video of each trial.
-          add_noise: vary coefficient of friction
           enable_springs: Whether to enable springs or not
           enable_action_interpolation: Whether to interpolate the current action
             with the previous action in order to produce smoother motions
@@ -104,70 +90,73 @@ class QuadrupedGymEnv(gym.Env):
           enable_joint_velocity_estimate: Boolean specifying if it's used the
             estimated or the true joint velocity. Actually it affects only real
             observations space modes.
-          enable_env_randomizer: Boolean specifying whether to enable env randomization.
           env_randomizer_mode: String specifying which env randomizers to use.
           curriculum_level: Scalar in [0,1] specyfing the task difficulty level.
         """
-        self.seed()
+        self.verbose = verbose
         self._enable_springs = enable_springs
         if self._enable_springs:
             self._robot_config = go1_config_with_springs
         else:
             self._robot_config = go1_config_without_springs
         self._isRLGymInterface = isRLGymInterface
-        self._sim_time_step = time_step
+        self.sim_time_step = time_step
         self._action_repeat = action_repeat
-        self._env_time_step = self._action_repeat * self._sim_time_step
-        self._hard_reset = True  # must fully reset simulation at init
+        self.env_time_step = self._action_repeat * self.sim_time_step
         self._on_rack = on_rack
         self._is_render = render
-        self._is_record_video = record_video
-        self._add_noise = add_noise
         self._enable_action_interpolation = enable_action_interpolation
         self._enable_action_filter = enable_action_filter
-        self._using_test_env = test_env
-        if test_env:
-            self._add_noise = True
 
         # other bookkeeping
         self._num_bullet_solver_iterations = int(300 / action_repeat)
         self._MAX_EP_LEN = EPISODE_LENGTH  # max sim time in seconds, arbitrary
-        self._settling_steps = 1500
+        self._settling_steps = 2500
 
         self._build_action_command_interface(motor_control_mode, action_space_mode)
-        self.setupActionSpace()
+        self.action_dim = self._ac_interface.get_action_space_dim()
+        self.setupActionSpace(self.action_dim)
 
         self._observation_space_mode = observation_space_mode
-        self._robot_sensors = SensorList(SensorCollection().get_el(self._observation_space_mode))
+        self._robot_sensors = SensorList(SensorCollection().get_el(self._observation_space_mode), self)
         self.setupObservationSpace()
 
         self.task_env = task_env
-        self.task = TaskCollection().get_el(self.task_env)()
-        self.task.set_curriculum_level(curriculum_level, verbose=0)
+        self.task = TaskCollection().get_el(self.task_env)(self)
 
         if self._enable_action_filter:
             self._action_filter = self._build_action_filter()
 
         if self._is_render:
+            # opts = "--background_color_red=1 --background_color_blue=1 --background_color_green=1"
+            # self._pybullet_client = bc.BulletClient(connection_mode=pybullet.GUI, options=opts)
             self._pybullet_client = bc.BulletClient(connection_mode=pybullet.GUI)
         else:
             self._pybullet_client = bc.BulletClient()
-        self._configure_visualizer()
 
-        self.videoLogID = None
-        self._enable_env_randomization = enable_env_randomization
-        if self._enable_env_randomization:
-            self._env_randomizer_mode = env_randomizer_mode
-            self._env_randomizers = EnvRandomizerList(EnvRandomizerCollection().get_el(self._env_randomizer_mode))
-            self._env_randomizers._init(self)
+        self.camera = Camera(self, self._pybullet_client)
 
-        self.reset()
+        self.robot_desired_state = None  # Reset the robot in a desired state
+        self.reset_pybullet_simulation()
+
+        self._env_randomizer_mode = env_randomizer_mode
+        self._env_randomizers = EnvRandomizerList(EnvRandomizerCollection().get_el(self._env_randomizer_mode))
+        self._env_randomizers._init(self)
+        if self._env_randomizers.is_curriculum_enabled():
+            self.curriculum_level = 0.0
+            self.task.change_parameters()
+            self._env_randomizers.increase_curriculum_level(curriculum_level)
+
+        self.sub_step_callback = None  # For doing stuff at sim_step frequency
+
+        if self.verbose > 0:
+            self.print_info()
 
     ######################################################################################
     # RL Observation and Action spaces
     ######################################################################################
     def setupObservationSpace(self):
-        self._robot_sensors._init(robot_config=self._robot_config)
+        self._robot_sensors._init(self.get_robot_config())
         obs_high = self._robot_sensors._get_high_limits() + OBSERVATION_EPS
         obs_low = self._robot_sensors._get_low_limits() - OBSERVATION_EPS
         self.observation_space = spaces.Box(obs_low, obs_high, dtype=np.float32)
@@ -185,12 +174,10 @@ class QuadrupedGymEnv(gym.Env):
         self._motor_control_mode = motor_control_mode
         self._action_space_mode = action_space_mode
 
-    def setupActionSpace(self):
+    def setupActionSpace(self, action_dim):
         """Set up action space for RL."""
-        self._action_dim = self.get_action_dim()
-        action_high = np.array([1] * self._action_dim)
+        action_high = np.array([1] * action_dim)
         self.action_space = spaces.Box(-action_high, action_high, dtype=np.float32)
-        self._last_action = np.zeros(self._action_dim)
 
     ######################################################################################
     # Step simulation, map policy network actions to joint commands, etc.
@@ -206,9 +193,10 @@ class QuadrupedGymEnv(gym.Env):
         If interpolation is enabled, returns interpolated action depending on
         the current action repeat substep.
         """
+        last_action = self._last_action if not self._enable_action_filter else self._last_filtered_action
         if self._enable_action_interpolation and self._last_action is not None:
             interp_fraction = float(substep_count + 1) / self._action_repeat
-            interpolated_action = self._last_action + interp_fraction * (action - self._last_action)
+            interpolated_action = last_action + interp_fraction * (action - last_action)
         else:
             interpolated_action = action
 
@@ -222,16 +210,17 @@ class QuadrupedGymEnv(gym.Env):
         else:
             proc_action = action
         self.robot.ApplyAction(proc_action)
-        if self._enable_env_randomization:
-            self._env_randomizers.randomize_step()
+        # self._env_randomizers.randomize_step()
         self.step_simulation()
 
     def step_simulation(self, increase_sim_counter=True):
         self._pybullet_client.stepSimulation()
         if increase_sim_counter:
             self._sim_step_counter += 1
+            if self.sub_step_callback is not None:
+                self.sub_step_callback()
         if self._is_render:
-            self._render_step_helper()
+            self.camera._render_step_helper()
 
     def step(self, action):
         """Step forward the simulation, given the action."""
@@ -240,6 +229,7 @@ class QuadrupedGymEnv(gym.Env):
 
         if self._enable_action_filter:
             curr_act = self._filter_action(curr_act)
+            self._last_filtered_action = curr_act
 
         for sub_step in range(self._action_repeat):
             self._sub_step(curr_act, sub_step)
@@ -248,10 +238,8 @@ class QuadrupedGymEnv(gym.Env):
         self.task._on_step()
         reward = self.task._reward()
         done = False
-        # infos = {"base_pos": self.robot.GetBasePosition()}
         infos = {}
-
-        task_terminated = self.task_terminated()
+        task_terminated = self.task._terminated()
         if task_terminated or self.get_sim_time() > self._MAX_EP_LEN:
             infos["TimeLimit.truncated"] = not task_terminated
             done = True
@@ -269,11 +257,9 @@ class QuadrupedGymEnv(gym.Env):
     # Filtering to smooth actions
     ###################################################
     def _build_action_filter(self):
-        sampling_rate = 1 / self._env_time_step
-        num_joints = self._action_dim
+        sampling_rate = 1 / self.env_time_step
+        num_joints = self.action_dim
         a_filter = action_filter.ActionFilterButter(sampling_rate=sampling_rate, num_joints=num_joints)
-        # if self._enable_springs:
-        #     a_filter.highcut = 2.5
         return a_filter
 
     def _reset_action_filter(self):
@@ -289,28 +275,22 @@ class QuadrupedGymEnv(gym.Env):
     ######################################################################################
     def reset(self):
         """Set up simulation environment."""
-
         self.reset_pybullet_simulation()
-        if self._add_noise:
-            self._set_ground_friction()
 
         self._env_step_counter = 0
         self._sim_step_counter = 0
-
+        self._last_action = self._last_filtered_action = np.zeros(self.action_dim)
         self._ac_interface._reset(self.robot)
-        if self._enable_env_randomization:
-            self._env_randomizers.randomize_env()
-        self._settle_robot()  # Settle robot after being spawned
-        self.task._reset(self)  # Reset task internal state
-        if self._enable_env_randomization:
-            self._env_randomizers.randomize_robot()
+        self._env_randomizers.randomize_env()
+
+        if self.robot_desired_state is None:
+            self._settle_robot()  # Settle robot after being spawned
+        self.task._reset()  # Reset task internal state
+        # self._env_randomizers.randomize_robot()
         self._robot_sensors._reset(self.robot)  # Rsest sensors
 
         if self._enable_action_filter:
             self._reset_action_filter()
-
-        if self._is_record_video:
-            self.recordVideoHelper()
 
         return self.get_observation()
 
@@ -318,7 +298,7 @@ class QuadrupedGymEnv(gym.Env):
         # set up pybullet simulation
         self._pybullet_client.resetSimulation()
         self._pybullet_client.setPhysicsEngineParameter(numSolverIterations=int(self._num_bullet_solver_iterations))
-        self._pybullet_client.setTimeStep(self._sim_time_step)
+        self._pybullet_client.setTimeStep(self.sim_time_step)
         self.plane = self._pybullet_client.loadURDF(
             pybullet_data.getDataPath() + "/plane.urdf", basePosition=[80, 0, 0]
         )  # to extend available running space (shift)
@@ -332,18 +312,11 @@ class QuadrupedGymEnv(gym.Env):
             on_rack=self._on_rack,
             render=self._is_render,
             enable_springs=self._enable_springs,
+            desired_state=self.robot_desired_state,
         )
         self.robot = quadruped.Quadruped(**self._quadruped_config)
         if self._is_render:
-            self._pybullet_client.resetDebugVisualizerCamera(self._cam_dist, self._cam_yaw, self._cam_pitch, [0, 0, 0])
-
-    def _set_ground_friction(self):
-        mu_min = 0.5
-        ground_mu_k = mu_min + (1 - mu_min) * np.random.random()
-        self._ground_mu_k = ground_mu_k
-        self._pybullet_client.changeDynamics(self.plane, -1, lateralFriction=ground_mu_k)
-        if self._is_render:
-            print("ground friction coefficient is", ground_mu_k)
+            self.camera.reset()
 
     def _settle_robot(self):
         if self._isRLGymInterface:
@@ -354,134 +327,24 @@ class QuadrupedGymEnv(gym.Env):
             settle_robot_by_pd(self)
 
     ######################################################################################
-    # Render, record videos, bookkeping, and misc pybullet helpers.
+    # Render and Close
     ######################################################################################
-    def startRecordingVideo(self, name):
-        self.videoLogID = self._pybullet_client.startStateLogging(self._pybullet_client.STATE_LOGGING_VIDEO_MP4, name)
-
-    def stopRecordingVideo(self):
-        self._pybullet_client.stopStateLogging(self.videoLogID)
+    def render(self, mode="rgb_array"):
+        return self.camera.render(mode)
 
     def close(self):
-        if self._is_record_video:
-            self.stopRecordingVideo()
         self._pybullet_client.disconnect()
-
-    def recordVideoHelper(self, extra_filename=None):
-        """Helper to record video, if not already, or end and start a new one"""
-        # If no ID, this is the first video, so make a directory and start logging
-        if self.videoLogID == None:
-            directoryName = VIDEO_LOG_DIRECTORY
-            assert isinstance(directoryName, str)
-            os.makedirs(directoryName, exist_ok=True)
-            self.videoDirectory = directoryName
-        else:
-            # stop recording and record a new one
-            self.stopRecordingVideo()
-
-        if extra_filename is not None:
-            output_video_filename = (
-                self.videoDirectory
-                + "/"
-                + datetime.datetime.now().strftime("vid-%Y-%m-%d-%H-%M-%S-%f")
-                + extra_filename
-                + ".MP4"
-            )
-        else:
-            output_video_filename = (
-                self.videoDirectory + "/" + datetime.datetime.now().strftime("vid-%Y-%m-%d-%H-%M-%S-%f") + ".MP4"
-            )
-        logID = self.startRecordingVideo(output_video_filename)
-        self.videoLogID = logID
-
-    def configure(self, args):
-        self._args = args
-
-    def seed(self, seed=None):
-        self.np_random, seed = seeding.np_random(seed)
-        return [seed]
-
-    def _render_step_helper(self):
-        """Helper to configure the visualizer camera during step()."""
-        # Sleep, otherwise the computation takes less time than real time,
-        # which will make the visualization like a fast-forward video.
-        time_spent = time.time() - self._last_frame_time
-        self._last_frame_time = time.time()
-        # time_to_sleep = self._action_repeat * self._time_step - time_spent
-        time_to_sleep = self._sim_time_step - time_spent
-        if time_to_sleep > 0 and (time_to_sleep < self._sim_time_step):
-            time.sleep(time_to_sleep)
-
-        base_pos = self.robot.GetBasePosition()
-        camInfo = self._pybullet_client.getDebugVisualizerCamera()
-        curTargetPos = camInfo[11]
-        distance = camInfo[10]
-        yaw = camInfo[8]
-        pitch = camInfo[9]
-        targetPos = [0.95 * curTargetPos[0] + 0.05 * base_pos[0], 0.95 * curTargetPos[1] + 0.05 * base_pos[1], curTargetPos[2]]
-        self._pybullet_client.resetDebugVisualizerCamera(distance, yaw, pitch, base_pos)
-
-    def _configure_visualizer(self):
-        """Remove all visualizer borders, and zoom in"""
-        self._last_frame_time = 0.0  # for rendering
-        # default rendering options
-        self._render_width = 333
-        self._render_height = 480
-        self._cam_dist = 1.5
-        self._cam_yaw = 20
-        self._cam_pitch = -20
-        # get rid of visualizer things
-        self._pybullet_client.configureDebugVisualizer(self._pybullet_client.COV_ENABLE_RGB_BUFFER_PREVIEW, 0)
-        self._pybullet_client.configureDebugVisualizer(self._pybullet_client.COV_ENABLE_DEPTH_BUFFER_PREVIEW, 0)
-        self._pybullet_client.configureDebugVisualizer(self._pybullet_client.COV_ENABLE_SEGMENTATION_MARK_PREVIEW, 0)
-        self._pybullet_client.configureDebugVisualizer(self._pybullet_client.COV_ENABLE_GUI, 0)
-
-    def render(self, mode="rgb_array", close=False):
-        if mode != "rgb_array":
-            return np.array([])
-        base_pos = self.robot.GetBasePosition()
-        view_matrix = self._pybullet_client.computeViewMatrixFromYawPitchRoll(
-            cameraTargetPosition=base_pos,
-            distance=self._cam_dist,
-            yaw=self._cam_yaw,
-            pitch=self._cam_pitch,
-            roll=0,
-            upAxisIndex=2,
-        )
-        proj_matrix = self._pybullet_client.computeProjectionMatrixFOV(
-            fov=60, aspect=float(self._render_width) / self._render_height, nearVal=0.1, farVal=100.0
-        )
-        (_, _, px, _, _) = self._pybullet_client.getCameraImage(
-            width=self._render_width,
-            height=self._render_height,
-            viewMatrix=view_matrix,
-            projectionMatrix=proj_matrix,
-            renderer=pybullet.ER_BULLET_HARDWARE_OPENGL,
-        )
-        rgb_array = np.array(px)
-        rgb_array = rgb_array[:, :, :3]
-        return rgb_array
-
-    def addLine(self, lineFromXYZ, lineToXYZ, lifeTime=0, color=[1, 0, 0]):
-        """Add line between point A and B for duration lifeTime"""
-        self._pybullet_client.addUserDebugLine(lineFromXYZ, lineToXYZ, lineColorRGB=color, lifeTime=lifeTime)
 
     ########################################################
     # Get methods
     ########################################################
-    def get_action_dim(self):
-        return self._ac_interface.get_action_space_dim()
-
     def get_observation(self):
+        """Return observation."""
         return self._robot_sensors.get_noisy_obs()
 
     def get_sim_time(self):
         """Get current simulation time."""
-        return self._sim_step_counter * self._sim_time_step
-
-    def get_env_time_step(self):
-        """Get environment simulation time step."""
-        return self._env_time_step
+        return self._sim_step_counter * self.sim_time_step
 
     def get_motor_control_mode(self):
         """Get current motor control mode."""
@@ -494,10 +357,6 @@ class QuadrupedGymEnv(gym.Env):
     def are_springs_enabled(self):
         """Return boolean specifying whether springs are enabled."""
         return self._enable_springs
-
-    def task_terminated(self):
-        """Return boolean specifying whether the task is terminated."""
-        return self.task._terminated()
 
     def get_reward_end_episode(self):
         """Return bonus and malus to add to the reward at the end of the episode."""
@@ -521,13 +380,17 @@ class QuadrupedGymEnv(gym.Env):
         """Get the last action applied."""
         return self._last_action
 
-    def print_task_info(self):
-        """Print some info about the task performed."""
-        self.task.print_info()
+    def get_last_filtered_action(self):
+        """Get the last filtered action."""
+        return self._last_filtered_action
+
+    def get_observation_space_mode(self):
+        """Get the observation space mode."""
+        return self._observation_space_mode
 
     def get_curriculum_level(self):
         """Return the acutal curriculum level."""
-        return self.task.get_curriculum_level()
+        return self.curriculum_level
 
     def get_quadruped_config(self):
         """Return the quadruped configuration."""
@@ -535,56 +398,70 @@ class QuadrupedGymEnv(gym.Env):
 
     def get_randomizer_mode(self):
         """Return the env ranodmizer mode."""
-        if self._enable_env_randomization:
-            return self._env_randomizer_mode
-        else:
-            return "noone"
+        return self._env_randomizer_mode
+
+    def reinit_randomizers(self, env):
+        """Reinitialize randomizers for wrapped env."""
+        self._env_randomizers._reinit(env)
+
+    def reinit_sensors(self, env):
+        """Reinitialize sensors for wrapped env."""
+        self._robot_sensors._reinit(env)
+
+    def get_ac_interface(self):
+        """Return the action control interface."""
+        return self._ac_interface
 
     def increase_curriculum_level(self, value):
         """increase the curriculum level."""
-        assert value >= 0 and value < 1, "curriculum level change should be in [0,1)."
-        self.task.increase_curriculum_level(value)
+        assert value >= 0 and value <= 1, "curriculum level change should be in [0,1]."
+        self._env_randomizers.increase_curriculum_level(value)
 
-    def print_curriculum_info(self):
-        """Print curriculum info."""
-        self.task.print_curriculum_info()
+    def print_info(self):
+        """Print environment info."""
+        print("\n*** Environment Info ***")
+        print(f"task environment -> {self.task_env}")
+        print(f"spring enabled -> {self._enable_springs}")
+        print(f"low-pass action filter > {self._enable_action_filter}")
+        print(f"sensors -> {self._observation_space_mode}")
+        print(f"env randomizer -> {self._env_randomizer_mode}")
+        print("")
 
 
 def build_env():
     env_config = {
-        "render": False,
+        "render": True,
         "on_rack": False,
         "motor_control_mode": "PD",
         "action_repeat": 10,
-        "enable_springs": False,
-        "add_noise": False,
+        "enable_springs": True,
         "enable_action_interpolation": False,
         "enable_action_filter": True,
-        "task_env": "JUMPING_ON_PLACE_HEIGHT",
-        "observation_space_mode": "ARS_HEIGHT",
+        "task_env": "JUMPING_IN_PLACE",
+        "observation_space_mode": "PPO_BASIC",
         "action_space_mode": "SYMMETRIC",
-        "enable_env_randomization": False,
-        "env_randomizer_mode": "SETTLING_RANDOMIZER",
+        "env_randomizer_mode": "GROUND_RANDOMIZER",
+        "curriculum_level": 1.0,
     }
     env = QuadrupedGymEnv(**env_config)
-
-    env = ObsFlatteningWrapper(env)
-    # env = RestWrapper(env)
-    # env = LandingWrapper(env)
     return env
 
 
 def test_env():
     env = build_env()
-    sim_steps = 500
-    action_dim = env.get_action_dim()
+    sim_steps = 1500
     obs = env.reset()
+    done = False
+    action_dim = env.action_dim
+    rew = 0
+
     for i in range(sim_steps):
         action = np.random.rand(action_dim) * 2 - 1
-        # action = np.full(action_dim, 0)
-        # action = env.get_settling_action()
         obs, reward, done, info = env.step(action)
-    # env.print_task_info()
+        rew += reward
+        if done:
+            break
+    print(f"rew: {rew}")
     env.close()
     print("end")
 

@@ -45,11 +45,11 @@ class Springs:
         elif robot_side == "right":
             hip_cond = hip_angle > hip_rest
         else:
-            raise ValueError(f'robot sides should "right" or "left". not {robot_side}')
+            raise ValueError(f'robot sides should be "right" or "left". not {robot_side}')
         if hip_cond:
             k_hip = 0
             b_hip = 0
-        if thigh_angle > thigh_rest:
+        if thigh_angle < thigh_rest:
             k_thigh = 0
             b_thigh = 0
         if calf_angle > calf_rest:

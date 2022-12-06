@@ -7,7 +7,6 @@ class LandingWrapper(gym.Wrapper):
     """
     Wrapper to switch controller when robot starts taking off.
     Dear user please pay attention at the order of the wrapper you are using.
-    It's recommended to use this one as the last one.
     """
 
     def __init__(self, env):
@@ -21,10 +20,10 @@ class LandingWrapper(gym.Wrapper):
             """Temporary switch motor control gain"""
             if self.env.are_springs_enabled():
                 kp = 60.0
-                kd = 2.0
+                kd = 1.5
             else:
                 kp = 60.0
-                kd = 2.0
+                kd = 1.5
             tmp_save_motor_kp = self.env.robot._motor_model._kp
             tmp_save_motor_kd = self.env.robot._motor_model._kd
             self.env.robot._motor_model._kp = kp
@@ -69,12 +68,6 @@ class LandingWrapper(gym.Wrapper):
 
         return obs, reward, done, infos
 
-    def render(self, mode="rgb_array", **kwargs):
-        return self.env.render(mode, **kwargs)
-
     def reset(self):
         obs = self.env.reset()
         return obs
-
-    def close(self):
-        self.env.close()

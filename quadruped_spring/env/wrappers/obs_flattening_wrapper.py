@@ -10,11 +10,14 @@ class ObsFlatteningWrapper(gym.Wrapper):
 
     @staticmethod
     def _flatten_obs(observation_dict):
-        observations = []
-        for key, value in observation_dict.items():
-            observations.append(np.asarray(value).flatten())
-        flat_observations = np.concatenate(observations)
-        return flat_observations
+        if isinstance(observation_dict, dict):
+            observations = []
+            for key, value in observation_dict.items():
+                observations.append(np.asarray(value).flatten())
+            flat_observations = np.concatenate(observations)
+            return flat_observations
+        else:
+            return observation_dict
 
     def step(self, action):
         observation_dict, reward, done, infos = self.env.step(action)

@@ -1,25 +1,19 @@
-from email.mime import base
-
 import numpy as np
 
 from quadruped_spring.env.env_randomizers.env_randomizer_base import EnvRandomizerBase
-from quadruped_spring.utils.timer import Timer
 
 # Relative range.
-BASE_MASS_ERROR_RANGE = (-0.2, 0.2)  # 0.2 means 20%
-LEG_MASS_ERROR_RANGE = (-0.2, 0.2)  # 0.2 means 20%
-MAX_SETTLING_ACTION_DISTURBANCE = (0.05, 0.04, 0.03)  # Hip, thigh, calf
+BASE_MASS_ERROR_RANGE = (-0.1, 0.1)  # 0.2 means 20%
+LEG_MASS_ERROR_RANGE = (-0.1, 0.1)  # 0.2 means 20%
+MAX_SETTLING_ACTION_DISTURBANCE = (0.1, 0.1, 0.1)  # Hip, thigh, calf
 
 # Values used for nominal springs parameters randomization
 SPRING_STIFFNESS_MAX_ERROR_RANGE = (0.1, 0.1, 0.1)  # Hip, thigh, calf
-SPRING_DAMPING_MAX_ERROR_RANGE = (0.05, 0.05, 0.05)  # Hip, thigh, calf
+SPRING_DAMPING_MAX_ERROR_RANGE = (0.1, 0.1, 0.1)  # Hip, thigh, calf
 
 # Absolute range.
-MAX_POS_MASS_OFFSET = (0.1, 0.0, 0.05)  # meters
-MAX_MASS_OFFSET = 0.5  # kg
-MAX_FORCE_DISTURBE = [15, 15, 15]  # N
-MAX_TEMPORAL_DURATION = 1  # seconds
-DISTURBE_TIME_RANGE = (0, 0.2)  # dsturbe happens only during that time range
+MAX_POS_MASS_OFFSET = (0.1, 0.0, 0.1)  # meters
+MAX_MASS_OFFSET = 1  # kg
 
 
 class EnvRandomizerMasses(EnvRandomizerBase):
@@ -37,126 +31,56 @@ class EnvRandomizerMasses(EnvRandomizerBase):
         max_mass_offset=MAX_MASS_OFFSET,
         max_mass_pos_offset=MAX_POS_MASS_OFFSET,
     ):
+        super().__init__()
+
         self._env = env
         self._base_mass_err_range = base_mass_err_range
         self._leg_mass_err_range = leg_mass_err_range
         self._max_pos_mass_offset = np.array(max_mass_pos_offset)
         self._max_mass_offset = max_mass_offset
-        np.random.seed(0)
+        self._init()
 
-    def get_changed_elements(self):
-        """Get the env randomizer parameters changed values."""
+    def compute_init_total_mass(self):
         self._env.robot._RecordMassAndInertiaInfoFromURDF()
-        base_mass = self._env.robot.GetBaseMassFromURDF()
-        leg_masses = self._env.robot.GetLegMassesFromURDF()
-        feet_masses = self._env.robot.GetFootMassesFromURDF()
         total_mass = np.sum(self._env.robot.GetTotalMassFromURDF())
-        offset_mass = self._env.robot.get_offset_mass_value()
-        offset_pos = self._env.robot.get_offset_mass_position()
-        print("****** Masses info ******")
-        print(f"base mass -> {base_mass}")
-        print(f"leg masses -> {leg_masses}")
-        print(f"feet masses -> {feet_masses}")
-        print(f"total mass -> {total_mass:.3f}")
-        print(f"offset mass -> {offset_mass}")
-        print(f"offset mass position-> {offset_pos}")
-        print("*************************")
+        return total_mass
+
+    def _init(self):
+        self.total_mass = self.compute_init_total_mass()
+        self.base_mass = self._env.robot.GetBaseMassFromURDF()
+        self.original_leg_masses = self._env.robot.GetLegMassesFromURDF()
+        self.leg_masses = np.sum(self.original_leg_masses)
+        self.feet_masses = np.sum(self._env.robot.GetFootMassesFromURDF())
+        self.offset_mass = 0
 
     def randomize_env(self):
-        self._randomize_env()
-
-    def _randomize_env(self):
-        self._randomize_base_mass()
         self._randomize_leg_masses()
         self._add_mass_offset()
+        self._change_base_mass()
 
-    def _randomize_base_mass(self):
+    def _change_base_mass(self):
         robot = self._env.robot
-        base_mass = robot.GetBaseMassFromURDF()[0]
-        base_mass_low = base_mass * (1.0 + self._base_mass_err_range[0])
-        base_mass_high = base_mass * (1.0 + self._base_mass_err_range[1])
-
-        randomized_base_mass = np.random.uniform(base_mass_low, base_mass_high)
-        robot.SetBaseMass([randomized_base_mass])
+        new_base_mass = self.total_mass - self.offset_mass - self.leg_masses - self.feet_masses
+        robot.SetBaseMass([new_base_mass])
+        self.base_mass = new_base_mass
 
     def _randomize_leg_masses(self):
         """Randomize leg masses. Each leg in the same way."""
         robot = self._env.robot
-        leg_masses = robot.GetLegMassesFromURDF()
+        leg_masses = self.original_leg_masses
         leg_masses_lower_bound = np.array(leg_masses) * (1.0 + self._leg_mass_err_range[0])
         leg_masses_upper_bound = np.array(leg_masses) * (1.0 + self._leg_mass_err_range[1])
         randomized_leg_mass = np.random.uniform(leg_masses_lower_bound[0:3], leg_masses_upper_bound[0:3])
         randomized_leg_masses = np.asarray(list(randomized_leg_mass) * robot._robot_config.NUM_LEGS)
-        # randomized_leg_masses = [
-        #     np.random.uniform(leg_masses_lower_bound[i], leg_masses_upper_bound[i]) for i in range(len(leg_masses))
-        # ]
         robot.SetLegMasses(randomized_leg_masses)
+        self.leg_masses = np.sum(randomized_leg_masses)
 
     def _add_mass_offset(self):
         robot = self._env.robot
         base_mass = np.random.uniform(0, self._max_mass_offset)
         block_pos_delta_base_frame = np.random.uniform(-self._max_pos_mass_offset, self._max_pos_mass_offset)
         robot._add_base_mass_offset(base_mass, block_pos_delta_base_frame, is_render=self._env._is_render)
-
-
-class EnvRandomizerDisturbance(EnvRandomizerBase):
-    """
-    A randomizer that each simulation step create external forces acting on the robot trunk
-    of random intensitiy and temporal duration.
-    """
-
-    def __init__(self, env, max_force=MAX_FORCE_DISTURBE, max_time=MAX_TEMPORAL_DURATION, time_range=DISTURBE_TIME_RANGE):
-        self._env = env
-        self._dt = self._env._sim_time_step
-        self._max_force = max_force
-        self._max_time = max_time
-        self._time_range = time_range
-
-    def randomize_env(self):
-        self._create_disturbe()
-
-    def randomize_step(self):
-        self._apply_disturbe()
-
-    def _create_disturbe(self):
-        force = np.random.uniform(np.zeros(3), np.array(self._max_force))
-        temporal_istant = np.random.uniform(self._time_range[0], self._time_range[1])
-        duration = np.random.uniform(0, self._max_time)
-        self._disturbe = Disturbe(force, temporal_istant, duration)
-        self._timer = Timer(dt=self._dt)
-
-    def _apply_disturbe(self):
-        robot = self._env.robot
-        time = self._env.get_sim_time()
-        if time >= self._disturbe._temporal_istant and not self._timer.already_started():
-            self._timer.start_timer(timer_time=time, start_time=time, delta_time=self._disturbe._duration)
-        cond = self._timer.already_started() and not (robot._is_flying() or self._timer.time_up())
-        if cond:
-            robot.apply_external_force(self._disturbe._force)
-            self._timer.step_timer()
-
-
-class EnvRandomizerInitialConfiguration(EnvRandomizerBase):
-    """Add some noise in the settling robot configuration."""
-
-    def __init__(
-        self,
-        env,
-        max_disturbe=MAX_SETTLING_ACTION_DISTURBANCE,
-    ):
-        self._env = env
-        self._aci = self._env._ac_interface
-        self._max_disturbe = np.array(max_disturbe * self._env._robot_config.NUM_LEGS)
-
-    def randomize_robot(self):
-        sample_disturbe = np.random.uniform(np.zeros(self._env._robot_config.NUM_MOTORS), np.array(self._max_disturbe))
-        actual_pose = self._aci.get_robot_pose()
-        action = self._aci._scale_helper_motor_command_to_action(actual_pose)
-        new_action = action + sample_disturbe
-        noised_config = self._aci._scale_helper_action_to_motor_command(new_action)
-        noised_config = self._aci._convert_reference_to_command(noised_config)
-        pose = self._aci.get_last_reference()
-        self._aci._settle_robot_by_ramp(pose, noised_config)
+        self.offset_mass = base_mass
 
 
 class EnvRandomizerSprings(EnvRandomizerBase):
@@ -168,22 +92,26 @@ class EnvRandomizerSprings(EnvRandomizerBase):
         max_err_stiffness=SPRING_STIFFNESS_MAX_ERROR_RANGE,
         max_err_damping=SPRING_DAMPING_MAX_ERROR_RANGE,
     ):
+        super().__init__()
+
         self._max_err_stiffness = max_err_stiffness
         self._max_err_damping = max_err_damping
         self._env = env
+        self.original_stiffness, self.original_damping, _ = self._env.robot.get_spring_nominal_params()
 
     def randomize_env(self):
-        self._randomize_springs()
+        if self._env.are_springs_enabled():
+            self._randomize_springs()
 
     def get_new_stiffness(self):
-        stiffness, _, _ = self._env.robot.get_spring_nominal_params()
+        stiffness = self.original_stiffness
         stiffness_lower_bound = np.array(stiffness) * (1.0 - np.array(self._max_err_stiffness))
         stiffness_upper_bound = np.array(stiffness) * (1.0 + np.array(self._max_err_stiffness))
         new_stiffness = np.random.uniform(stiffness_lower_bound, stiffness_upper_bound)
         return list(new_stiffness)
 
     def get_new_damping(self):
-        _, damping, _ = self._env.robot.get_spring_nominal_params()
+        damping = self.original_damping
         damping_lower_bound = np.array(damping) * (1.0 - np.array(self._max_err_damping))
         damping_upper_bound = np.array(damping) * (1.0 + np.array(self._max_err_damping))
         new_damping = np.random.uniform(damping_lower_bound, damping_upper_bound)
@@ -194,12 +122,170 @@ class EnvRandomizerSprings(EnvRandomizerBase):
         self._env.robot.set_spring_damping(self.get_new_damping())
 
 
-class Disturbe:
+class EnvRandomizerMassesCurriculum(EnvRandomizerBase):
     """
-    Class representing an external disturbe object
+    A randomizer that change the quadruped_gym_env during every reset.
+    In particular the masses of the robot links and by adding a mass connected
+    to trunk.
     """
 
-    def __init__(self, force, temporal_istant, duration):
-        self._force = force
-        self._temporal_istant = temporal_istant
-        self._duration = duration
+    def __init__(
+        self,
+        env,
+        base_mass_err_range=BASE_MASS_ERROR_RANGE,
+        leg_mass_err_range=LEG_MASS_ERROR_RANGE,
+        max_mass_offset=MAX_MASS_OFFSET,
+        max_mass_pos_offset=MAX_POS_MASS_OFFSET,
+    ):
+        super().__init__()
+
+        self._env = env
+        self._curriculum_enabled = True
+
+        self.init_base_mass_err_range = np.array(base_mass_err_range)
+        self.init_leg_mass_err_range = np.array(leg_mass_err_range)
+        self.init_max_mass_offset = max_mass_offset
+        self.init_max_pos_mass_offset = np.array(max_mass_pos_offset)
+
+        self.curriculum_max_mass_offset = 4
+        self.curriculum_leg_mass_err_range = np.array([-0.2, 0.2])
+        self.curriculum_max_pos_mass_offset = np.array([0.2, 0.0, 0.2])
+        self.curriculum_level = 0.0
+
+        self.update_limits_curriculum_based()
+        self._init()
+
+    def compute_init_total_mass(self):
+        self._env.robot._RecordMassAndInertiaInfoFromURDF()
+        total_mass = np.sum(self._env.robot.GetTotalMassFromURDF())
+        return total_mass
+
+    def _init(self):
+        self.total_mass = self.compute_init_total_mass()
+        self.base_mass = self._env.robot.GetBaseMassFromURDF()
+        self.original_leg_masses = np.array(self._env.robot.GetLegMassesFromURDF())
+        self.leg_masses = np.sum(self.original_leg_masses)
+        self.feet_masses = np.sum(self._env.robot.GetFootMassesFromURDF())
+        self.offset_mass = 0
+
+    def increase_curriculum_level(self, value):
+        new_curr_level = self.curriculum_level + value
+        self.curriculum_level = np.clip(new_curr_level, 0, 1)
+
+    def get_curr_value(self, inf, sup):
+        return (1 - self.curriculum_level) * inf + self.curriculum_level * sup
+
+    def update_limits_curriculum_based(self):
+        self._leg_mass_err_range = self.get_curr_value(self.init_leg_mass_err_range, self.curriculum_leg_mass_err_range)
+        self._max_mass_offset = self.get_curr_value(self.init_max_mass_offset, self.curriculum_max_mass_offset)
+        self._max_pos_mass_offset = self.get_curr_value(self.init_max_pos_mass_offset, self.curriculum_max_pos_mass_offset)
+
+    def randomize_env(self):
+        self.update_limits_curriculum_based()
+        self._randomize_env()
+
+    def _randomize_env(self):
+        self._randomize_leg_masses()
+        self._add_mass_offset()
+        self._change_base_mass()
+
+    def _change_base_mass(self):
+        robot = self._env.robot
+        new_base_mass = self.total_mass - self.offset_mass - self.leg_masses - self.feet_masses
+        robot.SetBaseMass([new_base_mass])
+        self.base_mass = new_base_mass
+
+    def _randomize_leg_masses(self):
+        """Randomize leg masses. Each leg in the same way."""
+        robot = self._env.robot
+        leg_masses = self.original_leg_masses
+        leg_masses_lower_bound = leg_masses * (1.0 + self._leg_mass_err_range[0])
+        leg_masses_upper_bound = leg_masses * (1.0 + self._leg_mass_err_range[1])
+        randomized_leg_mass = np.random.uniform(leg_masses_lower_bound[0:3], leg_masses_upper_bound[0:3])
+        randomized_leg_masses = np.asarray(list(randomized_leg_mass) * robot._robot_config.NUM_LEGS)
+        robot.SetLegMasses(randomized_leg_masses)
+        self.leg_masses = np.sum(randomized_leg_masses)
+
+    def _add_mass_offset(self):
+        robot = self._env.robot
+        base_mass = np.random.uniform(0, self._max_mass_offset)
+        block_pos_delta_base_frame = np.random.uniform(-self._max_pos_mass_offset, self._max_pos_mass_offset)
+        robot._add_base_mass_offset(base_mass, block_pos_delta_base_frame, is_render=self._env._is_render)
+        self.offset_mass = base_mass
+
+
+class EnvRandomizerSpringsCurriculum(EnvRandomizerBase):
+    """Change the springs stiffness and damping coefficients."""
+
+    def __init__(
+        self,
+        env,
+        max_err_stiffness=SPRING_STIFFNESS_MAX_ERROR_RANGE,
+        max_err_damping=SPRING_DAMPING_MAX_ERROR_RANGE,
+    ):
+        super().__init__()
+
+        self.init_max_err_stiffness = np.array(max_err_stiffness)
+        self.init_max_err_damping = np.array(max_err_damping)
+
+        self.curriculum_max_err_stiffness = np.array([0.3] * 3)
+        self.curriculum_max_err_damping = np.array([0.3] * 3)
+
+        self._env = env
+        self._curriculum_enabled = True
+
+        original_stiffness, original_damping, _ = self._env.robot.get_spring_nominal_params()
+
+        self.original_stiffness = np.array(original_stiffness)
+        self.original_damping = np.array(original_damping)
+
+        self.curriculum_level = 0.0
+
+        self.update_limits_curriculum_based()
+
+    def randomize_env(self):
+        if self._env.are_springs_enabled():
+            self.update_limits_curriculum_based()
+            self._randomize_springs()
+
+    def increase_curriculum_level(self, value):
+        new_curr_level = self.curriculum_level + value
+        self.curriculum_level = np.clip(new_curr_level, 0, 1)
+
+    def get_curr_value(self, inf, sup):
+        return (1 - self.curriculum_level) * inf + self.curriculum_level * sup
+
+    def update_limits_curriculum_based(self):
+        self._max_err_stiffness = self.get_curr_value(self.init_max_err_stiffness, self.curriculum_max_err_stiffness)
+        self._max_err_damping = self.get_curr_value(self.init_max_err_damping, self.curriculum_max_err_damping)
+
+    def get_new_stiffness(self):
+        stiffness_lower_bound = self.original_stiffness * (1.0 - self._max_err_stiffness)
+        stiffness_upper_bound = self.original_stiffness * (1.0 + self._max_err_stiffness)
+        new_stiffness = np.random.uniform(stiffness_lower_bound, stiffness_upper_bound)
+        return new_stiffness
+
+    def get_new_damping(self):
+        damping_lower_bound = self.original_damping * (1.0 - self._max_err_damping)
+        damping_upper_bound = self.original_damping * (1.0 + self._max_err_damping)
+        new_damping = np.random.uniform(damping_lower_bound, damping_upper_bound)
+        return new_damping
+
+    def _randomize_springs(self):
+        self._env.robot.set_spring_stiffness(self.get_new_stiffness())
+        self._env.robot.set_spring_damping(self.get_new_damping())
+
+
+class EnvRandomizerGround(EnvRandomizerBase):
+    """Randomize ground friction coefficient."""
+
+    def __init__(self, env):
+        super().__init__()
+        self._env = env
+        self._mu_min = 0.5
+
+    def randomize_env(self):
+        ground_mu_k = self._mu_min + (1 - self._mu_min) * np.random.random()
+        self._env._pybullet_client.changeDynamics(self._env.plane, -1, lateralFriction=ground_mu_k)
+        if self._env._is_render:
+            print("ground friction coefficient is", ground_mu_k)

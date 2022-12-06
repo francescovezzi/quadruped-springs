@@ -2,6 +2,7 @@
 This file implements the functionalities of a quadruped using pybullet.
 """
 import os
+from email.mime import base
 
 import numpy as np
 
@@ -21,6 +22,7 @@ class Quadruped(object):
         on_rack=False,
         render=False,
         enable_springs=False,
+        desired_state=None,
     ):
         """Construct a quadruped and reset it to the initial states.
 
@@ -44,7 +46,7 @@ class Quadruped(object):
         self._urdf_root = self._robot_config.URDF_ROOT  # urdf_root
         self._self_collision_enabled = self_collision_enabled
         self._motor_direction = self._robot_config.JOINT_DIRECTIONS
-        self._observed_motor_torque = np.zeros(self.num_motors)
+        self._observed_motor_torques = np.zeros(self.num_motors)
         self._applied_motor_torque = np.zeros(self.num_motors)
         self._spring_torque = np.zeros(self.num_motors)
         self._accurate_motor_model_enabled = accurate_motor_model_enabled
@@ -67,11 +69,11 @@ class Quadruped(object):
                 motor_control_mode=self._motor_control_mode,
                 kp=self._kp,
                 kd=self._kd,
-                torque_limits=self._robot_config.TORQUE_LIMITS,
+                torque_limits=self._robot_config.RL_TORQUE_LIMITS,
             )
         else:
             raise ValueError("Must use accurate motor model")
-
+        self._desired_state = desired_state
         self.Reset(reload_urdf=True)
 
     ######################################################################################
@@ -297,9 +299,11 @@ class Quadruped(object):
             self._observed_motor_torques = observed_torque
 
             if self._enable_springs:
-                self._spring_torque = self._motor_model.compute_spring_torques(q, qdot)
+                spring_torque = self._motor_model.compute_spring_torques(q, qdot)
             else:
-                self._spring_torque = np.full(self._robot_config.NUM_MOTORS, 0)
+                spring_torque = np.full(self._robot_config.NUM_MOTORS, 0)
+
+            self._spring_torque = spring_torque
 
             # Transform into the motor space when applying the torque.
             self._applied_motor_torque = np.multiply(actual_torque, self._motor_direction)
@@ -341,12 +345,12 @@ class Quadruped(object):
     ######################################################################################
     # Jacobian, IK, etc.
     ######################################################################################
-    def ComputeJacobianAndPosition(self, legID):
+    def _compute_jacobian_and_position(self, q, legID):
         """Get Jacobian and foot position of leg legID.
         Leg 0: FR; Leg 1: FL; Leg 2: RR ; Leg 3: RL;
         """
-        # joint positions of leg legID
-        q = self.GetMotorAngles()[legID * 3 : legID * 3 + 3]
+
+        q = q[legID * 3 : legID * 3 + 3]
 
         # rename links
         l1 = self._robot_config.HIP_LINK_LENGTH
@@ -386,6 +390,11 @@ class Quadruped(object):
         pos[2] = l1 * sideSign * s1 - l3 * (c1 * c23) - l2 * c1 * c2
 
         return J, pos
+
+    def ComputeJacobianAndPosition(self, legID):
+        # joint positions of leg legID
+        q = self.GetMotorAngles()
+        return self._compute_jacobian_and_position(q, legID)
 
     def ComputeInverseKinematics(self, legID, xyz_coord):
         """Get joint angles for leg legID with desired xyz position in leg frame.
@@ -458,8 +467,10 @@ class Quadruped(object):
             self._BuildMotorIdList()
             self._RecordMassAndInertiaInfoFromURDF()
             self._SetMaxJointVelocities()
-
-            self.ResetPose(add_constraint=True)
+            if self._desired_state is not None:
+                self.reset_desired_state(add_constraint=True)
+            else:
+                self.ResetPose(add_constraint=True)
             if self._on_rack:
                 self._pybullet_client.createConstraint(
                     self.quadruped,
@@ -482,7 +493,7 @@ class Quadruped(object):
         self._overheat_counter = np.zeros(self.num_motors)
         self._motor_enabled_list = [True] * self.num_motors
 
-    def ResetPose(self, add_constraint):
+    def _reset_pose(self, add_constraint, desired_angles, joint_offsets, joint_velocities):
         """From laikago.py"""
         del add_constraint
         for name in self._joint_name_to_id:
@@ -494,9 +505,24 @@ class Quadruped(object):
                 targetVelocity=0,
                 force=0,
             )
-        for i, jointId in enumerate(self._joint_ids):
-            angle = self._robot_config.INIT_MOTOR_ANGLES[i] + self._robot_config.JOINT_OFFSETS[i]
-            self._pybullet_client.resetJointState(self.quadruped, jointId, angle, targetVelocity=0)
+        for jointId, des_angle, offset, joint_vel in zip(self._joint_ids, desired_angles, joint_offsets, joint_velocities):
+            angle = des_angle + offset
+            self._pybullet_client.resetJointState(self.quadruped, jointId, angle, targetVelocity=joint_vel)
+
+    def ResetPose(self, add_constraint):
+        """From laikago.py"""
+        self._reset_pose(
+            add_constraint,
+            self._robot_config.INIT_MOTOR_ANGLES,
+            self._robot_config.JOINT_OFFSETS,
+            np.zeros(self._robot_config.NUM_MOTORS),
+        )
+
+    def reset_desired_state(self, add_constraint):
+        _, joint_pose, joint_vel, base_pos, base_or, base_lin_vel, base_ang_vel, _ = self._desired_state
+        self._pybullet_client.resetBasePositionAndOrientation(self.quadruped, base_pos, base_or)
+        self._pybullet_client.resetBaseVelocity(self.quadruped, base_lin_vel, base_ang_vel)
+        self._reset_pose(add_constraint, joint_pose, self._robot_config.JOINT_OFFSETS, joint_vel)
 
     ######################################################################################
     # URDF related
@@ -678,23 +704,18 @@ class Quadruped(object):
             return self._pybullet_client.getDynamicsInfo(self._base_block_ID, -1)[0]
         except AttributeError:
             print("offset mass not created")
+            return 0
 
     def get_offset_mass_position(self):
         """Get offset mass attached to the robot."""
         try:
-            dyn_infos = self._pybullet_client.getDynamicsInfo(self._base_block_ID, -1)
-            pos = np.asarray(dyn_infos[3])
+            block_pos, _ = self._pybullet_client.getBasePositionAndOrientation(self._base_block_ID)
             base_pos = np.asarray(self.GetBasePosition())
-            rel_pos = base_pos - pos
-            orientation = self.GetBaseOrientation()
-            _, orientation_inversed = self._pybullet_client.invertTransform([0, 0, 0], orientation)
-
-            rel_pos_local, _ = self._pybullet_client.multiplyTransforms(
-                [0, 0, 0], orientation_inversed, rel_pos, self._pybullet_client.getQuaternionFromEuler([0, 0, 0])
-            )
-            return rel_pos_local
+            rel_pos = block_pos - base_pos
+            return rel_pos
         except AttributeError:
             print("offset mass not created")
+            return [0, 0, 0]
 
     def get_spring_nominal_params(self):
         """Get spring stiffness, dumping and rest angles."""
