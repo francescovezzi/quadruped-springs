@@ -13,7 +13,7 @@ class LandingWrapper2(gym.Wrapper):
         super().__init__(env)
         self._robot_config = self.env.get_robot_config()
         self._landing_action = self.env.get_landing_action()
-        self.timer_jumping = Timer(dt=self.env.get_env_time_step())
+        self.timer_jumping = Timer(dt=self.env.env_time_step)
 
     def temporary_switch_motor_control_gain(foo):
         def wrapper(self, *args, **kwargs):

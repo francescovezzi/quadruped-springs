@@ -15,19 +15,8 @@ class JumpingStateMachine(gym.Wrapper):
     def __init__(self, env):
         super().__init__(env)
         self.aci = self.env.get_ac_interface()
-        self.j_front = 0.0
-        self.j_rear = 0.0
-        self.init_pose_front = self.aci.get_settling_pose()[:6]
-        self.init_pose_rear = self.aci.get_settling_pose()[6:]
-        self.init_pose = self.aci.get_settling_pose()
-        self.init_action_front = self.aci._transform_motor_command_to_action(self.init_pose)[:6]
-        self.init_action_rear = self.aci._transform_motor_command_to_action(self.init_pose)[6:]
-        self.scale = 0.9
-        x = self.init_action_front[0]
-        y = -self.init_action_front[1]
-        zet = -self.scale * 1
-        self.final_action_front = np.array([x, -y, zet, x, y, zet])
-        self.final_action_rear = np.array([x, -y, zet, x, y, zet])
+        self.env.reset()
+        self.compute_actions()
 
     @staticmethod
     def _interpolate_action(a, b, p):
@@ -59,6 +48,19 @@ class JumpingStateMachine(gym.Wrapper):
         self.j_front = 0.8
         return obs
 
+    def compute_actions(self):
+        self.init_pose_front = self.aci.get_settling_pose()[:6]
+        self.init_pose_rear = self.aci.get_settling_pose()[6:]
+        self.init_pose = self.aci.get_settling_pose()
+        self.init_action_front = self.aci._transform_motor_command_to_action(self.init_pose)[:6]
+        self.init_action_rear = self.aci._transform_motor_command_to_action(self.init_pose)[6:]
+        self.scale = 0.9
+        x = self.init_action_front[0]
+        y = -self.init_action_front[1]
+        zet = -self.scale * 1
+        self.final_action_front = np.array([x, -y, zet, x, y, zet])
+        self.final_action_rear = np.array([x, -y, zet, x, y, zet])
+
 
 def build_env():
     env_config = {
@@ -68,7 +70,6 @@ def build_env():
         "isRLGymInterface": True,
         "motor_control_mode": "CARTESIAN_PD",
         "action_repeat": 10,
-        "record_video": False,
         "action_space_mode": "DEFAULT",
         "task_env": "JUMPING_IN_PLACE",
         "env_randomizer_mode": "GROUND_RANDOMIZER",
