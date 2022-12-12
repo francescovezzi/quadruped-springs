@@ -4,12 +4,17 @@ setup(
     name="quadruped_spring",
     packages=[package for package in find_packages() if package.startswith("quadruped_spring")],
     package_data={},
-    install_requires=[],
-    description="",
-    author="",
-    url="",
-    author_email="",
-    keywords="reinforcement-learning-algorithms reinforcement-learning machine-learning "
+    install_requires=[
+        "pybullet==3.2.5",
+        "torch==1.12",
+        "stable_baselines3==1.5.1.a8",
+        "sb3-contrib==1.5.1.a8",
+        ],
+    description="Gym environment pybullet based for simulating a quadruped",
+    author="Francesco Vezzi",
+    url="https://github.com/francescovezzi/quadruped_spring.git",
+    author_email="f.vezzi.96@gmail.com",
+    keywords="reinforcement-learning-algorithms reinforcement-learning machine-learning quadruped "
     "gym openai stable baselines toolbox python data-science",
     license="MIT",
     long_description="",
