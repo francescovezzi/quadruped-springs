@@ -53,7 +53,7 @@ class QuadrupedGymEnv(gym.Env):
         time_step=0.001,
         action_repeat=10,
         motor_control_mode="PD",
-        task_env="JUMPING_IN_PLACE",
+        task_env="NO_TASK",
         observation_space_mode="ENCODER",
         action_space_mode="SYMMETRIC",
         on_rack=False,

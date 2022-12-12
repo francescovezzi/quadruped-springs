@@ -187,13 +187,8 @@ if __name__ == "__main__":
         time_step=TIME_STEP,
         action_repeat=1,
         motor_control_mode="TORQUE",
-        add_noise=False,  # start in ideal conditions
-        record_video=False,
-        enable_springs=False,
-        enable_env_randomization=False,
-        task_env="NO_TASK",
     )
-
+    env.reset()
     # initialize Hopf Network, supply gait
     # TROT
     omega_swing = 16.0 * np.pi
