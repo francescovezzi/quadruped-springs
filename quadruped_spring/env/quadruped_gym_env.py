@@ -87,9 +87,6 @@ class QuadrupedGymEnv(gym.Env):
             used to smooth actions.
           enable_action_clipping: Boolean specifying if motor commands should be
             clipped or not. It's not implemented for pure torque control.
-          enable_joint_velocity_estimate: Boolean specifying if it's used the
-            estimated or the true joint velocity. Actually it affects only real
-            observations space modes.
           env_randomizer_mode: String specifying which env randomizers to use.
           curriculum_level: Scalar in [0,1] specyfing the task difficulty level.
         """
