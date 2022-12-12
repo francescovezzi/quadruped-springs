@@ -7,6 +7,7 @@ setup(
     install_requires=[
         "pybullet==3.2.5",
         "torch==1.12",
+        "scipy==1.7.3",
         "stable_baselines3==1.5.1.a8",
         "sb3-contrib==1.5.1.a8",
         ],
