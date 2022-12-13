@@ -1,3 +1,5 @@
+"""For plotting some useful quantities about quadruped during the episode."""
+
 import gym
 import matplotlib
 import numpy as np
