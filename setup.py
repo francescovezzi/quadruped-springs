@@ -11,6 +11,7 @@ setup(
         "scipy==1.7.3",
         "stable_baselines3==1.5.1.a8",
         "sb3-contrib==1.5.1.a8",
+        "absl-py==1.0.0",
     ],
     description="Gym environment pybullet based for simulating a quadruped",
     author="Francesco Vezzi",
