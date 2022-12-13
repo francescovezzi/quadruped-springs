@@ -1,0 +1,5 @@
+.DS_Store
+*.egg-info
+__pycache__/
+quadruped_spring/Logs
+quadruped_spring/scripts
