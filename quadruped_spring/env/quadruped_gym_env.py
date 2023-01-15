@@ -110,6 +110,9 @@ class QuadrupedGymEnv(gym.Env):
         self._MAX_EP_LEN = EPISODE_LENGTH  # max sim time in seconds, arbitrary
         self._settling_steps = 2500
 
+        self.task_env = task_env
+        self.task = TaskCollection().get_el(self.task_env)(self)
+
         self._build_action_command_interface(motor_control_mode, action_space_mode)
         self.action_dim = self._ac_interface.get_action_space_dim()
         self.setupActionSpace(self.action_dim)
@@ -117,9 +120,6 @@ class QuadrupedGymEnv(gym.Env):
         self._observation_space_mode = observation_space_mode
         self._robot_sensors = SensorList(SensorCollection().get_el(self._observation_space_mode), self)
         self.setupObservationSpace()
-
-        self.task_env = task_env
-        self.task = TaskCollection().get_el(self.task_env)(self)
 
         if self._enable_action_filter:
             self._action_filter = self._build_action_filter()
@@ -283,7 +283,7 @@ class QuadrupedGymEnv(gym.Env):
         if self.robot_desired_state is None:
             self._settle_robot()  # Settle robot after being spawned
         self.task._reset()  # Reset task internal state
-        # self._env_randomizers.randomize_robot()
+        self._env_randomizers.randomize_robot()
         self._robot_sensors._reset(self.robot)  # Rsest sensors
 
         if self._enable_action_filter:
@@ -427,7 +427,7 @@ class QuadrupedGymEnv(gym.Env):
 
 def build_env():
     env_config = {
-        "render": True,
+        "render": False,
         "on_rack": False,
         "motor_control_mode": "PD",
         "action_repeat": 10,
@@ -435,7 +435,7 @@ def build_env():
         "enable_action_interpolation": False,
         "enable_action_filter": True,
         "task_env": "JUMPING_IN_PLACE",
-        "observation_space_mode": "PPO_BASIC",
+        "observation_space_mode": "ARS_BACKFLIP",
         "action_space_mode": "SYMMETRIC",
         "env_randomizer_mode": "GROUND_RANDOMIZER",
         "curriculum_level": 1.0,
