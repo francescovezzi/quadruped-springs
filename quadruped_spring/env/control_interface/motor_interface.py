@@ -10,9 +10,16 @@ class MotorInterfacePD(MotorInterfaceBase):
         super().__init__(env)
         self._motor_control_mode = "PD"
         self._motor_control_mode_ROB = "PD"
+        self.update_limits()
+        print(self._upper_lim)
+        self._symm_idx = 0
+
+    def update_limits(self):
         self._lower_lim = self._robot_config.RL_LOWER_ANGLE_JOINT
         self._upper_lim = self._robot_config.RL_UPPER_ANGLE_JOINT
-        self._symm_idx = 0
+        if self._env.task_env == "BackFlip":
+            for i in [7, 10]:
+                self._upper_lim[i] = np.pi / 2
 
     def _reset(self, robot):
         super()._reset(robot)
