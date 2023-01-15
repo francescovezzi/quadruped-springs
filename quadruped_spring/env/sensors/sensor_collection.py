@@ -69,6 +69,7 @@ class SensorCollection(CollectionBase):
             rs.Landing,
             rs.BooleanContact,
         ]
+        self._ARS_BACKFLIP = [rs.JointPosition, rs.JointVelocity, rs.Height, rs.BaseHeightVelocity, rs.PitchBackFlip]
 
         self._dict = {
             "ENCODER": self._ENCODER,
@@ -80,5 +81,6 @@ class SensorCollection(CollectionBase):
             "PPO_BASIC": self._PPO_BASIC,
             "PPO_BASIC_X": self._PPO_BASIC_X,
             "PPO_BASIC_CONTACT": self._PPO_BASIC_CONTACT,
+            "ARS_BACKFLIP": self._ARS_BACKFLIP,
         }
         self._element_type = "sensor package"

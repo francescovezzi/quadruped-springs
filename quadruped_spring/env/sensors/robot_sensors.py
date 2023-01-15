@@ -1,4 +1,5 @@
 import numpy as np
+from scipy.spatial.transform import Rotation as R
 
 from quadruped_spring.env.sensors.sensor import Sensor
 
@@ -294,3 +295,25 @@ class BaseHeightVelocity(Sensor):
     def _get_data(self):
         lin_vel = self._robot.GetBaseLinearVelocity()[2]
         self._data = lin_vel
+
+
+class PitchBackFlip(Sensor):
+    def __init__(self, env):
+        super().__init__(env)
+        self._name = "Pitch-BackFlip"
+
+    def _update_sensor_info(self):
+        return super()._update_sensor_info(
+            high=self._robot_config.PITCH_HIGH, low=self._robot_config.PITCH_LOW, noise_std=self._robot_config.PITCH_NOISE
+        )
+
+    def _get_data(self):
+        rot = R.from_quat(self._robot.GetBaseOrientation())
+        euler = rot.as_euler("yxz", degrees=False)
+        pitch = euler[0]
+        if pitch > 0:
+            pitch = -pitch
+        else:
+            if self._env.task._switched_controller:
+                pitch = 2 * np.pi - pitch
+        self._data = pitch
