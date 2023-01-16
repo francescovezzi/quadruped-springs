@@ -376,3 +376,36 @@ class JumpingForwardPPOHP(JumpingForwardPPO):
         if self._env.enable_env_randomization:
             self.max_height_task = 1.0
             self.max_fwd = 1.3
+
+
+class BackFlip(TaskJumping):
+    def __init__(self, env):
+        super().__init__(env)
+        self.maximum_height = 0.7
+        self.maximum_pitch = 2 * np.pi
+        self.minimum_height = 0.3
+        self.max_pitch = 0.0
+
+    def _on_step(self):
+        super()._on_step()
+        self.max_pitch = max(self.max_pitch, self._orient_rpy[1])
+
+    def _terminated(self):
+        return self._is_fallen_ground() or self._not_allowed_contact()
+
+    def _reward_end_episode(self):
+        reward = 0
+        h_max = np.clip(0, self._max_height - self.minimum_height, self.maximum_height - self.minimum_height) / (
+            self.maximum_height - self.minimum_height
+        )
+        pitch_max = self.max_pitch / self.maximum_pitch
+
+        reward += pitch_max * 0.4
+        reward += h_max * 0.4
+        reward += h_max * pitch_max
+
+        if self.is_switched_controller():
+            if not self._terminated():
+                reward += 0.2
+
+        return reward

@@ -111,25 +111,19 @@ class TaskJumping(TaskBase):
         pos_relative = pos_relative @ rotation_matrix
         self._max_forward_distance = max(pos_relative[0], self._max_forward_distance)
 
-    def is_fallen(self, dot_prod_min=0.85):
-        """Decide whether the quadruped has fallen.
+    def _is_fallen_ground(self):
+        return self._pos_abs[2] < self._env._robot_config.IS_FALLEN_HEIGHT
 
-        If the up directions between the base and the world is larger (the dot
-        product is smaller than 0.85) or the base is very low on the ground
-        (the height is smaller than 0.10 meter -> see config file), the quadruped
-        is considered fallen.
-
-        Returns:
-          Boolean value that indicates whether the quadruped has fallen.
-        """
+    def _is_fallen_orientation(self):
         orientation = self._env.robot.GetBaseOrientation()
         rot_mat = self._env._pybullet_client.getMatrixFromQuaternion(orientation)
         local_up = rot_mat[6:]
-        pos = self._pos_abs
-        return (
-            np.dot(np.asarray([0, 0, 1]), np.asarray(local_up)) < dot_prod_min
-            or pos[2] < self._env._robot_config.IS_FALLEN_HEIGHT
-        )
+        return np.dot(np.asarray([0, 0, 1]), np.asarray(local_up)) < 0.85
+
+    def is_fallen(self):
+        """Decide whether the quadruped has fallen."""
+
+        return self._is_fallen_orientation() and self._is_fallen_ground()
 
     def _not_allowed_contact(self):
         """
