@@ -17,7 +17,7 @@ class MotorInterfacePD(MotorInterfaceBase):
     def update_limits(self):
         self._lower_lim = self._robot_config.RL_LOWER_ANGLE_JOINT
         self._upper_lim = self._robot_config.RL_UPPER_ANGLE_JOINT
-        if self._env.task_env == "BackFlip":
+        if self._env.task_env == "BACKFLIP":
             for i in [7, 10]:
                 self._upper_lim[i] = np.pi / 2
 
