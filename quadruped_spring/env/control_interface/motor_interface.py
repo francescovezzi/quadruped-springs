@@ -11,7 +11,7 @@ class MotorInterfacePD(MotorInterfaceBase):
         self._motor_control_mode = "PD"
         self._motor_control_mode_ROB = "PD"
         self.update_limits()
-        print(self._upper_lim)
+        self.set_pose()
         self._symm_idx = 0
 
     def update_limits(self):
@@ -20,12 +20,17 @@ class MotorInterfacePD(MotorInterfaceBase):
         if self._env.task_env == "BACKFLIP":
             for i in [7, 10]:
                 self._upper_lim[i] = np.pi / 2
-
-    def _reset(self, robot):
-        super()._reset(robot)
+    
+    def set_pose(self):
         self._init_pose = self._robot_config.INIT_MOTOR_ANGLES
         self._settling_pose = self._robot_config.ANGLE_SETTLING_POSE
         self._landing_pose = self._robot_config.ANGLE_LANDING_POSE
+
+    def _reset(self, robot):
+        super()._reset(robot)
+        # self._init_pose = self._robot_config.INIT_MOTOR_ANGLES
+        # self._settling_pose = self._robot_config.ANGLE_SETTLING_POSE
+        # self._landing_pose = self._robot_config.ANGLE_LANDING_POSE
 
     def _transform_action_to_motor_command(self, action):
         command = self._scale_helper_action_to_motor_command(action)
@@ -49,12 +54,18 @@ class MotorInterfaceCARTESIAN_PD(MotorInterfaceBase):
         self._lower_lim = self._robot_config.RL_LOWER_CARTESIAN_POS
         self._upper_lim = self._robot_config.RL_UPPER_CARTESIAN_POS
         self._symm_idx = 1
-
-    def _reset(self, robot):
-        super()._reset(robot)
+        self.set_pose()
+        
+    def set_pose(self):
         self._init_pose = self._robot_config.NOMINAL_FOOT_POS_LEG_FRAME
         self._settling_pose = self._robot_config.CARTESIAN_SETTLING_POSE
         self._landing_pose = self._robot_config.CARTESIAN_LANDING_POSE
+
+    def _reset(self, robot):
+        super()._reset(robot)
+        # self._init_pose = self._robot_config.NOMINAL_FOOT_POS_LEG_FRAME
+        # self._settling_pose = self._robot_config.CARTESIAN_SETTLING_POSE
+        # self._landing_pose = self._robot_config.CARTESIAN_LANDING_POSE
 
     def _transform_action_to_motor_command(self, action):
         des_foot_pos = self._scale_helper_action_to_motor_command(action)
