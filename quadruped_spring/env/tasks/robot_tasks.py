@@ -409,3 +409,127 @@ class BackFlip(TaskJumping):
                 reward += 0.2
 
         return reward
+
+
+class ContinuousJumpingForward(TaskJumping):
+    def __init__(self, env):
+        super().__init__(env)
+        self.aci = self._env.get_ac_interface()
+        self._init_reward_constants()
+        self._init_reward_parameters()
+
+    def _init_reward_constants(self):
+        self.max_height_task = 0.7  # absolute [m]
+        self.min_height_task = 0.29  # absolute [m]
+        self.max_contact_force = 800  # [N]
+        self.max_fwd = 1.1
+
+    @staticmethod
+    def norm(vec):
+        return np.dot(vec, vec)
+
+    def _init_reward_parameters(self):
+        self.k_h = 0.026
+        self.k_tau_sigma = 0.1
+        self.k_tau = 0.015
+        self.k_contact = 3e-4
+        self.k_pos_sigma = 40.0
+        self.k_pos = 0.013
+        self.k_action_sigma = 0.1
+        self.k_action = 0.1
+        self.k_config_smoothing_sigma = 5
+        self.k_config_smoothing = 0.025
+        self.k_pitch_sigma = 26
+        self.k_pitch = 0.014
+        self.k_fwd = 0.038 * 0.15
+
+    def get_clipped_height(self):
+        actual_height = self._pos_abs[2]
+        if actual_height < self.min_height_task:
+            return 0
+        elif actual_height > self.max_height_task:
+            return 0
+        else:
+            return actual_height
+
+    def get_over_contact_force(self):
+        _, _, feet_forces, _ = self._env.robot.GetContactInfo()
+        contact_force = np.sum(feet_forces)
+        if contact_force > self.max_contact_force:
+            return contact_force
+        else:
+            return 0
+
+    def get_fwd(self):
+        fwd = self.actual_fwd
+        print(fwd)
+        if fwd > self.max_fwd or fwd == self.old_fwd:
+            return 0
+        else:
+            return fwd
+
+    def _reset(self):
+        self.old_fwd = 0.0
+        self.actual_fwd = 0.0
+        super()._reset()
+
+    def update_fwd(self):
+        self.old_fwd = self.actual_fwd
+        self.actual_fwd = self._max_forward_distance
+
+    def _on_step(self):
+        super()._on_step()
+        self.update_fwd()
+
+    def _reward_height(self):
+        return self.k_h * self.get_clipped_height()
+
+    def _reward_in_place(self):
+        return self.k_pos * np.exp(-self.k_pos_sigma * np.abs(self._pos_abs[0]))
+
+    def _reward_smoothing(self):
+        actual_delta_torques = np.sqrt(self.norm(self._get_torque_diff()))
+        return self.k_tau * np.exp(-self.k_tau_sigma * actual_delta_torques)
+
+    def _reward_force_contact(self):
+        return -self.k_contact * self.get_over_contact_force()
+
+    def _reward_smooth_action(self):
+        actual_delta_action = np.sqrt(self.norm(self._get_action_diff())) / 24
+        return self.k_action * np.exp(-self.k_action_sigma * actual_delta_action)
+
+    def _reward_config_smooth(self):
+        config_des = self.aci._transform_action_to_motor_command(self._old_action)
+        actual_config = self._env.robot.GetMotorAngles()
+        delta_config = actual_config - config_des
+        config_diff = np.sqrt(self.norm(delta_config))
+        return self.k_config_smoothing * np.exp(-self.k_config_smoothing_sigma * config_diff)
+
+    def _reward_pitch(self):
+        return self.k_pitch * np.exp(-self.k_pitch_sigma * np.abs(self._orient_rpy[1]))
+
+    def _reward_fwd(self):
+        return self.k_fwd * self.get_fwd()
+
+    def _reward(self):
+        rew = 0
+        rew_h = self._reward_height()
+        rew_smooth = self._reward_smoothing()
+        rew_contact = self._reward_force_contact()
+        rew_pitch = self._reward_pitch()
+        rew_fwd = self._reward_fwd()
+
+        rew += 0.4 * rew_contact + 0.2 * rew_smooth + 0.25 * rew_h + 0.3 * rew_pitch + 0.4 * rew_fwd
+
+        return rew
+
+    def _reward_end_episode(self):
+        """Compute bonus and malus to add to reward at the end of the episode"""
+        reward = 0
+
+        if not self._terminated():
+            reward += 0.05 * (0.7 * self._max_forward_distance + 0.3 * self._max_height) / 2
+        else:
+            reward -= 0.0
+
+        return reward

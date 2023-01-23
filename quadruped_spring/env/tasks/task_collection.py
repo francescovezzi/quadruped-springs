@@ -40,4 +40,5 @@ class TaskCollection(CollectionBase):
             "JUMPING_IN_PLACE_PPO_HP": self.JIP_PPO_HP,
             "JUMPING_FORWARD_PPO_HP": self.JF_PPO_HP,
             "BACKFLIP": rt.BackFlip,
+            "CONTINUOUS_JUMPING_FORWARD_PPO": rt.ContinuousJumpingForward,
         }

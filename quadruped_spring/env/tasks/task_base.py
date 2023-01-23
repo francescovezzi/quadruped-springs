@@ -102,6 +102,8 @@ class TaskJumping(TaskBase):
                 self._max_flight_time = max(self._env.get_sim_time() - self._time_take_off, self._max_flight_time)
                 self.compute_max_forward_distance()
                 self._all_feet_in_the_air = False
+            else:
+                self._max_forward_distance = 0
 
     def compute_max_forward_distance(self):
         """Compute forward distance according to local frame (starting at take off)"""
