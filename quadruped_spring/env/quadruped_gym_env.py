@@ -22,12 +22,13 @@ from quadruped_spring.env.env_randomizers.env_randomizer_collection import EnvRa
 from quadruped_spring.env.sensors.sensor import SensorList
 from quadruped_spring.env.sensors.sensor_collection import SensorCollection
 from quadruped_spring.env.tasks.task_collection import TaskCollection
+from quadruped_spring.env.wrappers.landing_wrapper import LandingWrapper
 from quadruped_spring.utils import action_filter
 from quadruped_spring.utils.camera import Camera
 
 ACTION_EPS = 0.01
 OBSERVATION_EPS = 0.01
-EPISODE_LENGTH = 3  # max episode length for RL (seconds)
+EPISODE_LENGTH = 8  # max episode length for RL (seconds)
 VIDEO_LOG_DIRECTORY = "videos/" + datetime.datetime.now().strftime("vid-%Y-%m-%d-%H-%M-%S-%f")
 
 # Motor control mode implemented: TORQUE, PD, CARTESIAN_PD
@@ -111,11 +112,12 @@ class QuadrupedGymEnv(gym.Env):
         self._settling_steps = 2500
 
         self.task_env = task_env
-        self.task = TaskCollection().get_el(self.task_env)(self)
 
         self._build_action_command_interface(motor_control_mode, action_space_mode)
         self.action_dim = self._ac_interface.get_action_space_dim()
         self.setupActionSpace(self.action_dim)
+
+        self.task = TaskCollection().get_el(self.task_env)(self)
 
         self._observation_space_mode = observation_space_mode
         self._robot_sensors = SensorList(SensorCollection().get_el(self._observation_space_mode), self)
@@ -434,13 +436,14 @@ def build_env():
         "enable_springs": True,
         "enable_action_interpolation": False,
         "enable_action_filter": True,
-        "task_env": "JUMPING_IN_PLACE",
+        "task_env": "CONTINUOUS_JUMPING_FORWARD_PPO",
         "observation_space_mode": "ARS_BACKFLIP",
         "action_space_mode": "SYMMETRIC",
         "env_randomizer_mode": "GROUND_RANDOMIZER",
         "curriculum_level": 1.0,
     }
     env = QuadrupedGymEnv(**env_config)
+    env = LandingWrapper(env)
     return env
 
 

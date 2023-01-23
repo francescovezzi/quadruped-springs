@@ -20,7 +20,7 @@ class MotorInterfacePD(MotorInterfaceBase):
         if self._env.task_env == "BACKFLIP":
             for i in [7, 10]:
                 self._upper_lim[i] = np.pi / 2
-    
+
     def set_pose(self):
         self._init_pose = self._robot_config.INIT_MOTOR_ANGLES
         self._settling_pose = self._robot_config.ANGLE_SETTLING_POSE
@@ -55,7 +55,7 @@ class MotorInterfaceCARTESIAN_PD(MotorInterfaceBase):
         self._upper_lim = self._robot_config.RL_UPPER_CARTESIAN_POS
         self._symm_idx = 1
         self.set_pose()
-        
+
     def set_pose(self):
         self._init_pose = self._robot_config.NOMINAL_FOOT_POS_LEG_FRAME
         self._settling_pose = self._robot_config.CARTESIAN_SETTLING_POSE
