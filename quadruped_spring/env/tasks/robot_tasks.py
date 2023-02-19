@@ -462,7 +462,6 @@ class ContinuousJumpingForward(TaskJumping):
 
     def get_fwd(self):
         fwd = self.actual_fwd
-        print(fwd)
         if fwd > self.max_fwd or fwd == self.old_fwd:
             return 0
         else:
