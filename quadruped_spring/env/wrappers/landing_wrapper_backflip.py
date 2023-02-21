@@ -1,9 +1,10 @@
 import gym
-
+import numpy as np
 from quadruped_spring.utils.timer import Timer
+from quadruped_spring.env.sensors.robot_sensors import PitchBackFlip as PBF
 
 
-class LandingWrapper(gym.Wrapper):
+class LandingWrapperBackflip(gym.Wrapper):
     """
     Wrapper to switch controller when robot starts taking off.
     Dear user please pay attention at the order of the wrapper you are using.
@@ -13,6 +14,12 @@ class LandingWrapper(gym.Wrapper):
         super().__init__(env)
         self._robot_config = self.env.get_robot_config()
         self._landing_action = self.env.get_landing_action()
+        # self._take_off_pose = np.array([0, 1.28, -2.57] * 4)
+        # self.aci = self.env.get_ac_interface()
+        # self.take_off_action = self.aci._transform_motor_command_to_action(self._take_off_pose)
+        self.take_off_action = np.array([0, 1, -1, 0, 1, -1])
+        self.trigger_pitch = 5 * np.pi / 8
+        self.take_off_trigger = lambda : PBF._get_pitch(self.env) >= self.trigger_pitch
         self.timer_jumping = Timer(dt=self.env.env_time_step)
 
     def temporary_switch_motor_control_gain(foo):
@@ -43,15 +50,15 @@ class LandingWrapper(gym.Wrapper):
             obs, reward, done, infos = self.env.step(action)
         return obs, reward, done, infos
 
-    def take_off_phase(self, action):
+    def take_off_phase(self):
         """Repeat last action until you rech the height peak"""
         done = False
-        self.start_jumping_timer()
-        while not (self.timer_jumping.time_up() or done):  # episode or timer end
-            self.timer_jumping.step_timer()
-            obs, reward, done, infos = self.env.step(action)
+        while True:
+            obs, reward, done, infos = self.env.step(self.take_off_action)
+            if self.take_off_trigger() or done:
+                break
         return obs, reward, done, infos
-
+    
     def start_jumping_timer(self):
         actual_time = self.env.get_sim_time()
         delta_time = self.env.task.compute_time_for_peak_heihgt()
@@ -62,7 +69,7 @@ class LandingWrapper(gym.Wrapper):
         obs, reward, done, infos = self.env.step(action)
 
         if self.env.task.is_switched_controller() and not done:
-            _, reward, done, infos = self.take_off_phase(action)
+            _, reward, done, infos = self.take_off_phase()
             if not done:
                 _, reward, done, infos = self.landing_phase()
 
