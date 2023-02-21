@@ -4,6 +4,7 @@ import numpy as np
 
 import quadruped_spring as qs
 from quadruped_spring.env.tasks.task_base import TaskBase, TaskJumping, TaskJumpingDemo
+from quadruped_spring.env.sensors.robot_sensors import PitchBackFlip as PBF
 
 
 class JumpingInPlace(TaskJumping):
@@ -385,10 +386,12 @@ class BackFlip(TaskJumping):
         self.maximum_pitch = 2 * np.pi
         self.minimum_height = 0.3
         self.max_pitch = 0.0
+        self.get_pitch = lambda : PBF._get_pitch(self._env)
 
     def _on_step(self):
         super()._on_step()
-        self.max_pitch = max(self.max_pitch, self._orient_rpy[1])
+        # print(f"sens: {self.get_pitch()}, rew: {self._orient_rpy[1]}")
+        self.max_pitch = max(self.max_pitch, self.get_pitch())
 
     def _terminated(self):
         return self._is_fallen_ground() or self._not_allowed_contact()

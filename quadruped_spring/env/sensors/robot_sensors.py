@@ -307,15 +307,21 @@ class PitchBackFlip(Sensor):
             high=self._robot_config.PITCH_HIGH, low=self._robot_config.PITCH_LOW, noise_std=self._robot_config.PITCH_NOISE
         )
         
+    @staticmethod
+    def _get_pitch(env):
+        rot = R.from_quat(env.robot.GetBaseOrientation())
+        euler = rot.as_euler("yxz", degrees=False)
+        pitch = - euler[0]
+        if pitch < 0 and env.task._switched_controller:
+            pitch = 2 * np.pi + pitch
+        return pitch
+        
     def get_pitch(self):
         rot = R.from_quat(self._robot.GetBaseOrientation())
         euler = rot.as_euler("yxz", degrees=False)
-        pitch = euler[0]
-        if pitch > 0:
-            pitch = -pitch
-        else:
-            if self._env.task._switched_controller:
-                pitch = 2 * np.pi - pitch
+        pitch = - euler[0]
+        if pitch < 0 and self._env.task._switched_controller:
+            pitch = 2 * np.pi + pitch  
         return pitch
 
     def _get_data(self):
