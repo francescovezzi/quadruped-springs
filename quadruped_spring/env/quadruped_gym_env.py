@@ -23,12 +23,13 @@ from quadruped_spring.env.sensors.sensor import SensorList
 from quadruped_spring.env.sensors.sensor_collection import SensorCollection
 from quadruped_spring.env.tasks.task_collection import TaskCollection
 from quadruped_spring.env.wrappers.landing_wrapper import LandingWrapper
+from quadruped_spring.env.wrappers.landing_wrapper_backflip import LandingWrapperBackflip
 from quadruped_spring.utils import action_filter
 from quadruped_spring.utils.camera import Camera
 
 ACTION_EPS = 0.01
 OBSERVATION_EPS = 0.01
-EPISODE_LENGTH = 8  # max episode length for RL (seconds)
+EPISODE_LENGTH = 8.0  # max episode length for RL (seconds)
 VIDEO_LOG_DIRECTORY = "videos/" + datetime.datetime.now().strftime("vid-%Y-%m-%d-%H-%M-%S-%f")
 
 # Motor control mode implemented: TORQUE, PD, CARTESIAN_PD
@@ -394,6 +395,9 @@ class QuadrupedGymEnv(gym.Env):
     def get_quadruped_config(self):
         """Return the quadruped configuration."""
         return self._quadruped_config
+    
+    def set_robot_desired_state(self, state):
+        self.robot_desired_state = state
 
     def get_randomizer_mode(self):
         """Return the env ranodmizer mode."""
@@ -429,8 +433,8 @@ class QuadrupedGymEnv(gym.Env):
 
 def build_env():
     env_config = {
-        "render": False,
-        "on_rack": False,
+        "render": True,
+        "on_rack": True,
         "motor_control_mode": "PD",
         "action_repeat": 10,
         "enable_springs": True,
@@ -443,7 +447,7 @@ def build_env():
         "curriculum_level": 1.0,
     }
     env = QuadrupedGymEnv(**env_config)
-    env = LandingWrapper(env)
+    env = LandingWrapperBackflip(env)
     return env
 
 
@@ -456,7 +460,8 @@ def test_env():
     rew = 0
 
     for i in range(sim_steps):
-        action = np.random.rand(action_dim) * 2 - 1
+        # action = np.random.rand(action_dim) * 2 - 1
+        action = np.array([0, 1, -1] * 2)
         obs, reward, done, info = env.step(action)
         rew += reward
         if done:
