@@ -3,7 +3,7 @@ import os
 import numpy as np
 
 import quadruped_spring as qs
-from quadruped_spring.env.tasks.task_base import TaskBase, TaskJumping, TaskJumpingDemo
+from quadruped_spring.env.tasks.task_base import TaskBase, TaskJumping, TaskJumpingDemo, TaskContinuousJumping
 from quadruped_spring.env.sensors.robot_sensors import PitchBackFlip as PBF
 
 
@@ -90,7 +90,38 @@ class JumpingForward(TaskJumping):
             reward -= 0.08 * (1 + 1.2 * bonus_malus_term)
 
         return reward
+    
+class JumpingForwardContinuous(TaskContinuousJumping):
+    def __init__(self, env):
+        super().__init__(env)
+        self.jump_limit = 0.5
+        self.time_limit = 0.8
 
+    def _reward(self):
+        """Reward for each simulation step."""
+        return 0
+
+    def _reward_end_episode(self):
+        """Compute bonus and malus to add to reward at the end of the episode"""
+        reward = 0
+        # print(self.cumulative_flight_time)
+        # print(self.jump_counter)
+        max_time_normalized = self.cumulative_flight_time / self.time_limit
+        max_distance_normalized = self.cumulative_fwd / self.jump_limit
+
+        bonus_malus_term = (max_time_normalized + max_distance_normalized) / 2
+
+        reward += 0.25 * max_time_normalized
+        reward += 0.5 * max_distance_normalized
+
+        reward += max_time_normalized * 0.25 * np.exp(-self._max_pitch**2 / 0.15**2)  # orientation
+
+        if not self._terminated():
+            reward += 0.1 * bonus_malus_term
+        # else:
+        #     reward -= 0.08 * (1 + 1.2 * bonus_malus_term)
+
+        return reward
 
 class NoTask(TaskBase):
     """No tasks is required to be performed. Useful for using TORQUE action interface."""
@@ -109,7 +140,15 @@ class JumpingDemoForward(TaskJumpingDemo):
     def __init__(self, env):
         self.demo_path = os.path.join(os.path.dirname(qs.__file__), "demonstrations", "demo_list_jf_0.npy")
         super().__init__(env)
-
+        
+class BackflipDemo(TaskJumpingDemo):
+    def __init__(self, env):
+        self.demo_path = os.path.join(os.path.dirname(qs.__file__), "demonstrations", "backflip-1.npy")
+        super().__init__(env)
+        
+    def _terminated(self):
+        # print(f'{self.demo_counter} / {self.demo_length}')
+        return self._is_fallen_ground() or self._not_allowed_contact() or self.demo_length == self.demo_counter
 
 class JumpingInPlacePPO(TaskJumping):
     def __init__(self, env):
@@ -414,7 +453,7 @@ class BackFlip(TaskJumping):
         return reward
 
 
-class ContinuousJumpingForward(TaskJumping):
+class ContinuousJumpingForwardPPO(TaskJumping):
     def __init__(self, env):
         super().__init__(env)
         self.aci = self._env.get_ac_interface()
@@ -423,9 +462,9 @@ class ContinuousJumpingForward(TaskJumping):
 
     def _init_reward_constants(self):
         self.max_height_task = 0.7  # absolute [m]
-        self.min_height_task = 0.29  # absolute [m]
+        self.min_height_task = 0.37  # absolute [m]
         self.max_contact_force = 800  # [N]
-        self.max_fwd = 1.1
+        self.max_fwd = 0.9
 
     @staticmethod
     def norm(vec):
@@ -434,17 +473,15 @@ class ContinuousJumpingForward(TaskJumping):
     def _init_reward_parameters(self):
         self.k_h = 0.026
         self.k_tau_sigma = 0.1
-        self.k_tau = 0.015
+        self.k_tau = 0.015 * 0.4
         self.k_contact = 3e-4
-        self.k_pos_sigma = 40.0
-        self.k_pos = 0.013
         self.k_action_sigma = 0.1
         self.k_action = 0.1
         self.k_config_smoothing_sigma = 5
         self.k_config_smoothing = 0.025
         self.k_pitch_sigma = 26
         self.k_pitch = 0.014
-        self.k_fwd = 0.038 * 0.15
+        self.k_fwd = 0.038
 
     def get_clipped_height(self):
         actual_height = self._pos_abs[2]
@@ -485,9 +522,6 @@ class ContinuousJumpingForward(TaskJumping):
 
     def _reward_height(self):
         return self.k_h * self.get_clipped_height()
-
-    def _reward_in_place(self):
-        return self.k_pos * np.exp(-self.k_pos_sigma * np.abs(self._pos_abs[0]))
 
     def _reward_smoothing(self):
         actual_delta_torques = np.sqrt(self.norm(self._get_torque_diff()))
@@ -535,3 +569,116 @@ class ContinuousJumpingForward(TaskJumping):
             reward -= 0.0
 
         return reward
+
+class BackflipPPO(TaskJumping):
+    def __init__(self, env):
+        super().__init__(env)
+        self.rest_mode = False
+        self.aci = self._env.get_ac_interface()
+        self._init_reward_constants()
+        self._init_reward_parameters()
+        self._tot_pitch = 0
+        self.max_pitch = 0.0
+        self.get_pitch = lambda : PBF._get_pitch(self._env)
+        
+    def _init_reward_constants(self):
+        self.max_height_task = 0.7  # absolute [m]
+        self.min_height_task = 0.29  # absolute [m]
+        self.max_contact_force = 800  # [N]
+        self.max_fwd = 1.1
+
+    @staticmethod
+    def norm(vec):
+        return np.dot(vec, vec)
+
+    def _init_reward_parameters(self):
+        self.k_h = 0.026
+        self.k_tau_sigma = 0.1
+        self.k_tau = 0.015
+        self.k_contact = 3e-4
+        self.k_pos_sigma = 40.0
+        self.k_pos = 0.013
+        self.k_action_sigma = 0.1
+        self.k_action = 0.1
+        self.k_config_smoothing_sigma = 5
+        self.k_config_smoothing = 0.025
+        self.k_pitch = 0.014
+
+    def get_clipped_height(self):
+        actual_height = self._pos_abs[2]
+        if actual_height < self.min_height_task:
+            return 0
+        elif actual_height > self.max_height_task:
+            return 0
+        else:
+            return actual_height
+
+    def get_over_contact_force(self):
+        _, _, feet_forces, _ = self._env.robot.GetContactInfo()
+        contact_force = np.sum(feet_forces)
+        if contact_force > self.max_contact_force:
+            return contact_force
+        else:
+            return 0
+
+    def _reset(self):
+        super()._reset()
+
+    def _on_step(self):
+        super()._on_step()
+        self._max_pitch = max(self._max_pitch, self.get_pitch())
+
+    def _reward_height(self):
+        return self.k_h * self.get_clipped_height()
+
+    def _reward_in_place(self):
+        return self.k_pos * np.exp(-self.k_pos_sigma * np.abs(self._pos_abs[0]))
+
+    def _reward_smoothing(self):
+        actual_delta_torques = np.sqrt(self.norm(self._get_torque_diff()))
+        return self.k_tau * np.exp(-self.k_tau_sigma * actual_delta_torques)
+
+    def _reward_force_contact(self):
+        return -self.k_contact * self.get_over_contact_force()
+
+    def _reward_smooth_action(self):
+        actual_delta_action = np.sqrt(self.norm(self._get_action_diff())) / 24
+        return self.k_action * np.exp(-self.k_action_sigma * actual_delta_action)
+
+    def _reward_config_smooth(self):
+        config_des = self.aci._transform_action_to_motor_command(self._old_action)
+        actual_config = self._env.robot.GetMotorAngles()
+        delta_config = actual_config - config_des
+        config_diff = np.sqrt(self.norm(delta_config))
+        return self.k_config_smoothing * np.exp(-self.k_config_smoothing_sigma * config_diff)
+
+    def _reward_pitch(self):
+        if self._pos_abs[2] > 0.5:
+            pitch = self.get_pitch()
+        else:
+            pitch = 0
+        return self.k_pitch * pitch
+
+    def _reward(self):
+        rew = 0
+        rew_h = self._reward_height()
+        rew_smooth = self._reward_smoothing()
+        rew_contact = self._reward_force_contact()
+        rew_pitch = self._reward_pitch()
+        self._tot_pitch += rew_pitch
+        rew += 0.4 * rew_contact + 0.2 * rew_smooth + 0.25 * rew_h + 0.3 * rew_pitch
+
+        return rew
+
+    def _reward_end_episode(self):
+        """Compute bonus and malus to add to reward at the end of the episode"""
+        reward = 0
+        if not self._terminated():
+            reward += 0.2 * (0.7 * self._max_pitch / 5 + 0.3 * self._max_height) / 2
+        else:
+            reward -= 0.0
+
+        return reward
+    
+    def enable_rest_mode(self):
+        self.rest_mode = True

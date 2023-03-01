@@ -165,7 +165,7 @@ class TaskJumpingDemo(TaskJumping):
         # self.demo_path = os.path.join(os.path.dirname(qs.__file__), "demonstrations", "demo_list_imitate.npy")
         self.demo_list = np.load(self.demo_path)
         self.demo_length = np.shape(self.demo_list)[0]
-        self.action_dim = self._env.get_action_dim()
+        self.action_dim = self._env.action_dim
         self.max_err = np.sqrt(2**2 * self.action_dim)
         self.demo_counter = 0
 
@@ -177,9 +177,10 @@ class TaskJumpingDemo(TaskJumping):
         return super()._reset()
 
     def get_demo(self):
+        # print(f'demo counter: {self.demo_counter}')
         demo = self.demo_list[self.demo_counter, :]
         return DemoWrapper.read_demo(
-            demo, action_dim=self._env.get_action_dim(), num_joints=self._env.get_robot_config().NUM_MOTORS
+            demo, action_dim=self.action_dim, num_joints=self._env.get_robot_config().NUM_MOTORS
         )
 
     @staticmethod
@@ -208,5 +209,50 @@ class TaskJumpingDemo(TaskJumping):
         return super()._terminated() or self.demo_counter == self.demo_length
 
     def _reward_end_episode(self):
-        reward = 0
-        return reward
+        return 0
+    
+    def set_demo_counter(self, value):
+        self.demo_counter = value
+
+class TaskContinuousJumping(TaskJumping):
+    
+    def __init__(self, env):
+        super().__init__(env)
+        
+    def _reset_params(self):
+        super()._reset_params()
+        self.cumulative_fwd = 0.0
+        self.cumulative_flight_time = 0.0
+        self.jump_limit = 0.5
+        self.time_limit = 1.0
+        self.jump_counter = 0
+        
+    def _compute_jumping_info(self):
+        if self._env.robot._is_flying():
+            if not self._all_feet_in_the_air:
+                self._all_feet_in_the_air = True
+                self._time_take_off = self._env.get_sim_time()
+                self._robot_pose_take_off = self._pos_abs
+                self._robot_orientation_take_off = self._orient_rpy
+            # else:
+                # self.compute_max_forward_distance()
+        else:
+            if self._all_feet_in_the_air:
+                self._max_flight_time = max(self._env.get_sim_time() - self._time_take_off, self._max_flight_time)
+                self.compute_max_forward_distance()
+                self.update_end_jump()
+                self._all_feet_in_the_air = False
+            # else:
+            #     self.update_end_jump()
+
+    def update_end_jump(self):
+        # self.cumulative_fwd += min(self._max_forward_distance, self.jump_limit)
+        # self.cumulative_flight_time += min(self._max_flight_time, self.time_limit)
+        n_jump = max(self.jump_counter, 1)
+        fwd = min(self._max_forward_distance, self.jump_limit)
+        ft = min(self._max_flight_time, self.time_limit)
+        self.cumulative_fwd += self.cumulative_fwd + (self.cumulative_fwd - fwd) / n_jump
+        self.cumulative_flight_time += self.cumulative_flight_time + (self.cumulative_flight_time - ft) / n_jump
+        self._max_forward_distance = 0.0
+        self._max_flight_time = 0.0
+        self.jump_counter += 1
