@@ -6,7 +6,7 @@ from quadruped_spring.env.wrappers.get_demonstration_wrapper import GetDemonstra
 
 
 class GoToRestWrapper(gym.Wrapper):
-    """Controll robot to rest position."""
+    """Control robot to rest position."""
 
     def __init__(self, env):
         super().__init__(env)
@@ -62,6 +62,7 @@ class GoToRestWrapper(gym.Wrapper):
             "JUMPING_FORWARD_PPO",
             "JUMPING_IN_PLACE_PPO_HP",
             "JUMPING_FORWARD_PPO_HP",
+            "BACKFLIP_PPO",
         ]:
             self.env.task.enable_rest_mode()
         done = False

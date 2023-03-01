@@ -4,7 +4,7 @@ import gym
 
 from quadruped_spring.env.wrappers.get_demonstration_wrapper import GetDemonstrationWrapper as DemoWrapper
 
-TASK_ALLOWED = ["JUMPING_IN_PLACE_DEMO", "JUMPING_FORWARD_DEMO"]
+TASK_ALLOWED = ["JUMPING_IN_PLACE_DEMO", "JUMPING_FORWARD_DEMO", "BACKFLIP_DEMO"]
 
 
 class ReferenceStateInitializationWrapper(gym.Wrapper):
@@ -25,14 +25,16 @@ class ReferenceStateInitializationWrapper(gym.Wrapper):
     def reset(self):
         if self.enable_wrapper:
             self.random_el = self.compute_random_el()
+            # print(f'random el: {self.random_el}')
             # print(f"robot initialized at element {self.random_el}/{self.demo_length - 1} of the demonstration")
             random_demo = DemoWrapper.read_demo(self.demo_list[self.random_el])
-            self._env.robot_desired_state = random_demo
-            self.env.task.demo_counter = self.random_el
+            self.env.set_robot_desired_state(random_demo)
+            self.env.task.set_demo_counter(value=self.random_el)
         return super().reset()
 
     def compute_random_el(self):
-        limit = self.demo_length
+        limit = self.demo_length - 5
+        # print(f'limit: {limit}')
         if self.counter == self.counter_reset_period:
             self.counter = 0
             limit = self.demo_length // 5

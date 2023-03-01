@@ -7,11 +7,12 @@ import numpy as np
 class GetDemonstrationWrapper(gym.Wrapper):
     """Wrapper used for collecting demonstrations."""
 
-    def __init__(self, env, path):
+    def __init__(self, env, path, name = "demo_list"):
         super().__init__(env)
-        self.id = 0
-        self.path = path
+        self.name = f"{name}.npy"
+        self.save_path = path
         self.env.wrapped_demo_env = self  # For the GoToRestWrapper
+        os.makedirs(self.save_path, exist_ok=True)
 
     def step(self, action):
         obs, reward, done, infos = self.env.step(action)
@@ -26,11 +27,10 @@ class GetDemonstrationWrapper(gym.Wrapper):
         return super().reset()
 
     def save_demo(self):
-        name = f"demo_list_{self.id}.npy"
         demo_list = self.demo_list[0:-1]
-        np.save(os.path.join(self.path, name), demo_list)
-        print(f"demo of shape {np.shape(demo_list)} saved in {self.path}/{name}")
-        self.id += 1
+        np.save(os.path.join(self.save_path, self.name), demo_list)
+        print(f"demo of shape {np.shape(demo_list)} saved in {self.save_path}")
+        # self.id += 1
 
     def _get_demo(self):
         r = self.env.robot

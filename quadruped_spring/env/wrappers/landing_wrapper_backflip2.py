@@ -4,7 +4,7 @@ from quadruped_spring.utils.timer import Timer
 from quadruped_spring.env.sensors.robot_sensors import PitchBackFlip as PBF
 
 
-class LandingWrapperBackflip(gym.Wrapper):
+class LandingWrapperBackflip2(gym.Wrapper):
     """
     Wrapper to switch controller when robot starts taking off.
     Dear user please pay attention at the order of the wrapper you are using.
@@ -46,7 +46,7 @@ class LandingWrapperBackflip(gym.Wrapper):
     def landing_phase(self):
         action = self._landing_action
         done = False
-        while not done:
+        while not done and self.env.robot._is_flying():
             obs, reward, done, infos = self.env.step(action)
         return obs, reward, done, infos
 
@@ -67,14 +67,17 @@ class LandingWrapperBackflip(gym.Wrapper):
 
     def step(self, action):
         obs, reward, done, infos = self.env.step(action)
-
-        if self.env.task.is_switched_controller() and not done:
+        
+        if self.env.task.is_switched_controller() and not done and self._enable_landing:
             _, reward, done, infos = self.take_off_phase()
             if not done:
                 _, reward, done, infos = self.landing_phase()
+            self._enable_landing = False
 
         return obs, reward, done, infos
 
     def reset(self):
         obs = self.env.reset()
+        self._enable_landing = True
+
         return obs
