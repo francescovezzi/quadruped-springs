@@ -29,7 +29,7 @@ MODEL = "best_model"
 
 REC_VIDEO = False
 SAVE_PLOTS = False
-RENDER = True
+RENDER = False
 
 LOG_DIR = os.path.join(rl_zoo_dir, "logs_ars_rest", "ars")
 ID = 11
