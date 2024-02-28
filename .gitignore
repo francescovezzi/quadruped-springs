@@ -1,7 +1,7 @@
 .DS_Store
 *.egg-info
 __pycache__/
-quadruped_spring/Logs
 quadruped_spring/scripts
 quadruped_spring/logs
 quadruped_spring/demonstrations
+quadruped_spring/user
