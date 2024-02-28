@@ -7,7 +7,7 @@ import numpy as np
 class GetDemonstrationWrapper(gym.Wrapper):
     """Wrapper used for collecting demonstrations."""
 
-    def __init__(self, env, path, name = "demo_list"):
+    def __init__(self, env, path, name="demo_list"):
         super().__init__(env)
         self.name = f"{name}.npy"
         self.save_path = path

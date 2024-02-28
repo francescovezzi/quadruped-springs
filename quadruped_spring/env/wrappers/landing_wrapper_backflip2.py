@@ -1,7 +1,8 @@
 import gym
 import numpy as np
-from quadruped_spring.utils.timer import Timer
+
 from quadruped_spring.env.sensors.robot_sensors import PitchBackFlip as PBF
+from quadruped_spring.utils.timer import Timer
 
 
 class LandingWrapperBackflip2(gym.Wrapper):
@@ -19,7 +20,7 @@ class LandingWrapperBackflip2(gym.Wrapper):
         # self.take_off_action = self.aci._transform_motor_command_to_action(self._take_off_pose)
         self.take_off_action = np.array([0, 1, -1, 0, 1, -1])
         self.trigger_pitch = 5 * np.pi / 8
-        self.take_off_trigger = lambda : PBF._get_pitch(self.env) >= self.trigger_pitch
+        self.take_off_trigger = lambda: PBF._get_pitch(self.env) >= self.trigger_pitch
         self.timer_jumping = Timer(dt=self.env.env_time_step)
 
     def temporary_switch_motor_control_gain(foo):
@@ -58,7 +59,7 @@ class LandingWrapperBackflip2(gym.Wrapper):
             if self.take_off_trigger() or done:
                 break
         return obs, reward, done, infos
-    
+
     def start_jumping_timer(self):
         actual_time = self.env.get_sim_time()
         delta_time = self.env.task.compute_time_for_peak_heihgt()
@@ -67,7 +68,7 @@ class LandingWrapperBackflip2(gym.Wrapper):
 
     def step(self, action):
         obs, reward, done, infos = self.env.step(action)
-        
+
         if self.env.task.is_switched_controller() and not done and self._enable_landing:
             _, reward, done, infos = self.take_off_phase()
             if not done:

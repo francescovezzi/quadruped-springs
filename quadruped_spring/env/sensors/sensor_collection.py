@@ -70,8 +70,25 @@ class SensorCollection(CollectionBase):
             rs.BooleanContact,
         ]
         self._ARS_BACKFLIP = [rs.JointPosition, rs.JointVelocity, rs.Height, rs.BaseHeightVelocity, rs.PitchBackFlip]
-        self._PPO_BACKFLIP = [rs.JointPosition, rs.JointVelocity, rs.Height, rs.BaseHeightVelocity, rs.PitchBackFlip, rs.Landing]
-        
+        self._PPO_BACKFLIP = [
+            rs.JointPosition,
+            rs.JointVelocity,
+            rs.Height,
+            rs.BaseHeightVelocity,
+            rs.PitchBackFlip,
+            rs.Landing,
+        ]
+
+        self._PPO_CONTINUOUS_JUMPING = [
+            rs.JointPosition,
+            rs.JointVelocity,
+            rs.Height,
+            rs.BaseHeightVelocity,
+            rs.Pitch,
+            rs.Landing,
+            rs.Jumping,
+        ]
+
         self._dict = {
             "ENCODER": self._ENCODER,
             "ENCODER_2": self._ENCODER_2,
@@ -84,5 +101,6 @@ class SensorCollection(CollectionBase):
             "PPO_BASIC_CONTACT": self._PPO_BASIC_CONTACT,
             "ARS_BACKFLIP": self._ARS_BACKFLIP,
             "PPO_BACKFLIP": self._PPO_BACKFLIP,
+            "PPO_CONTINUOUS_JUMPING_FORWARD": self._PPO_CONTINUOUS_JUMPING,
         }
         self._element_type = "sensor package"

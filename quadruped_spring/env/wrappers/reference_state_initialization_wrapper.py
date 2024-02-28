@@ -4,7 +4,7 @@ import gym
 
 from quadruped_spring.env.wrappers.get_demonstration_wrapper import GetDemonstrationWrapper as DemoWrapper
 
-TASK_ALLOWED = ["JUMPING_IN_PLACE_DEMO", "JUMPING_FORWARD_DEMO", "BACKFLIP_DEMO"]
+TASK_ALLOWED = ["JUMPING_IN_PLACE_DEMO", "JUMPING_FORWARD_DEMO", "BACKFLIP_DEMO"]#, "CONTINUOUS_JUMPING_FORWARD_DEMO"]
 
 
 class ReferenceStateInitializationWrapper(gym.Wrapper):

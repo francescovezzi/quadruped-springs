@@ -3,7 +3,7 @@ import gym
 from quadruped_spring.utils.timer import Timer
 
 
-class LandingWrapper2(gym.Wrapper):
+class LandingWrapperContinuous(gym.Wrapper):
     """
     Wrapper to switch controller when robot starts taking off.
     Dear user please pay attention at the order of the wrapper you are using.
@@ -40,7 +40,7 @@ class LandingWrapper2(gym.Wrapper):
         action = self._landing_action
         done = False
         obs, reward, done, infos = self.env.step(action)
-        while not done and self.env.task.detect_jumping():
+        while not done and self.env.task.get_jumping():
             obs, reward, done, infos = self.env.step(action)
 
         return obs, reward, done, infos
@@ -63,7 +63,7 @@ class LandingWrapper2(gym.Wrapper):
     def step(self, action):
         obs, reward, done, infos = self.env.step(action)
 
-        if self.env.task.detect_jumping() and not done:
+        if self.env.task.get_jumping() and not done:
             _, reward, done, infos = self.take_off_phase(action)
             if not done:
                 _, reward, done, infos = self.landing_phase()

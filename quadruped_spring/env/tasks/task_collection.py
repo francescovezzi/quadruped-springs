@@ -44,4 +44,7 @@ class TaskCollection(CollectionBase):
             "CONTINUOUS_JUMPING_FORWARD_PPO": rt.ContinuousJumpingForwardPPO,
             "BACKFLIP_PPO": rt.BackflipPPO,
             "CONTINUOUS_JUMPING_FORWARD": rt.JumpingForwardContinuous,
+            "CONTINUOUS_JUMPING_FORWARD2": rt.JumpingForwardContinuous2,
+            "CONTINUOUS_JUMPING_FORWARD3": rt.JumpingForwardContinuous3,
+            "CONTINUOUS_JUMPING_FORWARD_DEMO": rt.JumpingContinuousDemoForward,
         }

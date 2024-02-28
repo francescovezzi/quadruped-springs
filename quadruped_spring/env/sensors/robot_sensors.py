@@ -2,6 +2,7 @@ import numpy as np
 from scipy.spatial.transform import Rotation as R
 
 from quadruped_spring.env.sensors.sensor import Sensor
+from quadruped_spring.env.tasks.task_base import TaskJumpingDemo
 
 
 class BooleanContact(Sensor):
@@ -152,10 +153,10 @@ class Landing(Sensor):
         )
 
     def _get_data(self):
-        if self._env.task_env == "JUMPING_IN_PLACE_DEMO":
-            self._data = self._env.task.demo_is_landing
-        else:
-            self._data = np.array([self._env.task._switched_controller])
+        # if self._env.task_env == "JUMPING_IN_PLACE_DEMO":
+        #     self._data = self._env.task.demo_is_landing
+        # else:
+        self._data = np.array([self._env.task._switched_controller])
 
     def _reset_sensor(self):
         self._get_data()
@@ -163,6 +164,28 @@ class Landing(Sensor):
     def _on_step(self):
         self._get_data()
 
+class Jumping(Sensor):
+    """Robot landing sensor detection."""
+
+    def __init__(self, env):
+        super().__init__(env)
+        self._name = "is jumping"
+
+    def _update_sensor_info(self):
+        return super()._update_sensor_info(
+            high=np.array([1]),
+            low=np.array([0]),
+            noise_std=np.array([0]),
+        )
+
+    def _get_data(self):
+        self._data = np.array([self._env.task.is_jumping])
+
+    def _reset_sensor(self):
+        self._get_data()
+
+    def _on_step(self):
+        self._get_data()
 
 class VelocityX(Sensor):
     """Base Velocity X."""
@@ -306,22 +329,22 @@ class PitchBackFlip(Sensor):
         return super()._update_sensor_info(
             high=self._robot_config.PITCH_HIGH, low=self._robot_config.PITCH_LOW, noise_std=self._robot_config.PITCH_NOISE
         )
-        
+
     @staticmethod
     def _get_pitch(env):
         rot = R.from_quat(env.robot.GetBaseOrientation())
         euler = rot.as_euler("yxz", degrees=False)
-        pitch = - euler[0]
+        pitch = -euler[0]
         if pitch < 0 and env.task._switched_controller:
             pitch = 2 * np.pi + pitch
         return pitch
-        
+
     def get_pitch(self):
         rot = R.from_quat(self._robot.GetBaseOrientation())
         euler = rot.as_euler("yxz", degrees=False)
-        pitch = - euler[0]
+        pitch = -euler[0]
         if pitch < 0 and self._env.task._switched_controller:
-            pitch = 2 * np.pi + pitch  
+            pitch = 2 * np.pi + pitch
         return pitch
 
     def _get_data(self):

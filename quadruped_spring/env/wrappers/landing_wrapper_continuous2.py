@@ -63,7 +63,7 @@ class LandingWrapperContinuous2(gym.Wrapper):
     def step(self, action):
         obs, reward, done, infos = self.env.step(action)
 
-        if self.env.task.get_jumping() and not done:
+        if self.env.task.get_jumping() and not self.robot._is_flying and not done:
             obs, reward, done, infos = self.take_off_phase(action)
             # if not done:
             #     _, reward, done, infos = self.landing_phase()

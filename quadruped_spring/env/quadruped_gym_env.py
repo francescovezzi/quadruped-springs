@@ -23,13 +23,16 @@ from quadruped_spring.env.sensors.sensor import SensorList
 from quadruped_spring.env.sensors.sensor_collection import SensorCollection
 from quadruped_spring.env.tasks.task_collection import TaskCollection
 from quadruped_spring.env.wrappers.landing_wrapper import LandingWrapper
+from quadruped_spring.env.wrappers.reference_state_initialization_wrapper import ReferenceStateInitializationWrapper
 from quadruped_spring.env.wrappers.landing_wrapper_backflip import LandingWrapperBackflip
+from quadruped_spring.env.wrappers.landing_wrapper_continuous2 import LandingWrapperContinuous2
 from quadruped_spring.utils import action_filter
-from quadruped_spring.utils.camera import Camera
+from quadruped_spring.utils.camera import make_camera
+from quadruped_spring.scripts.evaluation_wrapper import EvaluationWrapper
 
 ACTION_EPS = 0.01
 OBSERVATION_EPS = 0.01
-EPISODE_LENGTH = 8.0  # max episode length for RL (seconds)
+EPISODE_LENGTH = 10  # max episode length for RL (seconds)
 VIDEO_LOG_DIRECTORY = "videos/" + datetime.datetime.now().strftime("vid-%Y-%m-%d-%H-%M-%S-%f")
 
 # Motor control mode implemented: TORQUE, PD, CARTESIAN_PD
@@ -64,6 +67,7 @@ class QuadrupedGymEnv(gym.Env):
         enable_action_interpolation=False,
         enable_action_filter=False,
         env_randomizer_mode="GROUND_RANDOMIZER",
+        camera_mode="CLASSIC",
         curriculum_level=0.0,
         verbose=0,
     ):
@@ -90,6 +94,7 @@ class QuadrupedGymEnv(gym.Env):
           enable_action_clipping: Boolean specifying if motor commands should be
             clipped or not. It's not implemented for pure torque control.
           env_randomizer_mode: String specifying which env randomizers to use.
+          camera_mode: Decide how to visualize the simulation.
           curriculum_level: Scalar in [0,1] specyfing the task difficulty level.
         """
         self.verbose = verbose
@@ -128,13 +133,13 @@ class QuadrupedGymEnv(gym.Env):
             self._action_filter = self._build_action_filter()
 
         if self._is_render:
-            # opts = "--background_color_red=1 --background_color_blue=1 --background_color_green=1"
-            # self._pybullet_client = bc.BulletClient(connection_mode=pybullet.GUI, options=opts)
-            self._pybullet_client = bc.BulletClient(connection_mode=pybullet.GUI)
+            opts = "--background_color_red=1 --background_color_blue=1 --background_color_green=1"
+            self._pybullet_client = bc.BulletClient(connection_mode=pybullet.GUI, options=opts)
+            # self._pybullet_client = bc.BulletClient(connection_mode=pybullet.GUI)
         else:
             self._pybullet_client = bc.BulletClient()
 
-        self.camera = Camera(self, self._pybullet_client)
+        self.camera = make_camera(self, mode=camera_mode)
 
         self.robot_desired_state = None  # Reset the robot in a desired state
         self.reset_pybullet_simulation()
@@ -395,9 +400,12 @@ class QuadrupedGymEnv(gym.Env):
     def get_quadruped_config(self):
         """Return the quadruped configuration."""
         return self._quadruped_config
-    
+
     def set_robot_desired_state(self, state):
         self.robot_desired_state = state
+
+    def set_sub_step_callback(self, callback):
+        self.sub_step_callback = callback
 
     def get_randomizer_mode(self):
         """Return the env ranodmizer mode."""
@@ -433,21 +441,23 @@ class QuadrupedGymEnv(gym.Env):
 
 def build_env():
     env_config = {
-        "render": True,
-        "on_rack": True,
+        "render": False,
+        "on_rack": False,
         "motor_control_mode": "PD",
         "action_repeat": 10,
         "enable_springs": True,
         "enable_action_interpolation": False,
         "enable_action_filter": True,
-        "task_env": "CONTINUOUS_JUMPING_FORWARD_PPO",
-        "observation_space_mode": "ARS_BACKFLIP",
+        "task_env": "CONTINUOUS_JUMPING_FORWARD_DEMO",
+        "observation_space_mode": "PPO_CONTINUOUS_JUMPING_FORWARD",
         "action_space_mode": "SYMMETRIC",
         "env_randomizer_mode": "GROUND_RANDOMIZER",
+        "camera_mode": "CLASSIC",
         "curriculum_level": 1.0,
     }
     env = QuadrupedGymEnv(**env_config)
-    env = LandingWrapperBackflip(env)
+    # env = ReferenceStateInitializationWrapper(env)
+    env = EvaluationWrapper(env)
     return env
 
 
@@ -460,8 +470,7 @@ def test_env():
     rew = 0
 
     for i in range(sim_steps):
-        # action = np.random.rand(action_dim) * 2 - 1
-        action = np.array([0, 1, -1] * 2)
+        action = np.random.rand(action_dim) * 2 - 1
         obs, reward, done, info = env.step(action)
         rew += reward
         if done:

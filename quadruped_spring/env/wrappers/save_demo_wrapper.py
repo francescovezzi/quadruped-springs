@@ -1,6 +1,6 @@
 import gym
-
 from stable_baselines3.common.env_util import is_wrapped
+
 from quadruped_spring.env.wrappers.get_demonstration_wrapper import GetDemonstrationWrapper
 
 
@@ -9,7 +9,7 @@ class SaveDemoWrapper(gym.Wrapper):
 
     def __init__(self, env):
         super().__init__(env)
-        if not is_wrapped(GetDemonstrationWrapper):
+        if not is_wrapped(self.env, GetDemonstrationWrapper):
             raise RuntimeError("No Demonstrations to be saved. GetDemonstrationWrapper not used.")
 
     def step(self, action):
