@@ -33,13 +33,10 @@ from quadruped_spring.scripts.evaluation_wrapper import EvaluationWrapper
 ACTION_EPS = 0.01
 OBSERVATION_EPS = 0.01
 EPISODE_LENGTH = 10  # max episode length for RL (seconds)
-VIDEO_LOG_DIRECTORY = "videos/" + datetime.datetime.now().strftime("vid-%Y-%m-%d-%H-%M-%S-%f")
-
-# Motor control mode implemented: TORQUE, PD, CARTESIAN_PD
 
 # NOTE:
+# Motor control mode implemented: TORQUE, PD, CARTESIAN_PD
 # TORQUE control mode actually works only if isRLGymInterface is set to False.
-
 
 class QuadrupedGymEnv(gym.Env):
     """
