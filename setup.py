@@ -7,10 +7,9 @@ setup(
     install_requires=[
         "importlib-metadata<5.0",
         "pybullet==3.2.5",
-        "torch==1.12",
         "scipy==1.7.3",
-        "stable_baselines3==1.5.1.a8",
-        "sb3-contrib==1.5.1.a8",
+        "stable_baselines3==1.5.1.a7",
+        "sb3-contrib==1.5.1.a7",
         "absl-py==1.0.0",
         "opencv-python==4.6.0.66",
     ],
