@@ -1,25 +1,24 @@
 # Quadruped-Sim
-This repository contains an environment for simulating a quadruped robot.
+
+This repository contains an environment for simulating a quadruped robot accomplishing several higly-dynamical jumping based tasks
+such as:
+- explosive jumping in place and forward
+- continuous jumping forward
+- backflip
 
 ## Installation
 
-Recommend using a virtualenv (or conda) with python3.6 or higher. After installing virtualenv with pip, this can be done as follows:
+Recommend using conda with python3.7 or higher. After instaalling conda, this can be done as follows:
 
-`virtualenv {quad_env, or choose another name venv_name} --python=python3`
+`conda create -n [YOUR_ENV_NAME] python=3.7`
 
 To activate the virtualenv: 
 
-`source {PATH_TO_VENV}/bin/activate` 
-
-Your command prompt should now look like: 
-
-`(venv_name) user@pc:path$`
+`conda activate [YOUR_ENV_NAME]` 
 
 Install all dependencies:
 
 `pip install -r requirements.txt `
-
-
 
 ## Code structure
 
@@ -33,12 +32,6 @@ Install all dependencies:
 - The [PyBullet Quickstart Guide](https://docs.google.com/document/d/10sXEhzFRSnvFcl3XxNGhnD4N2SedqwdAvK3dsihxVUA/edit#heading=h.2ye70wns7io3) is the current up-to-date documentation for interfacing with the simulation. 
 - The quadruped environment took inspiration from [Google's motion-imitation repository](https://github.com/google-research/motion_imitation) based on [this paper](https://xbpeng.github.io/projects/Robotic_Imitation/2020_Robotic_Imitation.pdf). 
 - Reinforcement learning algorithms from [stable-baselines3](https://github.com/DLR-RM/stable-baselines3). Also see for example [ray[rllib]](https://github.com/ray-project/ray) and [spinningup](https://github.com/openai/spinningup). 
-
-## Conceptual resources
-The CPGs are based on the following papers:
-- L. Righetti and A. J. Ijspeert, "Pattern generators with sensory feedback for the control of quadruped locomotion," 2008 IEEE International Conference on Robotics and Automation, 2008, pp. 819-824, doi: 10.1109/ROBOT.2008.4543306. [link](https://ieeexplore.ieee.org/document/4543306)
-- M. Ajallooeian, S. Pouya, A. Sproewitz and A. J. Ijspeert, "Central Pattern Generators augmented with virtual model control for quadruped rough terrain locomotion," 2013 IEEE International Conference on Robotics and Automation, 2013, pp. 3321-3328, doi: 10.1109/ICRA.2013.6631040. [link](https://ieeexplore.ieee.org/abstract/document/6631040) 
-- M. Ajallooeian, S. Gay, A. Tuleu, A. Spröwitz and A. J. Ijspeert, "Modular control of limit cycle locomotion over unperceived rough terrain," 2013 IEEE/RSJ International Conference on Intelligent Robots and Systems, 2013, pp. 3390-3397, doi: 10.1109/IROS.2013.6696839. [link](https://ieeexplore.ieee.org/abstract/document/6696839) 
 
 ## Acknowledgements
 
