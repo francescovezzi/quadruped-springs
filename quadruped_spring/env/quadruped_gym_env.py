@@ -26,9 +26,9 @@ from quadruped_spring.env.wrappers.landing_wrapper import LandingWrapper
 from quadruped_spring.env.wrappers.reference_state_initialization_wrapper import ReferenceStateInitializationWrapper
 from quadruped_spring.env.wrappers.landing_wrapper_backflip import LandingWrapperBackflip
 from quadruped_spring.env.wrappers.landing_wrapper_continuous2 import LandingWrapperContinuous2
+from quadruped_spring.env.wrappers.evaluation_wrapper import EvaluationWrapper
 from quadruped_spring.utils import action_filter
 from quadruped_spring.utils.camera import make_camera
-from quadruped_spring.scripts.evaluation_wrapper import EvaluationWrapper
 
 ACTION_EPS = 0.01
 OBSERVATION_EPS = 0.01
@@ -453,7 +453,6 @@ def build_env():
         "curriculum_level": 1.0,
     }
     env = QuadrupedGymEnv(**env_config)
-    # env = ReferenceStateInitializationWrapper(env)
     env = EvaluationWrapper(env)
     return env
 
