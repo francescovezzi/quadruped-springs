@@ -19,6 +19,7 @@ from env.wrappers.landing_wrapper_2 import LandingWrapper2
 from quadruped_spring.env.wrappers.get_demonstration_wrapper import GetDemonstrationWrapper
 from quadruped_spring.env.wrappers.go_to_rest_wrapper import GoToRestWrapper
 from quadruped_spring.env.wrappers.obs_flattening_wrapper import ObsFlatteningWrapper
+from quadruped_spring.env.wrappers.save_demo_wrapper import SaveDemoWrapper
 
 SEED = 24
 
@@ -31,8 +32,8 @@ REC_VIDEO = False
 SAVE_PLOTS = False
 RENDER = False
 
-LOG_DIR = os.path.join(rl_zoo_dir, "logs_ars_rest", "ars")
-ID = 11
+LOG_DIR = os.path.join(rl_zoo_dir, "logs", "ars")
+ID = 19
 
 
 def callable_env(env_id, kwargs):
@@ -42,10 +43,10 @@ def callable_env(env_id, kwargs):
         env = LandingWrapper2(env)
         env = GoToRestWrapper(env)
         env = ObsFlatteningWrapper(env)
+        env = SaveDemoWrapper(env)
         return env
 
     return aux
-
 
 # define directories
 model_dir = os.path.join(LOG_DIR, f"{ENV_ID}_{ID}")

@@ -29,7 +29,6 @@ from quadruped_spring.env.wrappers.landing_wrapper_continuous import LandingWrap
 from quadruped_spring.env.wrappers.landing_wrapper_continuous2 import LandingWrapperContinuous2
 from quadruped_spring.env.wrappers.obs_flattening_wrapper import ObsFlatteningWrapper
 from quadruped_spring.utils.monitor_state import MonitorState
-from quadruped_spring.scripts.mathematica_wrapper import MathematicaWrapper
 
 SEED = 2409
 
@@ -46,10 +45,6 @@ RENDER = False
 TRAINING_STEPS = ["ars", "demo_ppo", "retrained_ppo"]
 TRAINING_STEP_INDEX = 2
 TRAINING_STEP = TRAINING_STEPS[TRAINING_STEP_INDEX]
-
-# MATHEMATICA_PATH = os.path.join(currentdir, "raw-data", "jumping_in_place_2stages_comparisons")
-# MATHEMATICA_PATH = os.path.join(currentdir, "raw-data", "jumping_forward_2stages_comparisons")
-MATHEMATICA_PATH = os.path.join(currentdir, "raw-data/v2", "jumping_forward_rigid")
 
 # _source_path = os.path.join("logs_final_cmp", ALGO, "jumping_forward-10_27", "springs")
 # _source_path = os.path.join("f_logs_ppo_comp", "jumping_forward-10_27_b", "demo_ppo")
@@ -93,7 +88,6 @@ def get_env_kwargs(src):
 def callable_env(kwargs):
     def aux():
         env = QuadrupedGymEnv(**kwargs)
-        env = MathematicaWrapper(env, output_path=MATHEMATICA_PATH, algo=TRAINING_STEP)
         # env = LandingWrapperContinuous2(env)
         env = GoToRestWrapper(env)
         # env = LandingWrapperBackflip(env)
