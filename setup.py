@@ -9,7 +9,7 @@ setup(
         "pybullet==3.2.5",
         "scipy==1.7.3",
         "stable_baselines3==1.5.1.a7",
-        "sb3-contrib==1.5.1.a7",
+        "sb3-contrib==1.5.1.a8",
         "absl-py==1.0.0",
         "opencv-python==4.6.0.66",
     ],
