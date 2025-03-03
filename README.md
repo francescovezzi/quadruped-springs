@@ -50,7 +50,7 @@ For training take a look at [rl-baselines3-zoo](https://github.com/francescovezz
 
 ## Acknowledgements
 
-The quadruped env was original created by [Guillaume Bellegarda](https://scholar.google.com/citations?user=YDimn5wAAAAJ&hl=en), who developed the [hopf_network.py](./hopf_polar.py).
+The quadruped env was originally created at [https://gitlab.epfl.ch/bellegar/lr-quadruped-sim](https://gitlab.epfl.ch/bellegar/lr-quadruped-sim) by [Guillaume Bellegarda](https://scholar.google.com/citations?user=YDimn5wAAAAJ&hl=en), who developed the [hopf_network.py](./hopf_polar.py).
 
 <p align="left">
 <img src="https://user-images.githubusercontent.com/95044968/207451460-0e4194f5-8522-406f-b071-19176d95d096.gif" width="40%" height="40%"/>
